@@ -3,10 +3,40 @@
   <groupId>org.opennms</groupId>
   <artifactId>rancid-api</artifactId>
   <version>0.1-SNAPSHOT</version>
-  <packaging>jar</packaging>
   <name>Rancid RWS Server and Client Api</name>
-  <build>
-    <plugins>
+  <plugins>
+       <plugin>
+         <groupId>org.apache.maven.plugins</groupId>
+         <artifactId>maven-compiler-plugin</artifactId>
+         <configuration>
+           <source>1.5</source>
+           <target>1.5</target>
+         </configuration>
+       </plugin>
+       <plugin>
+         <groupId>org.apache.maven.plugins</groupId>
+         <artifactId>maven-source-plugin</artifactId>
+         <executions>
+           <execution>
+             <goals>
+               <goal>jar</goal>
+            </goals>
+           </execution>
+         </executions>
+       </plugin>
+       <plugin>
+         <groupId>org.apache.maven.plugins</groupId>
+         <artifactId>maven-javadoc-plugin</artifactId>
+         <configuration>
+           <aggregate>true</aggregate>
+           <use>false</use>
+           <links>
+             <link>http://java.sun.com/j2ee/1.4/docs/api</link>
+             <link>http://java.sun.com/j2se/1.5.0/docs/api</link>
+           </links>
+         </configuration>
+       </plugin>
+     </plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
@@ -19,12 +49,12 @@
         </executions>
       </plugin>
       <plugin>
-	<groupId>org.apache.maven.plugins</groupId>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-eclipse-plugin</artifactId>
-	<configuration>
+        <configuration>
           <additionalBuildcommands>
             <buildcommand>org.springframework.ide.eclipse.core.springbuilder</buildcommand>
-          </additionalBuildcommands> 
+          </additionalBuildcommands>
           <additionalProjectnatures>
             <projectnature>org.springframework.ide.eclipse.core.springnature</projectnature>
           </additionalProjectnatures>
