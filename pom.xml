@@ -4,6 +4,7 @@
   <artifactId>rancid-api</artifactId>
   <version>0.1-SNAPSHOT</version>
   <name>Rancid RWS Server and Client Api</name>
+  <build>
   <plugins>
        <plugin>
          <groupId>org.apache.maven.plugins</groupId>
@@ -36,7 +37,6 @@
            </links>
          </configuration>
        </plugin>
-     </plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
