@@ -4,6 +4,11 @@
   <artifactId>rancid-api</artifactId>
   <version>0.1-SNAPSHOT</version>
   <name>Rancid RWS Server and Client Api</name>
+  <scm>
+    <connection>scm:svn:https://opennms.svn.sourceforge.net/svnroot/opennms/rancid-api/trunk</connection>
+    <developerConnection>scm:svn:https://opennms.svn.sourceforge.net/svnroot/opennms/rancid-api/trunk</developerConnection>
+    <url>http://opennms.svn.sourceforge.net/viewvc/opennms/rancid-api/trunk</url>
+  </scm>
   <build>
   <plugins>
        <plugin>
@@ -86,4 +91,21 @@
    <version>1.1.1</version>
 </dependency>
   </dependencies>
+  <distributionManagement>
+    <site>
+      <id>opennms-site</id>
+      <name>OpenNMS Build Website</name>
+      <url>scpexe://repo.opennms.org/var/www/sites/opennms.org/site/repo/sites/rancid-api/${project.version}/</url>
+    </site>
+    <repository>
+      <id>opennms-repo</id>
+      <name>OpenNMS Maven Repository</name>
+      <url>scpexe://repo.opennms.org/var/www/sites/opennms.org/site/repo/maven2</url>
+    </repository>
+    <snapshotRepository>
+      <id>opennms-snapshots</id>
+      <name>OpenNMS Snapshot Maven Repository</name>
+      <url>scpexe://repo.opennms.org/var/www/sites/opennms.org/site/repo/snapshots</url>
+    </snapshotRepository>
+  </distributionManagement>
 </project>
