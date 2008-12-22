@@ -50,20 +50,6 @@ public class RWSClientApi {
     private static boolean inited=false;
     
     public static void init(){
-           
-//        try {
-//            RWSConfigFactory.init();
-//        }
-//        catch (Exception e){
-//            e.printStackTrace();
-//        }
-//        
-//        rwsCfgFactory = RWSConfigFactory.getInstance();
-//        burl = rwsCfgFactory.getUrls();
-//        System.out.println("Default URL " + burl[0].getServer_url() + ":" + burl[0].getServer_port()+ "/" + burl[0].getServer_path()); 
-//        //TODO Backup urls
-//        
-//        client = new Client(Protocol.HTTP);
 
         try {
             client.start();
@@ -79,6 +65,14 @@ public class RWSClientApi {
     //***************************************************************************
     //LISTS    
 
+    // Generic list of resources
+    public static RWSResourceList getRWSResourceList(String baseUri, String subUri ) throws RancidApiException {
+
+        RWSResourceListImpl rwsImpl = new RWSResourceListImpl();
+        rwsImpl.ResourcesList = getInfo(baseUri+subUri);
+        return rwsImpl;
+    }
+    
     // Services list
     public static RWSResourceList getRWSResourceServicesList(String baseUri ) throws RancidApiException {
 

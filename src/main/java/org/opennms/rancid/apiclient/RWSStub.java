@@ -51,8 +51,9 @@ public class RWSStub {
         System.out.println("*************************************************************");
         System.out.println("*************************************************************");
         System.out.println("*************************************************************");
+        System.out.println(" START RWSClientApi.encode_test(); ");
         RWSClientApi.encode_test();
-        System.out.println("*************************************************************");
+        System.out.println(" END RWSClientApi.encode_test(); ");
         System.out.println("*************************************************************");
         System.out.println("*************************************************************");
         System.out.println("*************************************************************");
@@ -62,14 +63,17 @@ public class RWSStub {
         
         System.out.println("Factory Loading Resources list");
 
-        ResList1 = RWSClientApi.getRWSResourceServicesList("http://www.rionero.com/rws-new");
-        ResList1 = RWSClientApi.getRWSResourceRAList("http://www.rionero.com/rws-new");
-        ResList2 = RWSClientApi.getRWSResourceGroupsList("http://www.rionero.com/rws-new");
-        ResList3 = RWSClientApi.getRWSResourceGroupsList("http://www.rionero.com/rws-new");
-        ResList4 = RWSClientApi.getRWSResourceDeviceList("http://www.rionero.com/rws-new","demo");
+
+        ResList1 = RWSClientApi.getRWSResourceServicesList("http://www.rionero.com/rws-current");
+;
+        ResList2 = RWSClientApi.getRWSResourceRAList("http://www.rionero.com/rws-current");
+
+        ResList3 = RWSClientApi.getRWSResourceGroupsList("http://www.rionero.com/rws-current");
+        
+        ResList4 = RWSClientApi.getRWSResourceDeviceList("http://www.rionero.com/rws-current","demo");
         //ResList5 = RWSF.getRWSResourceDeviceVersionList("demo", "gugli");
         
-        ResList6 = RWSClientApi.getRWSResourceLoginPatternList("http://www.rionero.com/rws-new");
+        ResList6 = RWSClientApi.getRWSResourceLoginPatternList("http://www.rionero.com/rws-current");
 
         System.out.println("ResList1.getResource(0) /rws/: " + ResList1.getResource(0));
         System.out.println("ResList2.getResource(0) /rws/rancid/: " + ResList2.getResource(0));
@@ -101,7 +105,7 @@ public class RWSStub {
 
         System.out.println("Factory GetNode start");
 
-        RancidNode rn3 = RWSClientApi.getRWSRancidNode("http://www.rionero.com/rws-new","demo", "EDGE-MI0");
+        RancidNode rn3 = RWSClientApi.getRWSRancidNode("http://www.rionero.com/rws-current","demo", "EDGE-MI0");
         System.out.println("rn3 " + rn3.getDeviceName()  +" "+ rn3.getDeviceType()+" "+rn3.getState()+" "+ rn3.getComment());
         
         System.out.println("Factory GetNode end");
@@ -114,7 +118,7 @@ public class RWSStub {
 
         System.out.println("Factory CLOGIN get start");
 
-        RancidNodeAuthentication rn5 = RWSClientApi.getRWSAuthNode("http://www.rionero.com/rws-new","EDGE-MI0");
+        RancidNodeAuthentication rn5 = RWSClientApi.getRWSAuthNode("http://www.rionero.com/rws-current","EDGE-MI0");
         System.out.println("rn5 EDGE-MI0 " + rn5.getUser() +" "+ rn5.getPassword()+" "+rn5.getConnectionMethodString());
         
         System.out.println("Factory CLOGIN get end");
@@ -133,7 +137,7 @@ public class RWSStub {
         rn.setComment("Dic2 1759");
         
         
-        RWSClientApi.createRWSRancidNode("http://www.rionero.com/rws-new",rn);
+        RWSClientApi.createRWSRancidNode("http://www.rionero.com/rws-current",rn);
         System.out.println("Factory Provisioning end");
 
         
@@ -150,7 +154,7 @@ public class RWSStub {
         rn7.setComment("Dic2 1759");
         rn7.setStateUp(false);
         
-        RWSClientApi.updateRWSRancidNode("http://www.rionero.com/rws-new",rn7);
+        RWSClientApi.updateRWSRancidNode("http://www.rionero.com/rws-current",rn7);
         System.out.println("Factory Update end");
 
         System.out.println("*************************************************************");
@@ -166,7 +170,7 @@ public class RWSStub {
         rn8.setComment("Dic2 1759");
         rn8.setStateUp(false);
         
-        RWSClientApi.deleteRWSRancidNode("http://www.rionero.com/rws-new",rn8);
+        RWSClientApi.deleteRWSRancidNode("http://www.rionero.com/rws-current",rn8);
         System.out.println("Factory Delete end");
 
 
@@ -181,7 +185,7 @@ public class RWSStub {
         RancidNode rn9 = new RancidNode("demo", "gugli__clogin_DIC2_1805");
         rn9.setDeviceType(RancidNode.DEVICE_TYPE_BAYNET);
         rn9.setComment("Clogin Dic2 1805");
-        RWSClientApi.createRWSRancidNode("http://www.rionero.com/rws-new",rn9);
+        RWSClientApi.createRWSRancidNode("http://www.rionero.com/rws-current",rn9);
 
         System.out.println("*************************************************************");
 
@@ -190,13 +194,13 @@ public class RWSStub {
         rn4.setUser("gugli_DIC2_1706");
         rn4.setPassword("ciccio");
         rn4.setConnectionMethod("telnet");
-        RWSClientApi.createOrUpdateRWSAuthNode("http://www.rionero.com/rws-new",rn4);
+        RWSClientApi.createOrUpdateRWSAuthNode("http://www.rionero.com/rws-current",rn4);
         System.out.println("rn4 " + rn4.getUser() + rn4.getPassword()+rn4.getConnectionMethodString());
         
         System.out.println("*************************************************************");
 
         
-        RancidNodeAuthentication rn15 = RWSClientApi.getRWSAuthNode("http://www.rionero.com/rws-new","gugli_DIC2_1706");
+        RancidNodeAuthentication rn15 = RWSClientApi.getRWSAuthNode("http://www.rionero.com/rws-current","gugli_DIC2_1706");
         System.out.println("rn15 gugli_DIC2_1706 " + rn15.getUser() +" "+ rn15.getPassword()+" "+rn15.getConnectionMethodString());
 
         
@@ -215,7 +219,7 @@ public class RWSStub {
         rn10.setUser("gugli_DIC2_1706");
         rn10.setPassword("cicciobello");
         rn10.setConnectionMethod("telnet");
-        RWSClientApi.createOrUpdateRWSAuthNode("http://www.rionero.com/rws-new",rn10);
+        RWSClientApi.createOrUpdateRWSAuthNode("http://www.rionero.com/rws-current",rn10);
         System.out.println("rn10 " + rn10.getUser() + rn10.getPassword()+rn10.getConnectionMethodString());
         
         System.out.println("Factory CLOGIN update end");
@@ -233,7 +237,7 @@ public class RWSStub {
         rn11.setUser("gugli_DIC2_1706");
         rn11.setPassword("cicciobello");
         rn11.setConnectionMethod("ssh");
-        RWSClientApi.deleteRWSAuthNode("http://www.rionero.com/rws-new",rn11);
+        RWSClientApi.deleteRWSAuthNode("http://www.rionero.com/rws-current",rn11);
         System.out.println("rn11 " + rn11.getUser() + rn11.getPassword()+rn11.getConnectionMethodString());
         
         System.out.println("Factory CLOGIN delete end");
