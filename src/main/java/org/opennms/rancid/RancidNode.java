@@ -114,5 +114,9 @@ public class RancidNode {
     public void setGroup(String group) {
         this.group = group;
     }
+
+    public void addInventoryNodei(String version, InventoryNode invNode) {
+	this.nodeVersion.put(version,invNode);
+    }
         
 }
