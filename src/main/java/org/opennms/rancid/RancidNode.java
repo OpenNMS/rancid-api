@@ -56,7 +56,7 @@ public class RancidNode {
     
     private String group;
     
-    // The list pf downloaded versions
+    // The list of downloaded versions
     private HashMap<String, InventoryNode> nodeVersions;
 
     
@@ -115,8 +115,8 @@ public class RancidNode {
         this.group = group;
     }
 
-    public void addInventoryNodei(String version, InventoryNode invNode) {
-	this.nodeVersion.put(version,invNode);
+    public void addInventoryNode(String version, InventoryNode invNode) {
+        this.nodeVersions.put(version,invNode);
     }
         
 }
