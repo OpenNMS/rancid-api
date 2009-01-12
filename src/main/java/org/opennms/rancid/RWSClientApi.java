@@ -2,6 +2,7 @@ package org.opennms.rancid;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Iterator;
 
 import java.io.IOException;
 
@@ -202,6 +203,8 @@ public class RWSClientApi {
         
         RancidNode rn = new RancidNode();
                
+        //TODO get inventory too
+        
         try {
             Document doc = dmr.getDocument();
 
@@ -217,6 +220,45 @@ public class RWSClientApi {
         }
         return rn;
 
+    }
+    
+    public static RancidNodeAggregate getRancidNodeAggregate(String baseUri,String deviceName) throws RancidApiException {
+        
+        if (!inited){
+            throw(new RancidApiException("Error: Api not initialized"));
+        }
+        
+        try {
+            RWSResourceList groups = getRWSResourceGroupsList(baseUri);
+
+    
+            List<String> groupList = groups.getResource();
+            
+            Iterator iter = groupList.iterator();
+            
+            Object tmpGroup;
+            
+            RancidNodeAggregate rna = new RancidNodeAggregate();
+            
+            while (iter.hasNext()) {
+                RancidNode rn = new RancidNode();
+                tmpGroup = iter.next();
+                try {
+                    //System.out.println("Adding " + (String)tmpGroup + " " + deviceName);
+                    rn = getRWSRancidNode(baseUri ,(String)tmpGroup, deviceName);
+                    rna.addRancidAggregate((String)tmpGroup, rn);
+                }
+                catch (Exception e) {
+                    //skip, Rancid Node not in group
+                    //but at least in one group
+                }
+            }
+            return rna;
+        }
+        catch (Exception e){
+                e.printStackTrace();
+        }
+        return null;
     }
     
     //***************************************************************************
