@@ -253,6 +253,8 @@ public class RWSClientApi {
             
             RancidNodeAggregate rna = new RancidNodeAggregate();
             
+            rna.setGroups(groupList);
+            
             while (iter.hasNext()) {
                 RancidNode rn = new RancidNode();
                 tmpGroup = iter.next();

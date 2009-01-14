@@ -1,6 +1,7 @@
 package org.opennms.rancid;
 
 import java.util.HashMap;
+import java.util.List;
 
 public class RancidNodeAggregate {
     
@@ -8,6 +9,7 @@ public class RancidNodeAggregate {
     // They all have the same devicename 
     
     private HashMap<String, RancidNode> groupAggregate;
+    private List<String> groups;
     
     public RancidNodeAggregate(){
         groupAggregate = new HashMap<String, RancidNode>();
@@ -19,6 +21,13 @@ public class RancidNodeAggregate {
     
     public HashMap<String, RancidNode> getRancidAggregate(){
         return groupAggregate;
+    }
+    
+    public List<String> getGroups() {
+        return groups;
+    }
+    public void setGroups(List<String> groups) {
+        this.groups = groups;
     }
 
 }
