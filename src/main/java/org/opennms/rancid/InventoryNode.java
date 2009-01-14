@@ -27,6 +27,10 @@ public class InventoryNode {
 	public String getVersionId() {
         return versionId;
     }
+    
+    public void setVersionId(String version) {
+        versionId = version;
+    }
 
     public Date getCreationDate() {
         return creationDate;

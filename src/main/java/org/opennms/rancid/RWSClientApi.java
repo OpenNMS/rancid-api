@@ -3,6 +3,11 @@ package org.opennms.rancid;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Iterator;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.text.ParseException;
+import java.util.Date;
+
 
 import java.io.IOException;
 
@@ -111,6 +116,13 @@ public class RWSClientApi {
         rwsImpl.ResourcesList = getInfo(baseUri+"/rws/rancid/clogin/");
         return rwsImpl;
     }
+    
+    // Version List
+    public static RWSResourceList getRWSResourceConfigList(String baseUri, String group, String deviceName)  throws RancidApiException {
+        RWSResourceListImpl rwsImpl = new RWSResourceListImpl();
+        rwsImpl.ResourcesList = getInfo(baseUri+"/rws/rancid/groups/"+group+"/"+deviceName+"/configs/");
+        return rwsImpl;
+    }
      
 //    //FUTURE
 //    public RWSResourceList getRWSResourceDeviceVersionList(String Group, String device){
@@ -212,6 +224,7 @@ public class RWSClientApi {
             rn.setDeviceType(doc.getElementsByTagName("deviceType").item(0).getTextContent());
             rn.setStateUp(doc.getElementsByTagName("state").item(0).getTextContent().compareTo("up") == 0);
             rn.setComment(doc.getElementsByTagName("comment").item(0).getTextContent());
+            rn.setGroup(group);
             
         }
         catch( IOException e){
@@ -245,7 +258,7 @@ public class RWSClientApi {
                 tmpGroup = iter.next();
                 try {
                     //System.out.println("Adding " + (String)tmpGroup + " " + deviceName);
-                    rn = getRWSRancidNode(baseUri ,(String)tmpGroup, deviceName);
+                    rn = getRWSRancidNodeInventory(baseUri ,(String)tmpGroup, deviceName);
                     rna.addRancidAggregate((String)tmpGroup, rn);
                 }
                 catch (Exception e) {
@@ -376,6 +389,78 @@ public class RWSClientApi {
         }
     }
 
+    //***************************************************************************
+    //***************************************************************************
+    //Inventory Node info retrieve 
+    
+    public static InventoryNode getRWSInventoryNode(RancidNode rancidNode, String baseUri,  String version ) throws RancidApiException{
+        
+        if (!inited){
+            throw(new RancidApiException("Error: Api not initialized"));
+        }
+        
+        //System.out.println(baseUri + "/rws/rancid/groups/" + rancidNode.getGroup() + "/" + rancidNode.getDeviceName()+"/configs/"+version);
+        Reference rwsTest= new Reference(baseUri + "/rws/rancid/groups/" + rancidNode.getGroup() + "/" + rancidNode.getDeviceName()+"/configs/"+version);
+        Response response=client.get(rwsTest);
+        DomRepresentation dmr = response.getEntityAsDom();
+        
+        InventoryNode in = new InventoryNode(rancidNode);
+               
+        //TODO get inventory too
+        
+        try {
+            Document doc = dmr.getDocument();
+            // 2008/11/13 13:54:35 UTC
+            SimpleDateFormat format = new SimpleDateFormat("yyyy/M/d H:m:s z");
+            //System.out.println("DATA "+doc.getElementsByTagName("Date").item(0).getTextContent());
+            Date date = format.parse(doc.getElementsByTagName("Date").item(0).getTextContent());
+            in.setExpirationDate(date);
+            
+            in.setConfigurationUrl(doc.getElementsByTagName("UrlViewVC").item(0).getTextContent());
+            
+            in.setVersionId(version);
+                      
+        }
+        catch( IOException e){
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        catch( ParseException e){
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        return in;
+
+    }
+
+    //***************************************************************************
+    //***************************************************************************
+    //Inventory Node info retrieve 
+    
+    public static RancidNode getRWSRancidNodeInventory(String baseUri, String group, String deviceName) throws RancidApiException{
+        
+        if (!inited){
+            throw(new RancidApiException("Error: Api not initialized"));
+        }
+        
+        RWSResourceList versions = getRWSResourceConfigList(baseUri, group, deviceName);
+        RancidNode rn = getRWSRancidNode(baseUri, group, deviceName);
+        
+        List<String> configlist = versions.getResource();
+        Iterator iter1 = configlist.iterator();
+        String tmpg1;
+        
+        while (iter1.hasNext()) {
+            tmpg1 = (String)iter1.next();
+            //System.out.println("Version " + tmpg1);
+            InventoryNode in = getRWSInventoryNode(rn, baseUri, tmpg1);
+            rn.addInventoryNode(tmpg1, in);
+        }
+        
+        return rn;
+
+    }
+
     
     //***************************************************************************
     //***************************************************************************
@@ -415,6 +500,8 @@ public class RWSClientApi {
         return rna;
 
     }
+    
+    
     
     //***************************************************************************
     //***************************************************************************

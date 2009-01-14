@@ -16,6 +16,7 @@ import org.opennms.rancid.RancidNodeAggregate;
 import org.opennms.rancid.RancidNodeAuthentication;
 import org.opennms.rancid.RWSClientApi;
 import org.opennms.rancid.RWSResourceList;
+import org.opennms.rancid.InventoryNode;
 
 
 import org.restlet.Client;
@@ -245,6 +246,54 @@ public class RWSStub {
 //        
 //        System.out.println("Factory CLOGIN delete end");
 
+        
+        System.out.println("*********************************************************");
+        System.out.println("*****Configuration***************************************");
+        System.out.println("*********************************************************");
+        RWSResourceList ResList7;
+        
+        ResList7 = RWSClientApi.getRWSResourceConfigList("http://www.rionero.com/rws-current","laboratorio","7206PED.wind.lab");
+        
+        List<String> configlist = ResList7.getResource();
+        
+        Iterator iter1 = configlist.iterator();
+        
+        String tmpg1;
+        
+        while (iter1.hasNext()) {
+            tmpg1 = (String)iter1.next();
+            System.out.println("Version " + tmpg1);
+        }
+        System.out.println("*********************************************************");
+        System.out.println("*****Inventory*******************************************");
+        System.out.println("*********************************************************");
+        
+        RancidNode rn12 = RWSClientApi.getRWSRancidNode("http://www.rionero.com/rws-current","laboratorio", "7206PED.wind.lab");
+        InventoryNode in1 = RWSClientApi.getRWSInventoryNode(rn12, "http://www.rionero.com/rws-current", "1.18");
+        
+        System.out.println("Date " + in1.getExpirationDate());
+        System.out.println("Url " + in1.getConfigurationUrl());
+        
+        System.out.println("*********************************************************");
+        System.out.println("*****Rancid FULL*****************************************");
+        System.out.println("*********************************************************");
+        RancidNode rn13 = RWSClientApi.getRWSRancidNodeInventory("http://www.rionero.com/rws-current","laboratorio", "7206PED.wind.lab");
+        
+        HashMap<String, InventoryNode> hm = rn13.getNodeVersions();
+        
+        InventoryNode in2 = hm.get("1.10");
+        InventoryNode in3 = hm.get("1.13");
+        
+        System.out.println("Vs " + in2.getVersionId());
+        System.out.println("Date " + in2.getExpirationDate());
+        System.out.println("Url " + in2.getConfigurationUrl());
+        System.out.println("Vs " + in3.getVersionId());
+        System.out.println("Date " + in3.getExpirationDate());
+        System.out.println("Url " + in3.getConfigurationUrl());
+        
+        System.out.println("*********************************************************");
+        System.out.println("*****RancidAggregate*************************************");
+        System.out.println("*********************************************************");      
         
         RancidNodeAggregate rna = new RancidNodeAggregate();
         rna = RWSClientApi.getRancidNodeAggregate("http://www.rionero.com/rws-current","7206PED.wind.lab");
