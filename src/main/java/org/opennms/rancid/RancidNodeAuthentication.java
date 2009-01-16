@@ -95,5 +95,12 @@ public class RancidNodeAuthentication extends RancidNode{
 	public void setConnectionMethod(String connectionMethod) {
 	    this.connectionMethod = new Method(connectionMethod);
 	}
+    
+    public RancidNodeAuthentication(String groupName, String deviceName){
+        super(groupName,deviceName);
+    }
+    public RancidNodeAuthentication(){
+        super();
+    }
 
 }

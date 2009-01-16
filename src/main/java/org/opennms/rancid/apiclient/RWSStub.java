@@ -292,6 +292,17 @@ public class RWSStub {
         System.out.println("Url " + in3.getConfigurationUrl());
         
         System.out.println("*********************************************************");
+        System.out.println("*****clogin**********************************************");
+        System.out.println("*********************************************************");  
+        
+        RancidNodeAuthentication rn4 = new RancidNodeAuthentication();
+      
+
+        RancidNodeAuthentication rn5 = RWSClientApi.getRWSAuthNode("http://www.rionero.com/rws-current","7206PED.wind.lab");
+        System.out.println("rn5 " + rn5.getUser() + rn5.getPassword()+rn5.getConnectionMethodString());
+        
+        
+        System.out.println("*********************************************************");
         System.out.println("*****RancidAggregate*************************************");
         System.out.println("*********************************************************");      
         
