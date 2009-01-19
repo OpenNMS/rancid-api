@@ -1,9 +1,10 @@
 package org.opennms.rancid;
 
 
-public class RancidNodeAuthentication extends RancidNode{
+public class RancidNodeAuthentication {
 
-	private String user;
+	private String deviceName;
+    private String user;
 	private String password;
 	private String enablePass;
 	private boolean autoEnable; 
@@ -70,7 +71,13 @@ public class RancidNodeAuthentication extends RancidNode{
 	public void setAutoEnable(boolean autoEnable) {
 		this.autoEnable = autoEnable;
 	}
+    public String getDeviceName() {
+        return deviceName;
+    }
 
+    public void setDeviceName(String deviceName) {
+        this.deviceName = deviceName;
+    }
 	public String getAuthType() {
 		return authType;
 	}
@@ -95,12 +102,4 @@ public class RancidNodeAuthentication extends RancidNode{
 	public void setConnectionMethod(String connectionMethod) {
 	    this.connectionMethod = new Method(connectionMethod);
 	}
-    
-    public RancidNodeAuthentication(String groupName, String deviceName){
-        super(groupName,deviceName);
-    }
-    public RancidNodeAuthentication(){
-        super();
-    }
-
 }

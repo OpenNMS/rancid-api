@@ -54,6 +54,11 @@ public class RancidNode {
     private boolean stateUp = true;
     private String comment;
     
+    //http://www.rionero.com/rws-current/rws/rancid/groups/laboratorio/7206ped.wind.lab/configs
+    private int TotalRevisions;
+    private int HeadRevision;
+    private String rootConfigurationUrl;
+    
     private String group;
     
     // The list of downloaded versions
@@ -114,7 +119,24 @@ public class RancidNode {
     public void setGroup(String group) {
         this.group = group;
     }
-
+    public void setRootConfigurationUrl(String rootConfigurationUrl) {
+        this.rootConfigurationUrl = rootConfigurationUrl;
+    }
+    public String getRootConfigurationUrl() {
+        return rootConfigurationUrl;
+    }
+    public int getTotalRevisions(){
+        return TotalRevisions;
+    }
+    public void setTotalRevisions(String TotalRevisions){
+        this.TotalRevisions = Integer.parseInt(TotalRevisions);
+    }
+    public int getHeadRevision(){
+        return HeadRevision;
+    }
+    public void setHeadRevision(String HeadRevision){
+        this.HeadRevision = Integer.parseInt(HeadRevision);
+    }
     public void addInventoryNode(String version, InventoryNode invNode) {
         this.nodeVersions.put(version,invNode);
     }

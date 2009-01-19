@@ -302,28 +302,28 @@ public class RWSStub {
         System.out.println("rn5 " + rn5.getUser() + rn5.getPassword()+rn5.getConnectionMethodString());
         
         
-        System.out.println("*********************************************************");
-        System.out.println("*****RancidAggregate*************************************");
-        System.out.println("*********************************************************");      
-        
-        RancidNodeAggregate rna = new RancidNodeAggregate();
-        rna = RWSClientApi.getRancidNodeAggregate("http://www.rionero.com/rws-current","7206PED.wind.lab");
-        
-        HashMap<String, RancidNode> rnamap = rna.getRancidAggregate();
-        
-        List<String> groupList = ResList3.getResource();
-        
-        Iterator iter = groupList.iterator();
-        
-        String tmpg;
-        
-        while (iter.hasNext()) {
-            tmpg = (String)iter.next();
-            System.out.println("Group " + tmpg);
-            System.out.println("Rancid Node Aggregate " + tmpg + " " + rnamap.get(tmpg).getDeviceName());
-        }
-        
-        System.out.println("*******************END***************************************");
+//        System.out.println("*********************************************************");
+//        System.out.println("*****RancidAggregate*************************************");
+//        System.out.println("*********************************************************");      
+//        
+//        RancidNodeAggregate rna = new RancidNodeAggregate();
+//        rna = RWSClientApi.getRancidNodeAggregate("http://www.rionero.com/rws-current","7206PED.wind.lab");
+//        
+//        HashMap<String, RancidNode> rnamap = rna.getRancidAggregate();
+//        
+//        List<String> groupList = ResList3.getResource();
+//        
+//        Iterator iter = groupList.iterator();
+//        
+//        String tmpg;
+//        
+//        while (iter.hasNext()) {
+//            tmpg = (String)iter.next();
+//            System.out.println("Group " + tmpg);
+//            System.out.println("Rancid Node Aggregate " + tmpg + " " + rnamap.get(tmpg).getDeviceName());
+//        }
+//        
+//        System.out.println("*******************END***************************************");
         
         }
         catch(RancidApiException e) {

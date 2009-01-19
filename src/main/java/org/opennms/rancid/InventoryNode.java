@@ -20,9 +20,9 @@ public class InventoryNode {
 	private String softwareVersion;
 	private String softwareImageUrl;
 
+    //http://www.rionero.com/rws-current/rws/rancid/groups/laboratorio/7206ped.wind.lab/configs/1.15
 	// this are for Configuration management but it is to be used cvsweb integrated in the opennms GUI
 	private String configurationUrl;
-	private String rootConfigurationUrl;
 
 	public String getVersionId() {
         return versionId;
@@ -63,20 +63,12 @@ public class InventoryNode {
 	public void setSoftwareImageUrl(String softwareImageUrl) {
 		this.softwareImageUrl = softwareImageUrl;
 	}
-
+    public void setConfigurationUrl(String configurationUrl) {
+        this.configurationUrl = configurationUrl;
+    }
 	public String getConfigurationUrl() {
 		return configurationUrl;
 	}
-	public void setConfigurationUrl(String configurationUrl) {
-		this.configurationUrl = configurationUrl;
-	}
-	public String getRootConfigurationUrl() {
-		return rootConfigurationUrl;
-	}
-	public void setRootConfigurationUrl(String rootConfigurationUrl) {
-		this.rootConfigurationUrl = rootConfigurationUrl;
-	}
-
     public InventoryElement getNode() {
         return node;
     }

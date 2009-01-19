@@ -209,14 +209,12 @@ public class RWSClientApi {
     		throw(new RancidApiException("Error: Api not initialized"));
     	}
     	
-        Reference rwsTest= new Reference(baseUri + "/rws/rancid/groups/" + group + "/" + devicename);
-        Response response=client.get(rwsTest);
+        Reference rwsTest = new Reference(baseUri + "/rws/rancid/groups/" + group + "/" + devicename);
+        Response response =client.get(rwsTest);
         DomRepresentation dmr = response.getEntityAsDom();
         
         RancidNode rn = new RancidNode();
-               
-        //TODO get inventory too
-        
+       
         try {
             Document doc = dmr.getDocument();
 
@@ -231,50 +229,73 @@ public class RWSClientApi {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+        
+        //http://www.rionero.com/rws-current/rws/rancid/groups/laboratorio/7206PED.wind.lab/configs
+        //Get the following
+//        <TotalRevisions>18</TotalRevisions>
+//        <HeadRevision>1.18</HeadRevision>
+//        <UrlViewVC>
+//        http://www.rionero.com/viewvc/laboratorio/configs/7206PED.wind.lab?view=log
+//        </UrlViewVC>
+        Reference rwsTest2 = new Reference(baseUri + "/rws/rancid/groups/" + group + "/" + devicename+"/configs");
+        Response response2 =client.get(rwsTest2);
+        DomRepresentation dmr2 = response2.getEntityAsDom();
+   
+        try {
+            Document doc = dmr2.getDocument();
+
+            rn.setRootConfigurationUrl(doc.getElementsByTagName("UrlViewVC").item(0).getTextContent());
+            rn.setTotalRevisions(doc.getElementsByTagName("TotalRevisions").item(0).getTextContent());
+            rn.setHeadRevision(doc.getElementsByTagName("HeadRevision").item(0).getTextContent());        
+        }
+        catch( IOException e){
+            // TODO Auto-generated catch block
+            //Silent
+        }
         return rn;
 
     }
     
-    public static RancidNodeAggregate getRancidNodeAggregate(String baseUri,String deviceName) throws RancidApiException {
-        
-        if (!inited){
-            throw(new RancidApiException("Error: Api not initialized"));
-        }
-        
-        try {
-            RWSResourceList groups = getRWSResourceGroupsList(baseUri);
-
-    
-            List<String> groupList = groups.getResource();
-            
-            Iterator iter = groupList.iterator();
-            
-            Object tmpGroup;
-            
-            RancidNodeAggregate rna = new RancidNodeAggregate();
-            
-            rna.setGroups(groupList);
-            
-            while (iter.hasNext()) {
-                RancidNode rn = new RancidNode();
-                tmpGroup = iter.next();
-                try {
-                    //System.out.println("Adding " + (String)tmpGroup + " " + deviceName);
-                    rn = getRWSRancidNodeInventory(baseUri ,(String)tmpGroup, deviceName);
-                    rna.addRancidAggregate((String)tmpGroup, rn);
-                }
-                catch (Exception e) {
-                    //skip, Rancid Node not in group
-                    //but at least in one group
-                }
-            }
-            return rna;
-        }
-        catch (Exception e){
-                e.printStackTrace();
-        }
-        return null;
-    }
+//    public static RancidNodeAggregate getRancidNodeAggregate(String baseUri,String deviceName) throws RancidApiException {
+//        
+//        if (!inited){
+//            throw(new RancidApiException("Error: Api not initialized"));
+//        }
+//        
+//        try {
+//            RWSResourceList groups = getRWSResourceGroupsList(baseUri);
+//
+//    
+//            List<String> groupList = groups.getResource();
+//            
+//            Iterator iter = groupList.iterator();
+//            
+//            Object tmpGroup;
+//            
+//            RancidNodeAggregate rna = new RancidNodeAggregate();
+//            
+//            rna.setGroups(groupList);
+//            
+//            while (iter.hasNext()) {
+//                RancidNode rn = new RancidNode();
+//                tmpGroup = iter.next();
+//                try {
+//                    //System.out.println("Adding " + (String)tmpGroup + " " + deviceName);
+//                    rn = getRWSRancidNodeInventory(baseUri ,(String)tmpGroup, deviceName);
+//                    rna.addRancidAggregate((String)tmpGroup, rn);
+//                }
+//                catch (Exception e) {
+//                    //skip, Rancid Node not in group
+//                    //but at least in one group
+//                }
+//            }
+//            return rna;
+//        }
+//        catch (Exception e){
+//                e.printStackTrace();
+//        }
+//        return null;
+//    }
     
     //***************************************************************************
     //***************************************************************************
