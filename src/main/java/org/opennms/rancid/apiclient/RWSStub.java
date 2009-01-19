@@ -12,7 +12,6 @@ import java.util.Iterator;
 
 import org.opennms.rancid.RancidApiException;
 import org.opennms.rancid.RancidNode;
-import org.opennms.rancid.RancidNodeAggregate;
 import org.opennms.rancid.RancidNodeAuthentication;
 import org.opennms.rancid.RWSClientApi;
 import org.opennms.rancid.RWSResourceList;
