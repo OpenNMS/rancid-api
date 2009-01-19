@@ -56,7 +56,7 @@ public class RancidNode {
     
     //http://www.rionero.com/rws-current/rws/rancid/groups/laboratorio/7206ped.wind.lab/configs
     private int TotalRevisions;
-    private int HeadRevision;
+    private String HeadRevision;
     private String rootConfigurationUrl;
     
     private String group;
@@ -131,11 +131,11 @@ public class RancidNode {
     public void setTotalRevisions(String TotalRevisions){
         this.TotalRevisions = Integer.parseInt(TotalRevisions);
     }
-    public int getHeadRevision(){
+    public String getHeadRevision(){
         return HeadRevision;
     }
     public void setHeadRevision(String HeadRevision){
-        this.HeadRevision = Integer.parseInt(HeadRevision);
+        this.HeadRevision = HeadRevision;
     }
     public void addInventoryNode(String version, InventoryNode invNode) {
         this.nodeVersions.put(version,invNode);
