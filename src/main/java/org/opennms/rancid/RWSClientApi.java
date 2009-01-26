@@ -298,6 +298,31 @@ public class RWSClientApi {
 //    }
     
     //***************************************************************************
+    //Rancid Group provisioning
+    
+    public static void createRWSGroup(String baseUri, String group) throws RancidApiException{
+        
+        if (!inited){
+            throw(new RancidApiException("Error: Api not initialized"));
+        }
+        
+        Form form = new Form();
+        form.add("Resource", group );
+                
+        Representation rep = form.getWebRepresentation();
+
+        Reference rwsTest= new Reference(baseUri+"/rws/rancid/groups/" + group);
+        Response response = client.put(rwsTest,rep);
+        try {
+            response.getEntity().write(System.out);
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+    }
+    
+    //***************************************************************************
     //***************************************************************************
     //Rancid Node Info provisioning
     
