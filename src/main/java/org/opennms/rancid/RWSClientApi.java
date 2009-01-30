@@ -535,7 +535,7 @@ public class RWSClientApi {
             rna.setEnablePass(doc.getElementsByTagName("enablepassword").item(0).getTextContent());
             rna.setConnectionMethod(doc.getElementsByTagName("method").item(0).getTextContent());
             try {
-                rna.setAutoEnable(doc.getElementsByTagName("autoenable").item(0).getTextContent() == "1");
+                rna.setAutoEnable(doc.getElementsByTagName("autoenable").item(0).getTextContent().compareTo("1") == 0);
             }
             catch (Exception e) {
                 System.out.println("auto enable field not found");
