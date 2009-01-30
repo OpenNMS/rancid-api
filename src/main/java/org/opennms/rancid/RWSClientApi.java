@@ -533,14 +533,21 @@ public class RWSClientApi {
             rna.setUser(doc.getElementsByTagName("user").item(0).getTextContent());
             rna.setPassword(doc.getElementsByTagName("password").item(0).getTextContent());
             rna.setEnablePass(doc.getElementsByTagName("enablepassword").item(0).getTextContent());
-            rna.setAutoEnable(doc.getElementsByTagName("autoenable").item(0).getTextContent() == "1");
+            rna.setConnectionMethod(doc.getElementsByTagName("method").item(0).getTextContent());
+            try {
+                rna.setAutoEnable(doc.getElementsByTagName("autoenable").item(0).getTextContent() == "1");
+            }
+            catch (Exception e) {
+                System.out.println("auto enable field not found");
+            }
             //rna.setAuthType(doc.getElementsByTagName("authType").item(0).getTextContent());
             //System.out.println("nel metodo "+ doc.getElementsByTagName("method").item(0).getTextContent());
-            rna.setConnectionMethod(doc.getElementsByTagName("method").item(0).getTextContent());
+
 
         }
         catch( IOException e){
             // TODO Auto-generated catch block
+            System.out.println("IOException " + e.getMessage());
             e.printStackTrace();
         }
         //TODO get data
