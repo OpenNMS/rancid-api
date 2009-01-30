@@ -62,8 +62,8 @@ public class RWSStub {
         System.out.println("*************************************************************");
         System.out.println("*************************************************************");
 
-
-        int test = 1;
+        String url = new String("http://www.rionero.com:9080");
+        int test = 2;
         
         if (test == 1) {
             System.out.println("*************************************************************");
@@ -74,7 +74,7 @@ public class RWSStub {
             System.out.println("Group and node provision");
 
         
-            String url = new String("http://www.rionero.com:9080/rws");
+
             
             RWSClientApi.createRWSGroup(url, "disasterrecovery");
             
@@ -88,21 +88,21 @@ public class RWSStub {
             System.out.println("*************************************************************");
             System.out.println("*************************************************************");
         }
-        else {
-            
-            String url = new String("http://www.rionero.com:9080/rws");
-        
-            System.out.println("Factory Loading Resources list");
-            
-            RWSResourceList ResList1,ResList2,ResList3,ResList4,ResList5,ResList6;
-    
-    
-            ResList1 = RWSClientApi.getRWSResourceServicesList(url);
-    
-            ResList2 = RWSClientApi.getRWSResourceRAList(url);
-    
-            ResList3 = RWSClientApi.getRWSResourceGroupsList(url);
-            
+//        else {
+//            
+//            String url = new String("http://www.rionero.com:9080/rws");
+//        
+//            System.out.println("Factory Loading Resources list");
+//            
+//            RWSResourceList ResList1,ResList2,ResList3,ResList4,ResList5,ResList6;
+//    
+//    
+//            ResList1 = RWSClientApi.getRWSResourceServicesList(url);
+//    
+//            ResList2 = RWSClientApi.getRWSResourceRAList(url);
+//    
+//            ResList3 = RWSClientApi.getRWSResourceGroupsList(url);
+//            
     //        ResList4 = RWSClientApi.getRWSResourceDeviceList("http://www.rionero.com/rws-current","demo");
     //        //ResList5 = RWSF.getRWSResourceDeviceVersionList("demo", "gugli");
     //        
@@ -275,7 +275,7 @@ public class RWSStub {
     //        
     //        System.out.println("Factory CLOGIN delete end");
     
-            
+        if (test == 2) {
             System.out.println("*********************************************************");
             System.out.println("*****Configuration***************************************");
             System.out.println("*********************************************************");
@@ -297,36 +297,36 @@ public class RWSStub {
             System.out.println("*****Inventory*******************************************");
             System.out.println("*********************************************************");
             
-            RancidNode rn12 = RWSClientApi.getRWSRancidNode("http://www.rionero.com/rws-current","laboratorio", "7206PED.wind.lab");
-            System.out.println("deviceName " + rn12.getDeviceName());
-            System.out.println("deviceType " + rn12.getDeviceType());
-            System.out.println("stateUp " + rn12.getState());
-            System.out.println("TotalRevisions " + rn12.getTotalRevisions());
-            System.out.println("HeadRevision " + rn12.getHeadRevision());
-            System.out.println("rootConfigurationUrl " + rn12.getRootConfigurationUrl());
+            RancidNode rn12 = RWSClientApi.getRWSRancidNode(url,"laboratorio", "7206PED.wind.lab");
+            System.out.println("RancidNode deviceName " + rn12.getDeviceName());
+            System.out.println("RancidNode deviceType " + rn12.getDeviceType());
+            System.out.println("RancidNode stateUp " + rn12.getState());
+            System.out.println("RancidNode TotalRevisions " + rn12.getTotalRevisions());
+            System.out.println("RancidNode HeadRevision " + rn12.getHeadRevision());
+            System.out.println("RancidNode rootConfigurationUrl " + rn12.getRootConfigurationUrl());
             
             
-            InventoryNode in1 = RWSClientApi.getRWSInventoryNode(rn12, "http://www.rionero.com/rws-current", "1.18");
+            InventoryNode in1 = RWSClientApi.getRWSInventoryNode(rn12, url, "1.2");
             
-            System.out.println("Date " + in1.getExpirationDate());
-            System.out.println("Url " + in1.getConfigurationUrl());
+            System.out.println("InventoryNode Date " + in1.getExpirationDate());
+            System.out.println("InventoryNode Url " + in1.getConfigurationUrl());
             
             System.out.println("*********************************************************");
             System.out.println("*****Rancid FULL*****************************************");
             System.out.println("*********************************************************");
-            RancidNode rn13 = RWSClientApi.getRWSRancidNodeInventory("http://www.rionero.com/rws-current","laboratorio", "7206PED.wind.lab");
+            RancidNode rn13 = RWSClientApi.getRWSRancidNodeInventory(url,"laboratorio", "7206PED.wind.lab");
             
             HashMap<String, InventoryNode> hm = rn13.getNodeVersions();
             
-            InventoryNode in2 = hm.get("1.10");
-            InventoryNode in3 = hm.get("1.13");
+            InventoryNode in2 = hm.get("1.1");
+            InventoryNode in3 = hm.get("1.2");
             
-            System.out.println("Vs " + in2.getVersionId());
-            System.out.println("Date " + in2.getExpirationDate());
-            System.out.println("Url " + in2.getConfigurationUrl());
-            System.out.println("Vs " + in3.getVersionId());
-            System.out.println("Date " + in3.getExpirationDate());
-            System.out.println("Url " + in3.getConfigurationUrl());
+            System.out.println("InventoryNode Vs " + in2.getVersionId());
+            System.out.println("InventoryNode Date " + in2.getExpirationDate());
+            System.out.println("InventoryNode Url " + in2.getConfigurationUrl());
+            System.out.println("InventoryNode Vs " + in3.getVersionId());
+            System.out.println("InventoryNode Date " + in3.getExpirationDate());
+            System.out.println("InventoryNode Url " + in3.getConfigurationUrl());
             
             System.out.println("*********************************************************");
             System.out.println("*****clogin**********************************************");
@@ -335,9 +335,9 @@ public class RWSStub {
             RancidNodeAuthentication rn4 = new RancidNodeAuthentication();
           
     
-            RancidNodeAuthentication rn5 = RWSClientApi.getRWSAuthNode("http://www.rionero.com/rws-current","7206PED.wind.lab");
+            RancidNodeAuthentication rn5 = RWSClientApi.getRWSAuthNode(url,"7206PED.wind.lab");
             System.out.println("rn5 " + rn5.getUser() + rn5.getPassword()+rn5.getConnectionMethodString());
-            
+        }
             
     //        System.out.println("*********************************************************");
     //        System.out.println("*****RancidAggregate*************************************");
@@ -362,7 +362,7 @@ public class RWSStub {
     //        
     //        System.out.println("*******************END***************************************");
         
-            }
+
         }
         catch(RancidApiException e) {
             System.out.println(e.getMessage());

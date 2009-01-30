@@ -529,11 +529,11 @@ public class RWSClientApi {
         try {
             Document doc = dmr.getDocument();
             // dmr.write(System.out);
-
+            rna.setDeviceName(devicename);
             rna.setUser(doc.getElementsByTagName("user").item(0).getTextContent());
             rna.setPassword(doc.getElementsByTagName("password").item(0).getTextContent());
             rna.setEnablePass(doc.getElementsByTagName("enablepassword").item(0).getTextContent());
-            //rna.setAutoEnable(doc.getElementsByTagName("autoEnable").item(0).getTextContent() == "true");
+            rna.setAutoEnable(doc.getElementsByTagName("autoenable").item(0).getTextContent() == "1");
             //rna.setAuthType(doc.getElementsByTagName("authType").item(0).getTextContent());
             //System.out.println("nel metodo "+ doc.getElementsByTagName("method").item(0).getTextContent());
             rna.setConnectionMethod(doc.getElementsByTagName("method").item(0).getTextContent());
@@ -560,39 +560,35 @@ public class RWSClientApi {
     	if (!inited){
     		throw(new RancidApiException("Error: Api not initialized"));
     	}
+        
+        System.out.println("createOrUpdateRWSAuthNode changing " + baseUri + "Node " + rnodea.getDeviceName());
+        
         Form form = new Form();
         form.add("user", rnodea.getUser());
         form.add("password", rnodea.getPassword());
         form.add("enablepassword", rnodea.getEnablePass());
-//        form.add("autoEnable", rnodea.isAutoEnable());
+        String autoenable = "0";
+        if (rnodea.isAutoEnable()){
+            autoenable="1";
+        }
+        form.add("autoenable", autoenable);
 //        form.add("authType", rnodea.getAuthType());
         form.add("method", rnodea.getConnectionMethodString());
-//        form.add("user", rnodea.getUser());
-
-/*        try {
-            form.encode(CharacterSet.ISO_8859_1);
-        } catch (IOException e1) {
-            // TODO Auto-generated catch block
-            e1.printStackTrace();
-        }*/
         
         Representation rep = form.getWebRepresentation();
 
-        //rep.setMediaType(MediaType.APPLICATION_XHTML_XML);
         // Launch the request
+        
         Reference rwsTest= new Reference(baseUri + "/rws/rancid/clogin/" +rnodea.getDeviceName());
         Response response = client.post(rwsTest,rep);
         try {
+            System.out.println("createOrUpdateRWSAuthNode sent:");
             response.getEntity().write(System.out);
         } catch (IOException e) {
             // TODO Auto-generated catch block
+            System.out.println("createOrUpdateRWSAuthNode exception " + e.getMessage());
             e.printStackTrace();
         }
-//        if (response.getStatus().isSuccess()) {
-//            return response.getEntity().getIdentifier();
-//        }
-//
-//        return new Reference("prova");
 
     }   
     
