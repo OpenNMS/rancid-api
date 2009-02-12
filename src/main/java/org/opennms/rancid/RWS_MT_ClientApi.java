@@ -289,7 +289,7 @@ public class RWS_MT_ClientApi extends Thread {
             if (m.getOperation() == ADD_NODE) {
                 System.out.println("RWS_MT_ClientApi.rancidIt() ADD_NODE " + m.getRancidNode().getDeviceName());
         
-                RWSClientApi.create_TEST_RWSRancidNode(m.getUrl(), m.getRancidNode());
+                RWSClientApi.createRWSRancidNode(m.getUrl(), m.getRancidNode());
             }    
             else if (m.getOperation() == UPDATE_NODE) {
                 System.out.println("RWS_MT_ClientApi.rancidIt() UPDATE_NODE" + m.getRancidNode().getDeviceName());
