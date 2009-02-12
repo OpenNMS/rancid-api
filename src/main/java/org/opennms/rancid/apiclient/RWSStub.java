@@ -17,6 +17,8 @@ import org.opennms.rancid.RWSClientApi;
 import org.opennms.rancid.RWSResourceList;
 import org.opennms.rancid.InventoryNode;
 
+import org.opennms.rancid.RWS_MT_ClientApi;
+
 
 import org.restlet.Client;
 import org.restlet.data.CharacterSet;
@@ -36,337 +38,378 @@ public class RWSStub {
      */
     public static void main(String[] args) {
 
-        System.out.println("*************************************************************");
-        System.out.println("*************************************************************");
-        System.out.println("Configuration start");
+        boolean threaded = true;
         
-        RWSClientApi.init();
+        if(!threaded){
         
-        try {
-
-        System.out.println("Configuration end");
-        System.out.println("*************************************************************");
-        System.out.println("*************************************************************");
-        
-        System.out.println("Factory started");
-        System.out.println("*************************************************************");
-        System.out.println("*************************************************************");
-        System.out.println("*************************************************************");
-        System.out.println("*************************************************************");
-        System.out.println("*************************************************************");
-        System.out.println(" START RWSClientApi.encode_test(); ");
-        RWSClientApi.encode_test();
-        System.out.println(" END RWSClientApi.encode_test(); ");
-        System.out.println("*************************************************************");
-        System.out.println("*************************************************************");
-        System.out.println("*************************************************************");
-        System.out.println("*************************************************************");
-
-        String url = new String("http://www.rionero.com:9080");
-        int test = 2;
-        
-        if (test == 1) {
             System.out.println("*************************************************************");
             System.out.println("*************************************************************");
-            System.out.println("*************************************************************");
-            System.out.println("*************************************************************");
-            System.out.println("*************************************************************");
-            System.out.println("Group and node provision");
-
-        
-
+            System.out.println("Configuration start");
             
-            RWSClientApi.createRWSGroup(url, "disasterrecovery");
+            RWSClientApi.init();
             
-            RancidNode rn = new RancidNode("disasterrecovery", "GIC_26GENN09");
-            rn.setDeviceType(RancidNode.DEVICE_TYPE_BAYNET);
-            rn.setComment("Dic2 1759");
-            RWSClientApi.createRWSRancidNode(url,rn);
-            System.out.println("*************************************************************");
-            System.out.println("*************************************************************");
-            System.out.println("*************************************************************");
-            System.out.println("*************************************************************");
-            System.out.println("*************************************************************");
-        }
-//        else {
-//            
-//            String url = new String("http://www.rionero.com:9080/rws");
-//        
-//            System.out.println("Factory Loading Resources list");
-//            
-//            RWSResourceList ResList1,ResList2,ResList3,ResList4,ResList5,ResList6;
-//    
-//    
-//            ResList1 = RWSClientApi.getRWSResourceServicesList(url);
-//    
-//            ResList2 = RWSClientApi.getRWSResourceRAList(url);
-//    
-//            ResList3 = RWSClientApi.getRWSResourceGroupsList(url);
-//            
-    //        ResList4 = RWSClientApi.getRWSResourceDeviceList("http://www.rionero.com/rws-current","demo");
-    //        //ResList5 = RWSF.getRWSResourceDeviceVersionList("demo", "gugli");
-    //        
-    //        ResList6 = RWSClientApi.getRWSResourceLoginPatternList("http://www.rionero.com/rws-current");
-    //
-    //        System.out.println("ResList1.getResource(0) /rws/: " + ResList1.getResource(0));
-    //        System.out.println("ResList2.getResource(0) /rws/rancid/: " + ResList2.getResource(0));
-    //        System.out.println("ResList3.getResource(0) /rws/rancid/groups/: " + ResList3.getResource(0));
-    //        System.out.println("ResList4.getResource(0) /rws/rancid/groups/demo/: " + ResList4.getResource(0));
-    ////        System.out.println("ResList5.getResource(0) /rws/rancid/groups/demo/gugli/: " + ResList5.getResource(0));
-    //        System.out.println("ResList6.getResource(0) /rws/rancid/clogin/: " + ResList6.getResource(0));
-    //
-    //        List<String> relist1 = ResList1.getResource();
-    //        System.out.println("ResList1.getResource(): " + relist1.get(0));
-    //        List<String> relist2 = ResList2.getResource();
-    //        System.out.println("ResList2.getResource(): " + relist2.get(0));
-    //        List<String> relist3 = ResList3.getResource();
-    //        System.out.println("ResList3.getResource(): " + relist3.get(0));
-    //        List<String> relist4 = ResList4.getResource();
-    //        System.out.println("ResList4.getResource(): " + relist4.get(0));
-    ////       List<String> relist5 = ResList5.getResource();
-    ////        System.out.println("ResList3.getResource(): " + relist5.get(0));
-    //        List<String> relist6 = ResList6.getResource();
-    //        System.out.println("ResList6.getResource(): " + relist6.get(0));
-    //
-    //        System.out.println("Factory Loading Lists end");
-    //        
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //
-    //        System.out.println("Factory GetNode start");
-    //
-    //        RancidNode rn3 = RWSClientApi.getRWSRancidNode("http://www.rionero.com/rws-current","demo", "EDGE-MI0");
-    //        System.out.println("rn3 " + rn3.getDeviceName()  +" "+ rn3.getDeviceType()+" "+rn3.getState()+" "+ rn3.getComment());
-    //        
-    //        System.out.println("Factory GetNode end");
-    //        
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //
-    //        System.out.println("Factory CLOGIN get start");
-    //
-    //        RancidNodeAuthentication rn5 = RWSClientApi.getRWSAuthNode("http://www.rionero.com/rws-current","EDGE-MI0");
-    //        System.out.println("rn5 EDGE-MI0 " + rn5.getUser() +" "+ rn5.getPassword()+" "+rn5.getConnectionMethodString());
-    //        
-    //        System.out.println("Factory CLOGIN get end");
-    //
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //
-    //        //tested ok
-    //        System.out.println("Factory Provisioning start");
-    //        
-    //        RancidNode rn = new RancidNode("demo", "gugli_DIC2_1759");
-    //        rn.setDeviceType(RancidNode.DEVICE_TYPE_BAYNET);
-    //        rn.setComment("Dic2 1759");
-    //        
-    //        
-    //        RWSClientApi.createRWSRancidNode("http://www.rionero.com/rws-current",rn);
-    //        System.out.println("Factory Provisioning end");
-    //
-    //        
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //
-    //        System.out.println("Factory Update start");
-    //        
-    //        RancidNode rn7 = new RancidNode("demo", "gugli_DIC2_1759");
-    //        rn7.setDeviceType(RancidNode.DEVICE_TYPE_BAYNET);
-    //        rn7.setComment("Dic2 1759");
-    //        rn7.setStateUp(false);
-    //        
-    //        RWSClientApi.updateRWSRancidNode("http://www.rionero.com/rws-current",rn7);
-    //        System.out.println("Factory Update end");
-    //
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //
-    //        System.out.println("Factory Delete start");
-    //        
-    //        RancidNode rn8 = new RancidNode("demo", "gugli_DIC2_1759");
-    //        rn8.setDeviceType(RancidNode.DEVICE_TYPE_BAYNET);
-    //        rn8.setComment("Dic2 1759");
-    //        rn8.setStateUp(false);
-    //        
-    //        RWSClientApi.deleteRWSRancidNode("http://www.rionero.com/rws-current",rn8);
-    //        System.out.println("Factory Delete end");
-    //
-    //
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //
-    //        System.out.println("Factory CLOGIN provisioning start");
-    //
-    //        RancidNode rn9 = new RancidNode("demo", "gugli__clogin_DIC2_1805");
-    //        rn9.setDeviceType(RancidNode.DEVICE_TYPE_BAYNET);
-    //        rn9.setComment("Clogin Dic2 1805");
-    //        RWSClientApi.createRWSRancidNode("http://www.rionero.com/rws-current",rn9);
-    //
-    //        System.out.println("*************************************************************");
-    //
-    //        RancidNodeAuthentication rn4 = new RancidNodeAuthentication();
-    //        
-    //        rn4.setUser("gugli_DIC2_1706");
-    //        rn4.setPassword("ciccio");
-    //        rn4.setConnectionMethod("telnet");
-    //        RWSClientApi.createOrUpdateRWSAuthNode("http://www.rionero.com/rws-current",rn4);
-    //        System.out.println("rn4 " + rn4.getUser() + rn4.getPassword()+rn4.getConnectionMethodString());
-    //        
-    //        System.out.println("*************************************************************");
-    //
-    //        
-    //        RancidNodeAuthentication rn15 = RWSClientApi.getRWSAuthNode("http://www.rionero.com/rws-current","gugli_DIC2_1706");
-    //        System.out.println("rn15 gugli_DIC2_1706 " + rn15.getUser() +" "+ rn15.getPassword()+" "+rn15.getConnectionMethodString());
-    //
-    //        
-    //        System.out.println("Factory CLOGIN provisioning end");
-    //        
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        
-    //        System.out.println("Factory CLOGIN update start");
-    //
-    //        RancidNodeAuthentication rn10 = new RancidNodeAuthentication();
-    //        
-    //        rn10.setUser("gugli_DIC2_1706");
-    //        rn10.setPassword("cicciobello");
-    //        rn10.setConnectionMethod("telnet");
-    //        RWSClientApi.createOrUpdateRWSAuthNode("http://www.rionero.com/rws-current",rn10);
-    //        System.out.println("rn10 " + rn10.getUser() + rn10.getPassword()+rn10.getConnectionMethodString());
-    //        
-    //        System.out.println("Factory CLOGIN update end");
-    //
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        System.out.println("*************************************************************");
-    //        
-    //        System.out.println("Factory CLOGIN delete start");
-    //
-    //        RancidNodeAuthentication rn11 = new RancidNodeAuthentication();
-    //        
-    //        rn11.setUser("gugli_DIC2_1706");
-    //        rn11.setPassword("cicciobello");
-    //        rn11.setConnectionMethod("ssh");
-    //        RWSClientApi.deleteRWSAuthNode("http://www.rionero.com/rws-current",rn11);
-    //        System.out.println("rn11 " + rn11.getUser() + rn11.getPassword()+rn11.getConnectionMethodString());
-    //        
-    //        System.out.println("Factory CLOGIN delete end");
+            try {
     
-        if (test == 2) {
-            System.out.println("*********************************************************");
-            System.out.println("*****Configuration***************************************");
-            System.out.println("*********************************************************");
-            RWSResourceList ResList7;
+            System.out.println("Configuration end");
+            System.out.println("*************************************************************");
+            System.out.println("*************************************************************");
             
-            ResList7 = RWSClientApi.getRWSResourceConfigList(url,"laboratorio","7206PED.wind.lab");
+            System.out.println("Factory started");
+            System.out.println("*************************************************************");
+            System.out.println("*************************************************************");
+            System.out.println("*************************************************************");
+            System.out.println("*************************************************************");
+            System.out.println("*************************************************************");
+            System.out.println(" START RWSClientApi.encode_test(); ");
+            RWSClientApi.encode_test();
+            System.out.println(" END RWSClientApi.encode_test(); ");
+            System.out.println("*************************************************************");
+            System.out.println("*************************************************************");
+            System.out.println("*************************************************************");
+            System.out.println("*************************************************************");
+    
+            String url = new String("http://www.rionero.com:9080");
+            int test = 2;
             
-            List<String> configlist = ResList7.getResource();
+            if (test == 1) {
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+                System.out.println("Group and node provision");
+    
             
-            Iterator iter1 = configlist.iterator();
-            
-            String tmpg1;
-            
-            while (iter1.hasNext()) {
-                tmpg1 = (String)iter1.next();
-                System.out.println("Version " + tmpg1);
+    
+                
+                RWSClientApi.createRWSGroup(url, "disasterrecovery");
+                
+                RancidNode rn = new RancidNode("disasterrecovery", "GIC_26GENN09");
+                rn.setDeviceType(RancidNode.DEVICE_TYPE_BAYNET);
+                rn.setComment("Dic2 1759");
+                RWSClientApi.createRWSRancidNode(url,rn);
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
             }
-            System.out.println("*********************************************************");
-            System.out.println("*****Inventory*******************************************");
-            System.out.println("*********************************************************");
-            
-            RancidNode rn12 = RWSClientApi.getRWSRancidNode(url,"laboratorio", "7206PED.wind.lab");
-            System.out.println("RancidNode deviceName " + rn12.getDeviceName());
-            System.out.println("RancidNode deviceType " + rn12.getDeviceType());
-            System.out.println("RancidNode stateUp " + rn12.getState());
-            System.out.println("RancidNode TotalRevisions " + rn12.getTotalRevisions());
-            System.out.println("RancidNode HeadRevision " + rn12.getHeadRevision());
-            System.out.println("RancidNode rootConfigurationUrl " + rn12.getRootConfigurationUrl());
-            
-            
-            InventoryNode in1 = RWSClientApi.getRWSInventoryNode(rn12, url, "1.2");
-            
-            System.out.println("InventoryNode Date " + in1.getExpirationDate());
-            System.out.println("InventoryNode Url " + in1.getConfigurationUrl());
-            
-            System.out.println("*********************************************************");
-            System.out.println("*****Rancid FULL*****************************************");
-            System.out.println("*********************************************************");
-            RancidNode rn13 = RWSClientApi.getRWSRancidNodeInventory(url,"laboratorio", "7206PED.wind.lab");
-            
-            HashMap<String, InventoryNode> hm = rn13.getNodeVersions();
-            
-            InventoryNode in2 = hm.get("1.1");
-            InventoryNode in3 = hm.get("1.2");
-            
-            System.out.println("InventoryNode Vs " + in2.getVersionId());
-            System.out.println("InventoryNode Date " + in2.getExpirationDate());
-            System.out.println("InventoryNode Url " + in2.getConfigurationUrl());
-            System.out.println("InventoryNode Vs " + in3.getVersionId());
-            System.out.println("InventoryNode Date " + in3.getExpirationDate());
-            System.out.println("InventoryNode Url " + in3.getConfigurationUrl());
-            
-            System.out.println("*********************************************************");
-            System.out.println("*****clogin**********************************************");
-            System.out.println("*********************************************************");  
-            
-            RancidNodeAuthentication rn4 = new RancidNodeAuthentication();
-          
-    
-            RancidNodeAuthentication rn5 = RWSClientApi.getRWSAuthNode(url,"7206PED.wind.lab");
-            System.out.println("rn5 " + rn5.getUser() + rn5.getPassword()+rn5.getConnectionMethodString());
-        }
-            
-    //        System.out.println("*********************************************************");
-    //        System.out.println("*****RancidAggregate*************************************");
-    //        System.out.println("*********************************************************");      
+    //        else {
+    //            
+    //            String url = new String("http://www.rionero.com:9080/rws");
     //        
-    //        RancidNodeAggregate rna = new RancidNodeAggregate();
-    //        rna = RWSClientApi.getRancidNodeAggregate("http://www.rionero.com/rws-current","7206PED.wind.lab");
-    //        
-    //        HashMap<String, RancidNode> rnamap = rna.getRancidAggregate();
-    //        
-    //        List<String> groupList = ResList3.getResource();
-    //        
-    //        Iterator iter = groupList.iterator();
-    //        
-    //        String tmpg;
-    //        
-    //        while (iter.hasNext()) {
-    //            tmpg = (String)iter.next();
-    //            System.out.println("Group " + tmpg);
-    //            System.out.println("Rancid Node Aggregate " + tmpg + " " + rnamap.get(tmpg).getDeviceName());
-    //        }
-    //        
-    //        System.out.println("*******************END***************************************");
+    //            System.out.println("Factory Loading Resources list");
+    //            
+    //            RWSResourceList ResList1,ResList2,ResList3,ResList4,ResList5,ResList6;
+    //    
+    //    
+    //            ResList1 = RWSClientApi.getRWSResourceServicesList(url);
+    //    
+    //            ResList2 = RWSClientApi.getRWSResourceRAList(url);
+    //    
+    //            ResList3 = RWSClientApi.getRWSResourceGroupsList(url);
+    //            
+        //        ResList4 = RWSClientApi.getRWSResourceDeviceList("http://www.rionero.com/rws-current","demo");
+        //        //ResList5 = RWSF.getRWSResourceDeviceVersionList("demo", "gugli");
+        //        
+        //        ResList6 = RWSClientApi.getRWSResourceLoginPatternList("http://www.rionero.com/rws-current");
+        //
+        //        System.out.println("ResList1.getResource(0) /rws/: " + ResList1.getResource(0));
+        //        System.out.println("ResList2.getResource(0) /rws/rancid/: " + ResList2.getResource(0));
+        //        System.out.println("ResList3.getResource(0) /rws/rancid/groups/: " + ResList3.getResource(0));
+        //        System.out.println("ResList4.getResource(0) /rws/rancid/groups/demo/: " + ResList4.getResource(0));
+        ////        System.out.println("ResList5.getResource(0) /rws/rancid/groups/demo/gugli/: " + ResList5.getResource(0));
+        //        System.out.println("ResList6.getResource(0) /rws/rancid/clogin/: " + ResList6.getResource(0));
+        //
+        //        List<String> relist1 = ResList1.getResource();
+        //        System.out.println("ResList1.getResource(): " + relist1.get(0));
+        //        List<String> relist2 = ResList2.getResource();
+        //        System.out.println("ResList2.getResource(): " + relist2.get(0));
+        //        List<String> relist3 = ResList3.getResource();
+        //        System.out.println("ResList3.getResource(): " + relist3.get(0));
+        //        List<String> relist4 = ResList4.getResource();
+        //        System.out.println("ResList4.getResource(): " + relist4.get(0));
+        ////       List<String> relist5 = ResList5.getResource();
+        ////        System.out.println("ResList3.getResource(): " + relist5.get(0));
+        //        List<String> relist6 = ResList6.getResource();
+        //        System.out.println("ResList6.getResource(): " + relist6.get(0));
+        //
+        //        System.out.println("Factory Loading Lists end");
+        //        
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //
+        //        System.out.println("Factory GetNode start");
+        //
+        //        RancidNode rn3 = RWSClientApi.getRWSRancidNode("http://www.rionero.com/rws-current","demo", "EDGE-MI0");
+        //        System.out.println("rn3 " + rn3.getDeviceName()  +" "+ rn3.getDeviceType()+" "+rn3.getState()+" "+ rn3.getComment());
+        //        
+        //        System.out.println("Factory GetNode end");
+        //        
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //
+        //        System.out.println("Factory CLOGIN get start");
+        //
+        //        RancidNodeAuthentication rn5 = RWSClientApi.getRWSAuthNode("http://www.rionero.com/rws-current","EDGE-MI0");
+        //        System.out.println("rn5 EDGE-MI0 " + rn5.getUser() +" "+ rn5.getPassword()+" "+rn5.getConnectionMethodString());
+        //        
+        //        System.out.println("Factory CLOGIN get end");
+        //
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //
+        //        //tested ok
+        //        System.out.println("Factory Provisioning start");
+        //        
+        //        RancidNode rn = new RancidNode("demo", "gugli_DIC2_1759");
+        //        rn.setDeviceType(RancidNode.DEVICE_TYPE_BAYNET);
+        //        rn.setComment("Dic2 1759");
+        //        
+        //        
+        //        RWSClientApi.createRWSRancidNode("http://www.rionero.com/rws-current",rn);
+        //        System.out.println("Factory Provisioning end");
+        //
+        //        
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //
+        //        System.out.println("Factory Update start");
+        //        
+        //        RancidNode rn7 = new RancidNode("demo", "gugli_DIC2_1759");
+        //        rn7.setDeviceType(RancidNode.DEVICE_TYPE_BAYNET);
+        //        rn7.setComment("Dic2 1759");
+        //        rn7.setStateUp(false);
+        //        
+        //        RWSClientApi.updateRWSRancidNode("http://www.rionero.com/rws-current",rn7);
+        //        System.out.println("Factory Update end");
+        //
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //
+        //        System.out.println("Factory Delete start");
+        //        
+        //        RancidNode rn8 = new RancidNode("demo", "gugli_DIC2_1759");
+        //        rn8.setDeviceType(RancidNode.DEVICE_TYPE_BAYNET);
+        //        rn8.setComment("Dic2 1759");
+        //        rn8.setStateUp(false);
+        //        
+        //        RWSClientApi.deleteRWSRancidNode("http://www.rionero.com/rws-current",rn8);
+        //        System.out.println("Factory Delete end");
+        //
+        //
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //
+        //        System.out.println("Factory CLOGIN provisioning start");
+        //
+        //        RancidNode rn9 = new RancidNode("demo", "gugli__clogin_DIC2_1805");
+        //        rn9.setDeviceType(RancidNode.DEVICE_TYPE_BAYNET);
+        //        rn9.setComment("Clogin Dic2 1805");
+        //        RWSClientApi.createRWSRancidNode("http://www.rionero.com/rws-current",rn9);
+        //
+        //        System.out.println("*************************************************************");
+        //
+        //        RancidNodeAuthentication rn4 = new RancidNodeAuthentication();
+        //        
+        //        rn4.setUser("gugli_DIC2_1706");
+        //        rn4.setPassword("ciccio");
+        //        rn4.setConnectionMethod("telnet");
+        //        RWSClientApi.createOrUpdateRWSAuthNode("http://www.rionero.com/rws-current",rn4);
+        //        System.out.println("rn4 " + rn4.getUser() + rn4.getPassword()+rn4.getConnectionMethodString());
+        //        
+        //        System.out.println("*************************************************************");
+        //
+        //        
+        //        RancidNodeAuthentication rn15 = RWSClientApi.getRWSAuthNode("http://www.rionero.com/rws-current","gugli_DIC2_1706");
+        //        System.out.println("rn15 gugli_DIC2_1706 " + rn15.getUser() +" "+ rn15.getPassword()+" "+rn15.getConnectionMethodString());
+        //
+        //        
+        //        System.out.println("Factory CLOGIN provisioning end");
+        //        
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        
+        //        System.out.println("Factory CLOGIN update start");
+        //
+        //        RancidNodeAuthentication rn10 = new RancidNodeAuthentication();
+        //        
+        //        rn10.setUser("gugli_DIC2_1706");
+        //        rn10.setPassword("cicciobello");
+        //        rn10.setConnectionMethod("telnet");
+        //        RWSClientApi.createOrUpdateRWSAuthNode("http://www.rionero.com/rws-current",rn10);
+        //        System.out.println("rn10 " + rn10.getUser() + rn10.getPassword()+rn10.getConnectionMethodString());
+        //        
+        //        System.out.println("Factory CLOGIN update end");
+        //
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        System.out.println("*************************************************************");
+        //        
+        //        System.out.println("Factory CLOGIN delete start");
+        //
+        //        RancidNodeAuthentication rn11 = new RancidNodeAuthentication();
+        //        
+        //        rn11.setUser("gugli_DIC2_1706");
+        //        rn11.setPassword("cicciobello");
+        //        rn11.setConnectionMethod("ssh");
+        //        RWSClientApi.deleteRWSAuthNode("http://www.rionero.com/rws-current",rn11);
+        //        System.out.println("rn11 " + rn11.getUser() + rn11.getPassword()+rn11.getConnectionMethodString());
+        //        
+        //        System.out.println("Factory CLOGIN delete end");
         
+            if (test == 2) {
+                System.out.println("*********************************************************");
+                System.out.println("*****Configuration***************************************");
+                System.out.println("*********************************************************");
+                RWSResourceList ResList7;
+                
+                ResList7 = RWSClientApi.getRWSResourceConfigList(url,"laboratorio","7206PED.wind.lab");
+                
+                List<String> configlist = ResList7.getResource();
+                
+                Iterator iter1 = configlist.iterator();
+                
+                String tmpg1;
+                
+                while (iter1.hasNext()) {
+                    tmpg1 = (String)iter1.next();
+                    System.out.println("Version " + tmpg1);
+                }
+                System.out.println("*********************************************************");
+                System.out.println("*****Inventory*******************************************");
+                System.out.println("*********************************************************");
+                
+                RancidNode rn12 = RWSClientApi.getRWSRancidNode(url,"laboratorio", "7206PED.wind.lab");
+                System.out.println("RancidNode deviceName " + rn12.getDeviceName());
+                System.out.println("RancidNode deviceType " + rn12.getDeviceType());
+                System.out.println("RancidNode stateUp " + rn12.getState());
+                System.out.println("RancidNode TotalRevisions " + rn12.getTotalRevisions());
+                System.out.println("RancidNode HeadRevision " + rn12.getHeadRevision());
+                System.out.println("RancidNode rootConfigurationUrl " + rn12.getRootConfigurationUrl());
+                
+                
+                InventoryNode in1 = RWSClientApi.getRWSInventoryNode(rn12, url, "1.2");
+                
+                System.out.println("InventoryNode Date " + in1.getExpirationDate());
+                System.out.println("InventoryNode Url " + in1.getConfigurationUrl());
+                
+                System.out.println("*********************************************************");
+                System.out.println("*****Rancid FULL*****************************************");
+                System.out.println("*********************************************************");
+                RancidNode rn13 = RWSClientApi.getRWSRancidNodeInventory(url,"laboratorio", "7206PED.wind.lab");
+                
+                HashMap<String, InventoryNode> hm = rn13.getNodeVersions();
+                
+                InventoryNode in2 = hm.get("1.1");
+                InventoryNode in3 = hm.get("1.2");
+                
+                System.out.println("InventoryNode Vs " + in2.getVersionId());
+                System.out.println("InventoryNode Date " + in2.getExpirationDate());
+                System.out.println("InventoryNode Url " + in2.getConfigurationUrl());
+                System.out.println("InventoryNode Vs " + in3.getVersionId());
+                System.out.println("InventoryNode Date " + in3.getExpirationDate());
+                System.out.println("InventoryNode Url " + in3.getConfigurationUrl());
+                
+                System.out.println("*********************************************************");
+                System.out.println("*****clogin**********************************************");
+                System.out.println("*********************************************************");  
+                
+                RancidNodeAuthentication rn4 = new RancidNodeAuthentication();
+              
+        
+                RancidNodeAuthentication rn5 = RWSClientApi.getRWSAuthNode(url,"7206PED.wind.lab");
+                System.out.println("rn5 " + rn5.getUser() + rn5.getPassword()+rn5.getConnectionMethodString());
+            }
+                
+        //        System.out.println("*********************************************************");
+        //        System.out.println("*****RancidAggregate*************************************");
+        //        System.out.println("*********************************************************");      
+        //        
+        //        RancidNodeAggregate rna = new RancidNodeAggregate();
+        //        rna = RWSClientApi.getRancidNodeAggregate("http://www.rionero.com/rws-current","7206PED.wind.lab");
+        //        
+        //        HashMap<String, RancidNode> rnamap = rna.getRancidAggregate();
+        //        
+        //        List<String> groupList = ResList3.getResource();
+        //        
+        //        Iterator iter = groupList.iterator();
+        //        
+        //        String tmpg;
+        //        
+        //        while (iter.hasNext()) {
+        //            tmpg = (String)iter.next();
+        //            System.out.println("Group " + tmpg);
+        //            System.out.println("Rancid Node Aggregate " + tmpg + " " + rnamap.get(tmpg).getDeviceName());
+        //        }
+        //        
+        //        System.out.println("*******************END***************************************");
+            
+   
+            }
+            catch(RancidApiException e) {
+                System.out.println(e.getMessage());
+            
+            }
+        }
+        else {
+            
+            System.out.println("*************************************************************");
+            System.out.println("*************************************************************");
+            System.out.println("Threaded rancid start");
+            
+            RWS_MT_ClientApi t1 = new RWS_MT_ClientApi();
+            RWS_MT_ClientApi t2 = new RWS_MT_ClientApi();
+            
+            try {
+                t1.init();
+                t1.start();
+                t2.init();
+                t2.start();
+                
+                RancidNode rn9 = new RancidNode("laboratorio", "gugli_thread");
+                rn9.setDeviceType(RancidNode.DEVICE_TYPE_BAYNET);
+                rn9.setComment("threaded");
+                RancidNode rn8 = new RancidNode("laboratorio", "gugli_thread_2");
+                rn8.setDeviceType(RancidNode.DEVICE_TYPE_BAYNET);
+                rn8.setComment("threaded");
+                //RWSClientApi.createRWSRancidNode("http://www.rionero.com/rws-current",rn9);
+                
+                t1.addNode(rn9, "http://www.rionero.com/rws-current");
+                t2.addNode(rn8, "http://www.rionero.com/rws-current");
+            }
+            catch(RancidApiException e) {
+                System.out.println("eccezione " + e.getMessage());
+            
+            }
+            catch(InterruptedException e) {
+                System.out.println(e.getMessage());
+            
+            }
 
-        }
-        catch(RancidApiException e) {
-            System.out.println(e.getMessage());
-        
         }
 ////     // Outputting the content of a Web page
 //        //Client client = new Client(Protocol.HTTP);

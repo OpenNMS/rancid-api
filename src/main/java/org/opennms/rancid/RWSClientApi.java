@@ -24,8 +24,6 @@ import org.w3c.dom.Document;
 /**
  * This class is the main client for the Rancid API.
  * 
- * <strong>Note: </strong>The class is instatiated with the main Rancid
- * url base Uri.
  * 
  * @author <a href="mailto:guglielmoincisa@gmail.com">Guglielmo Incisa </a>
  * @author <a href="http://www.opennms.org/">OpenNMS </a>
@@ -326,6 +324,10 @@ public class RWSClientApi {
     //***************************************************************************
     //Rancid Node Info provisioning
     
+    public static void create_TEST_RWSRancidNode(String baseUri, RancidNode rnode) throws RancidApiException{
+        throw(new RancidApiException("Error: Server Busy", RancidApiException.RWS_BUSY));
+    }
+    
     public static void createRWSRancidNode(String baseUri, RancidNode rnode) throws RancidApiException{
         
     	if (!inited){
@@ -339,23 +341,21 @@ public class RWSClientApi {
                 
         Representation rep = form.getWebRepresentation();
 
-        //rep.setMediaType(MediaType.APPLICATION_XHTML_XML);
-        // Launch the request
-        //System.out.println(BaseUri+"/rws/rancid/groups/"+rnode.getGroup()+"/"+rnode.getDeviceName());
         Reference rwsTest= new Reference(baseUri+"/rws/rancid/groups/"+rnode.getGroup()+"/"+rnode.getDeviceName());
         Response response = client.put(rwsTest,rep);
+        
+        DomRepresentation dmr2 = response.getEntityAsDom();
+        
         try {
+            Document doc = dmr2.getDocument();
+
+            if (doc.getElementsByTagName("Code").item(0).getTextContent().compareTo("ErrBusy") == 0){
+                throw(new RancidApiException("Error: Server Busy", RancidApiException.RWS_BUSY));
+            }        
             response.getEntity().write(System.out);
         } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            throw(new RancidApiException("Error: IOException", RancidApiException.OTHER_ERROR));
         }
-//        if (response.getStatus().isSuccess()) {
-//            return response.getEntity().getIdentifier();
-//        }
-//
-//        return new Reference("prova");
-
     }
     
     public static void updateRWSRancidNode(String baseUri, RancidNode rnode) throws RancidApiException{
@@ -370,16 +370,21 @@ public class RWSClientApi {
                 
         Representation rep = form.getWebRepresentation();
 
-        //rep.setMediaType(MediaType.APPLICATION_XHTML_XML);
-        // Launch the request
         System.out.println(baseUri+"/rws/rancid/groups/"+rnode.getGroup()+"/"+rnode.getDeviceName());
         Reference rwsTest= new Reference(baseUri+"/rws/rancid/groups/"+rnode.getGroup()+"/"+rnode.getDeviceName());
         Response response = client.post(rwsTest,rep);
+        
+        DomRepresentation dmr2 = response.getEntityAsDom();
+        
         try {
+            Document doc = dmr2.getDocument();
+
+            if (doc.getElementsByTagName("Code").item(0).getTextContent().compareTo("ErrBusy") == 0){
+                throw(new RancidApiException("Error: Server Busy", RancidApiException.RWS_BUSY));
+            }        
             response.getEntity().write(System.out);
         } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            throw(new RancidApiException("Error: IOException", RancidApiException.OTHER_ERROR));
         }
     }
 
@@ -402,13 +407,19 @@ public class RWSClientApi {
         Reference rwsTest= new Reference(baseUri+"/rws/rancid/groups/"+rnode.getGroup()+"/"+rnode.getDeviceName());
         //Response response = client.delete(rwsTest,rep);
         Response response = client.delete(rwsTest);
+        
+        DomRepresentation dmr2 = response.getEntityAsDom();
+        
         try {
+            Document doc = dmr2.getDocument();
+
+            if (doc.getElementsByTagName("Code").item(0).getTextContent().compareTo("ErrBusy") == 0){
+                throw(new RancidApiException("Error: Server Busy", RancidApiException.RWS_BUSY));
+            }        
             response.getEntity().write(System.out);
         } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            throw(new RancidApiException("Error: IOException", RancidApiException.OTHER_ERROR));
         }
-
     }
     
     //Test encoding againts test server http://www.rionero.com/cgi-bin/cgitest
