@@ -44,14 +44,22 @@ import java.util.concurrent.locks.Condition;
  */
 
 class Message {
+    
+   
     private RancidNode rn;
+    private RancidNodeAuthentication rna;
     private String url;
     private int operation;
     private int retry;
     private long timestamp;
-    
+    public boolean doRancid;
+    public boolean doAuth;
+
     public RancidNode getRancidNode() {
         return rn;
+    }
+    public RancidNodeAuthentication getRancidNodeAuthentication() {
+        return rna;
     }
     public String getUrl(){
         return url;
@@ -66,7 +74,12 @@ class Message {
         return timestamp;
     }
     public void setRanciNode(RancidNode rn){
+        this.doRancid = true;;
         this.rn = rn;
+    }
+    public void setRancidNodeAuthentication(RancidNodeAuthentication rna){
+        this.doAuth = true;
+        this.rna = rna;
     }
     public void setUrl(String url){
         this.url= url;
@@ -78,7 +91,19 @@ class Message {
         this.timestamp = timestamp;
     }
     public Message(RancidNode rn, String url, int operation, int retry, int timestamp){
+        this.doRancid = true;
+        this.doAuth = false;
         this.rn = rn;
+        this.url= url;
+        this.retry = retry;
+        this.operation = operation;
+        this.timestamp = timestamp;
+    }
+    public Message(RancidNode rn, RancidNodeAuthentication rna, String url, int operation, int retry, int timestamp){
+        this.doRancid = true;
+        this.doAuth = true;
+        this.rn = rn;
+        this.rna = rna;
         this.url= url;
         this.retry = retry;
         this.operation = operation;
@@ -266,10 +291,9 @@ public class RWS_MT_ClientApi extends Thread {
     // Get provisioning command and inserts the related message
     // into the buffer
     // trigger the condition variable to execute the thread
-    private void doWork(RancidNode rn, String url, int operation) throws InterruptedException {
+    private void doWork(Message m) throws InterruptedException {
         System.out.println("RWS_MT_ClientApi.doWork() called");
-        Message m = new Message (rn, url, operation, 0, 0);
-        
+       
         lock.lock();
         
         try {
@@ -289,17 +313,38 @@ public class RWS_MT_ClientApi extends Thread {
             if (m.getOperation() == ADD_NODE) {
                 System.out.println("RWS_MT_ClientApi.rancidIt() ADD_NODE " + m.getRancidNode().getDeviceName());
         
-                RWSClientApi.createRWSRancidNode(m.getUrl(), m.getRancidNode());
+                if (m.doRancid){
+                    RWSClientApi.createRWSRancidNode(m.getUrl(), m.getRancidNode());
+                    m.doRancid = false;
+                }
+                if (m.doAuth){
+                    RWSClientApi.createOrUpdateRWSAuthNode(m.getUrl(), m.getRancidNodeAuthentication());
+                    m.doAuth = false;
+                }
             }    
             else if (m.getOperation() == UPDATE_NODE) {
                 System.out.println("RWS_MT_ClientApi.rancidIt() UPDATE_NODE" + m.getRancidNode().getDeviceName());
                 
-                RWSClientApi.updateRWSRancidNode(m.getUrl(), m.getRancidNode());   
+                if (m.doRancid){
+                    RWSClientApi.updateRWSRancidNode(m.getUrl(), m.getRancidNode());   
+                    m.doRancid = false;
+                }
+                if (m.doAuth){
+                    RWSClientApi.createOrUpdateRWSAuthNode(m.getUrl(), m.getRancidNodeAuthentication());
+                    m.doAuth = false;
+                }
             }
             else if (m.getOperation() == DELETE_NODE) {
                 System.out.println("RWS_MT_ClientApi.rancidIt() DELETE_NODE" + m.getRancidNode().getDeviceName());
-                
-                RWSClientApi.deleteRWSRancidNode(m.getUrl(), m.getRancidNode());
+         
+                if (m.doRancid){
+                    RWSClientApi.deleteRWSRancidNode(m.getUrl(), m.getRancidNode());   
+                    m.doRancid = false;
+                }
+                if (m.doAuth){
+                    RWSClientApi.deleteRWSAuthNode(m.getUrl(), m.getRancidNodeAuthentication());
+                    m.doAuth = false;
+                }
             }
         }
         catch (RancidApiException e) {
@@ -320,14 +365,32 @@ public class RWS_MT_ClientApi extends Thread {
     //Public methods
     public void addNode(RancidNode rn, String url) throws RancidApiException, InterruptedException{
         System.out.println("RWS_MT_ClientApi.addNode() called");
-        doWork(rn, url, ADD_NODE);
+        Message m = new Message (rn, url, ADD_NODE, 0, 0);
+        doWork(m);
     }
     public void updNode(RancidNode rn, String url) throws RancidApiException, InterruptedException{
+        Message m = new Message (rn, url, UPDATE_NODE, 0, 0);
         System.out.println("RWS_MT_ClientApi.updNode() called");
-        doWork(rn, url, UPDATE_NODE);
+        doWork(m);
     }
     public void delNode(RancidNode rn, String url) throws RancidApiException, InterruptedException{
+        Message m = new Message (rn, url, DELETE_NODE, 0, 0);
         System.out.println("RWS_MT_ClientApi.delNode() called");
-        doWork(rn, url, DELETE_NODE);
+        doWork(m);
+    }
+    public void addNode(RancidNode rn, RancidNodeAuthentication rna, String url) throws RancidApiException, InterruptedException{
+        Message m = new Message (rn, rna, url, ADD_NODE, 0, 0);
+        System.out.println("RWS_MT_ClientApi.addNode() called");
+        doWork(m);
+    }
+    public void updNode(RancidNode rn, RancidNodeAuthentication rna, String url) throws RancidApiException, InterruptedException{
+        Message m = new Message (rn, rna, url, UPDATE_NODE, 0, 0);
+        System.out.println("RWS_MT_ClientApi.updNode() called");
+        doWork(m);
+    }
+    public void delNode(RancidNode rn, RancidNodeAuthentication rna, String url) throws RancidApiException, InterruptedException{
+        Message m = new Message (rn, rna, url, DELETE_NODE, 0, 0);
+        System.out.println("RWS_MT_ClientApi.delNode() called");
+        doWork(m);
     }
 }
