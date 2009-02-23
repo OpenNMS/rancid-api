@@ -599,7 +599,7 @@ public class RWSStub {
             }
             else if (test == 6){
                 
-                ConnectionProperties cp = new ConnectionProperties(url, "/rws", 10);
+                ConnectionProperties cp = new ConnectionProperties(url, "/rws", 60);
                 
                 System.out.println("Node does not exist test error");
 
@@ -612,19 +612,22 @@ public class RWSStub {
         
                 System.out.println("Factory GetNode start");
         
-                RancidNode rn3 = RWSClientApi.getRWSRancidNode(cp, "laboratorio", "node4Anto");
+                RancidNode rn3 = RWSClientApi.getRWSRancidNode(cp, "laboratorio", "7206PED.wind.lab");
                 System.out.println("rn3 " + rn3.getDeviceName()  +" "+ rn3.getDeviceType()+" "+rn3.getState()+" "+ rn3.getComment());
                 
-                RancidNode rn8 = new RancidNode("laboratorio", "node4Anto");
-                rn8.setDeviceType(RancidNode.DEVICE_TYPE_BAYNET);
+                RancidNode rn8 = new RancidNode("laboratorio", "7206PED.wind.lab");
+                //rn8.setDeviceType(RancidNode.DEVICE_TYPE_BAYNET);
                 rn8.setComment("Dic2 1759");
                 rn8.setStateUp(false);
                 RWSClientApi.createOrUpdateRWSRancidNode(cp, rn8);
+                //RWSClientApi.updateRWSRancidNode(cp, rn8);
+                System.out.println("andata...");
+
 
             }
             }
             catch(RancidApiException e) {
-                System.out.println(e.getMessage());
+                System.out.println("STUB exception " + e.getMessage());
             
             }
                 

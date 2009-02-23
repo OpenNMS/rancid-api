@@ -423,14 +423,11 @@ public class RWSClientApi {
      
         try {
             RancidNode rnx = getRWSRancidNode( cp, rnode.getGroup(), rnode.getDeviceName());
-            
             // no exception here so it exist so update it
             updateRWSRancidNode(cp, rnode);
         }
         catch (RancidApiException re){
-            
             if (re.getRancidCode() == RancidApiException.RWS_RESOURCE_NOT_FOUND){
-                System.out.println("here");
                 // does not exist create it
                 createRWSRancidNode(cp, rnode);
             }
