@@ -8,7 +8,6 @@ public class InventoryNode {
     private RancidNode parent;
     private String versionId;
     private Date   creationDate;
-    private Date   expirationDate;
 
 	// Inventory Data variables
     // this node
@@ -36,14 +35,10 @@ public class InventoryNode {
         return creationDate;
     }
 
-    public Date getExpirationDate() {
-        return expirationDate;
+    public void setCreationDate(Date creationDate) {
+        this.creationDate = creationDate;
     }
-
-    public void setExpirationDate(Date expirationDate) {
-        this.expirationDate = expirationDate;
-    }
-	
+    
 	public List<InventoryElement> getNodeElements() {
 		return nodeElements;
 	}
