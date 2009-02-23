@@ -612,8 +612,14 @@ public class RWSStub {
         
                 System.out.println("Factory GetNode start");
         
-                RancidNode rn3 = RWSClientApi.getRWSRancidNode(cp, "laboratorio", "7206PED.wind.lab");
+                RancidNode rn3 = RWSClientApi.getRWSRancidNode(cp, "laboratorio", "node4Anto");
                 System.out.println("rn3 " + rn3.getDeviceName()  +" "+ rn3.getDeviceType()+" "+rn3.getState()+" "+ rn3.getComment());
+                
+                RancidNode rn8 = new RancidNode("laboratorio", "node4Anto");
+                rn8.setDeviceType(RancidNode.DEVICE_TYPE_BAYNET);
+                rn8.setComment("Dic2 1759");
+                rn8.setStateUp(false);
+                RWSClientApi.createOrUpdateRWSRancidNode(cp, rn8);
 
             }
             }

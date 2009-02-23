@@ -417,6 +417,30 @@ public class RWSClientApi {
         ConnectionProperties cp = new ConnectionProperties("","",baseUri,"/rws",30);
         updateRWSRancidNode(cp, rnode);
     }
+    
+    //***************************************************************************
+    public static void createOrUpdateRWSRancidNode(ConnectionProperties cp, RancidNode rnode) throws RancidApiException{
+     
+        try {
+            RancidNode rnx = getRWSRancidNode( cp, rnode.getGroup(), rnode.getDeviceName());
+            
+            // no exception here so it exist so update it
+            updateRWSRancidNode(cp, rnode);
+        }
+        catch (RancidApiException re){
+            
+            if (re.getRancidCode() == RancidApiException.RWS_RESOURCE_NOT_FOUND){
+                System.out.println("here");
+                // does not exist create it
+                createRWSRancidNode(cp, rnode);
+            }
+            else {
+                //other kind of error must rethrow it
+                throw(re);
+            }
+        }
+    }
+
 
     //***************************************************************************
     public static void deleteRWSRancidNode(ConnectionProperties cp, RancidNode rnode) throws RancidApiException{
@@ -695,6 +719,8 @@ public class RWSClientApi {
             throw(new RancidApiException("Error: RWS GET request timeout "));
         }else if (response.getStatus() == Status.CLIENT_ERROR_UNAUTHORIZED){
             throw(new RancidApiException("Error: RWS GET authentication failed"));
+        }else if (response.getStatus().getCode() == 404){
+            throw(new RancidApiException("Error: RWS GET resource not found", RancidApiException.RWS_RESOURCE_NOT_FOUND));
         } else {
             throw(new RancidApiException("Error: RWS GET request failed: "+ response.getStatus()));
         }
