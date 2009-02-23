@@ -322,27 +322,26 @@ public class RWSClientApi {
     // incomplete
     //TODO
     
-    public static void createRWSGroup(String baseUri, String group) throws RancidApiException{
-        
-        if (!inited){
-            throw(new RancidApiException("Error: Api not initialized"));
-        }
-        
-        Form form = new Form();
-        form.add("Resource", group );
-                
-        Representation rep = form.getWebRepresentation();
-
-        Reference rwsTest= new Reference(baseUri+"/rws/rancid/groups/" + group);
-        Response response = client.put(rwsTest,rep);
-        try {
-            response.getEntity().write(System.out);
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-
-    }
+//    public static void createRWSGroup(String baseUri, String group) throws RancidApiException{
+//        
+//        if (!inited){
+//            throw(new RancidApiException("Error: Api not initialized"));
+//        }
+//        
+//        Form form = new Form();
+//        form.add("Resource", group );
+//                
+//        Representation rep = form.getWebRepresentation();
+//
+//        Response response = putMethodRWS(cp, baseUri+"/rws/rancid/groups/" + group,rep);
+//        try {
+//            response.getEntity().write(System.out);
+//        } catch (IOException e) {
+//            // TODO Auto-generated catch block
+//            e.printStackTrace();
+//        }
+//
+//    }
     
     //***************************************************************************
     //***************************************************************************
@@ -365,8 +364,7 @@ public class RWSClientApi {
                 
         Representation rep = form.getWebRepresentation();
 
-        Reference rwsTest= new Reference(cp.getUrl()+cp.getDirectory()+"/rancid/groups/"+rnode.getGroup()+"/"+rnode.getDeviceName());
-        Response response = client.put(rwsTest,rep);
+        Response response = putMethodRWS(cp, cp.getUrl()+cp.getDirectory()+"/rancid/groups/"+rnode.getGroup()+"/"+rnode.getDeviceName(),rep);
         
         DomRepresentation dmr2 = response.getEntityAsDom();
         
@@ -708,7 +706,7 @@ public class RWSClientApi {
         
         Request request = new Request(Method.POST, uriReference, form);
         
-        if(cp.getUserName() != null){
+        if(cp.getAuthOn()){
             
             ChallengeScheme scheme = ChallengeScheme.HTTP_BASIC;
             ChallengeResponse authentication = new ChallengeResponse(scheme,cp.getUserName(), cp.getPassword());
@@ -738,7 +736,7 @@ public class RWSClientApi {
         
         Request request = new Request(Method.PUT, uriReference, form);
         
-        if(cp.getUserName() != null){
+        if(cp.getAuthOn()){
             
             ChallengeScheme scheme = ChallengeScheme.HTTP_BASIC;
             ChallengeResponse authentication = new ChallengeResponse(scheme,cp.getUserName(), cp.getPassword());
@@ -768,7 +766,7 @@ public class RWSClientApi {
         
         Request request = new Request(Method.DELETE, uriReference);
         
-        if(cp.getUserName() != null){
+        if(cp.getAuthOn()){
             
             ChallengeScheme scheme = ChallengeScheme.HTTP_BASIC;
             ChallengeResponse authentication = new ChallengeResponse(scheme,cp.getUserName(), cp.getPassword());

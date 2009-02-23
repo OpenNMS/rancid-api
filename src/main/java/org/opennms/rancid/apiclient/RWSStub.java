@@ -70,30 +70,30 @@ public class RWSStub {
             System.out.println("*************************************************************");
     
             String url = new String("http://www.rionero.com/rws-current");
-            int test = 4;
+            int test = 6;
             
             if (test == 1) {
-                System.out.println("*************************************************************");
-                System.out.println("*************************************************************");
-                System.out.println("*************************************************************");
-                System.out.println("*************************************************************");
-                System.out.println("*************************************************************");
-                System.out.println("Group and node provision");
-    
-            
-    
-                
-                RWSClientApi.createRWSGroup(url, "disasterrecovery");
-                
-                RancidNode rn = new RancidNode("disasterrecovery", "GIC_26GENN09");
-                rn.setDeviceType(RancidNode.DEVICE_TYPE_BAYNET);
-                rn.setComment("Dic2 1759");
-                RWSClientApi.createRWSRancidNode(url,rn);
-                System.out.println("*************************************************************");
-                System.out.println("*************************************************************");
-                System.out.println("*************************************************************");
-                System.out.println("*************************************************************");
-                System.out.println("*************************************************************");
+//                System.out.println("*************************************************************");
+//                System.out.println("*************************************************************");
+//                System.out.println("*************************************************************");
+//                System.out.println("*************************************************************");
+//                System.out.println("*************************************************************");
+//                System.out.println("Group and node provision");
+//    
+//            
+//    
+//                
+//                RWSClientApi.createRWSGroup(url, "disasterrecovery");
+//                
+//                RancidNode rn = new RancidNode("disasterrecovery", "GIC_26GENN09");
+//                rn.setDeviceType(RancidNode.DEVICE_TYPE_BAYNET);
+//                rn.setComment("Dic2 1759");
+//                RWSClientApi.createRWSRancidNode(url,rn);
+//                System.out.println("*************************************************************");
+//                System.out.println("*************************************************************");
+//                System.out.println("*************************************************************");
+//                System.out.println("*************************************************************");
+//                System.out.println("*************************************************************");
             }
             else if (test == 2){
                     
@@ -597,6 +597,25 @@ public class RWSStub {
                 RancidNodeAuthentication rn5 = RWSClientApi.getRWSAuthNode(url,"7206PED.wind.lab");
                 System.out.println("rn5 " + rn5.getUser() + rn5.getPassword()+rn5.getConnectionMethodString());
             }
+            else if (test == 6){
+                
+                ConnectionProperties cp = new ConnectionProperties(url, "/rws", 10);
+                
+                System.out.println("Node does not exist test error");
+
+                
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+        
+                System.out.println("Factory GetNode start");
+        
+                RancidNode rn3 = RWSClientApi.getRWSRancidNode(cp, "laboratorio", "7206PED.wind.lab");
+                System.out.println("rn3 " + rn3.getDeviceName()  +" "+ rn3.getDeviceType()+" "+rn3.getState()+" "+ rn3.getComment());
+
+            }
             }
             catch(RancidApiException e) {
                 System.out.println(e.getMessage());
@@ -635,6 +654,9 @@ public class RWSStub {
             System.out.println("*************************************************************");
             System.out.println("Threaded rancid start");
             
+            ConnectionProperties cp = new ConnectionProperties("http://www.rionero.com/rws-current", "/rws", 10);
+
+            
             RWS_MT_ClientApi t1 = new RWS_MT_ClientApi();
             RWS_MT_ClientApi t2 = new RWS_MT_ClientApi();
             
@@ -652,8 +674,8 @@ public class RWSStub {
                 rn8.setComment("threaded");
                 //RWSClientApi.createRWSRancidNode("http://www.rionero.com/rws-current",rn9);
                 
-                t1.addNode(rn9, "http://www.rionero.com/rws-current");
-                t2.addNode(rn8, "http://www.rionero.com/rws-current");
+                t1.addNode(rn9, cp);
+                t2.addNode(rn8, cp);
             }
             catch(RancidApiException e) {
                 System.out.println("eccezione " + e.getMessage());

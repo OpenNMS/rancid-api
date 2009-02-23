@@ -48,22 +48,25 @@ class Message {
    
     private RancidNode rn;
     private RancidNodeAuthentication rna;
-    private String url;
     private int operation;
     private int retry;
     private long timestamp;
     public boolean doRancid;
     public boolean doAuth;
-
+    
+    ConnectionProperties connProp;
+    
+    public ConnectionProperties getConnectionProperties(){
+        return connProp;
+    }
+    
     public RancidNode getRancidNode() {
         return rn;
     }
     public RancidNodeAuthentication getRancidNodeAuthentication() {
         return rna;
     }
-    public String getUrl(){
-        return url;
-    }
+
     public int getOperation(){
         return operation;
     }
@@ -81,30 +84,28 @@ class Message {
         this.doAuth = true;
         this.rna = rna;
     }
-    public void setUrl(String url){
-        this.url= url;
-    }
+
     public void incRetry(){
         retry++;
     }
     public void setTimestamp(long timestamp){
         this.timestamp = timestamp;
     }
-    public Message(RancidNode rn, String url, int operation, int retry, int timestamp){
+    public Message(RancidNode rn, ConnectionProperties cp, int operation, int retry, int timestamp){
         this.doRancid = true;
         this.doAuth = false;
         this.rn = rn;
-        this.url= url;
+        this.connProp= cp;
         this.retry = retry;
         this.operation = operation;
         this.timestamp = timestamp;
     }
-    public Message(RancidNode rn, RancidNodeAuthentication rna, String url, int operation, int retry, int timestamp){
+    public Message(RancidNode rn, RancidNodeAuthentication rna, ConnectionProperties cp, int operation, int retry, int timestamp){
         this.doRancid = true;
         this.doAuth = true;
         this.rn = rn;
         this.rna = rna;
-        this.url= url;
+        this.connProp= cp;
         this.retry = retry;
         this.operation = operation;
         this.timestamp = timestamp;
@@ -314,11 +315,11 @@ public class RWS_MT_ClientApi extends Thread {
                 System.out.println("RWS_MT_ClientApi.rancidIt() ADD_NODE " + m.getRancidNode().getDeviceName());
         
                 if (m.doRancid){
-                    RWSClientApi.createRWSRancidNode(m.getUrl(), m.getRancidNode());
+                    RWSClientApi.createRWSRancidNode(m.getConnectionProperties(), m.getRancidNode());
                     m.doRancid = false;
                 }
                 if (m.doAuth){
-                    RWSClientApi.createOrUpdateRWSAuthNode(m.getUrl(), m.getRancidNodeAuthentication());
+                    RWSClientApi.createOrUpdateRWSAuthNode(m.getConnectionProperties(), m.getRancidNodeAuthentication());
                     m.doAuth = false;
                 }
             }    
@@ -326,11 +327,11 @@ public class RWS_MT_ClientApi extends Thread {
                 System.out.println("RWS_MT_ClientApi.rancidIt() UPDATE_NODE" + m.getRancidNode().getDeviceName());
                 
                 if (m.doRancid){
-                    RWSClientApi.updateRWSRancidNode(m.getUrl(), m.getRancidNode());   
+                    RWSClientApi.updateRWSRancidNode(m.getConnectionProperties(), m.getRancidNode());   
                     m.doRancid = false;
                 }
                 if (m.doAuth){
-                    RWSClientApi.createOrUpdateRWSAuthNode(m.getUrl(), m.getRancidNodeAuthentication());
+                    RWSClientApi.createOrUpdateRWSAuthNode(m.getConnectionProperties(), m.getRancidNodeAuthentication());
                     m.doAuth = false;
                 }
             }
@@ -338,11 +339,11 @@ public class RWS_MT_ClientApi extends Thread {
                 System.out.println("RWS_MT_ClientApi.rancidIt() DELETE_NODE" + m.getRancidNode().getDeviceName());
          
                 if (m.doRancid){
-                    RWSClientApi.deleteRWSRancidNode(m.getUrl(), m.getRancidNode());   
+                    RWSClientApi.deleteRWSRancidNode(m.getConnectionProperties(), m.getRancidNode());   
                     m.doRancid = false;
                 }
                 if (m.doAuth){
-                    RWSClientApi.deleteRWSAuthNode(m.getUrl(), m.getRancidNodeAuthentication());
+                    RWSClientApi.deleteRWSAuthNode(m.getConnectionProperties(), m.getRancidNodeAuthentication());
                     m.doAuth = false;
                 }
             }
@@ -363,33 +364,33 @@ public class RWS_MT_ClientApi extends Thread {
     }
 
     //Public methods
-    public void addNode(RancidNode rn, String url) throws RancidApiException, InterruptedException{
+    public void addNode(RancidNode rn, ConnectionProperties cp) throws RancidApiException, InterruptedException{
         System.out.println("RWS_MT_ClientApi.addNode() called");
-        Message m = new Message (rn, url, ADD_NODE, 0, 0);
+        Message m = new Message (rn, cp, ADD_NODE, 0, 0);
         doWork(m);
     }
-    public void updNode(RancidNode rn, String url) throws RancidApiException, InterruptedException{
-        Message m = new Message (rn, url, UPDATE_NODE, 0, 0);
+    public void updNode(RancidNode rn, ConnectionProperties cp) throws RancidApiException, InterruptedException{
+        Message m = new Message (rn, cp, UPDATE_NODE, 0, 0);
         System.out.println("RWS_MT_ClientApi.updNode() called");
         doWork(m);
     }
-    public void delNode(RancidNode rn, String url) throws RancidApiException, InterruptedException{
-        Message m = new Message (rn, url, DELETE_NODE, 0, 0);
+    public void delNode(RancidNode rn, ConnectionProperties cp) throws RancidApiException, InterruptedException{
+        Message m = new Message (rn, cp, DELETE_NODE, 0, 0);
         System.out.println("RWS_MT_ClientApi.delNode() called");
         doWork(m);
     }
-    public void addNode(RancidNode rn, RancidNodeAuthentication rna, String url) throws RancidApiException, InterruptedException{
-        Message m = new Message (rn, rna, url, ADD_NODE, 0, 0);
+    public void addNode(RancidNode rn, RancidNodeAuthentication rna, ConnectionProperties cp) throws RancidApiException, InterruptedException{
+        Message m = new Message (rn, rna, cp, ADD_NODE, 0, 0);
         System.out.println("RWS_MT_ClientApi.addNode() called");
         doWork(m);
     }
-    public void updNode(RancidNode rn, RancidNodeAuthentication rna, String url) throws RancidApiException, InterruptedException{
-        Message m = new Message (rn, rna, url, UPDATE_NODE, 0, 0);
+    public void updNode(RancidNode rn, RancidNodeAuthentication rna, ConnectionProperties cp) throws RancidApiException, InterruptedException{
+        Message m = new Message (rn, rna, cp, UPDATE_NODE, 0, 0);
         System.out.println("RWS_MT_ClientApi.updNode() called");
         doWork(m);
     }
-    public void delNode(RancidNode rn, RancidNodeAuthentication rna, String url) throws RancidApiException, InterruptedException{
-        Message m = new Message (rn, rna, url, DELETE_NODE, 0, 0);
+    public void delNode(RancidNode rn, RancidNodeAuthentication rna, ConnectionProperties cp) throws RancidApiException, InterruptedException{
+        Message m = new Message (rn, rna, cp, DELETE_NODE, 0, 0);
         System.out.println("RWS_MT_ClientApi.delNode() called");
         doWork(m);
     }
