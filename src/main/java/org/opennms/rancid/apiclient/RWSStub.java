@@ -638,11 +638,11 @@ public class RWSStub {
 
                 System.out.println("Server busy test");
                 
-                if (RWSClientApi.testRWSStatus(cp)) {
-                    System.out.println("free");
-                } else {
-                    System.out.println("busy");
-                }
+//                if (RWSClientApi.testRWSStatus(cp)) {
+//                    System.out.println("free");
+//                } else {
+//                    System.out.println("busy");
+//                }
 
             }
             }
