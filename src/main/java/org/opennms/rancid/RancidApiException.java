@@ -1,6 +1,9 @@
 package org.opennms.rancid;
 
-public class RancidApiException extends Exception {
+import java.io.IOException;
+
+
+public class RancidApiException extends IOException {
 	
 	/**
 	 * 

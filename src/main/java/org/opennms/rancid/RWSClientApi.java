@@ -95,7 +95,32 @@ public class RWSClientApi {
             e.printStackTrace();
         }
     }
-      
+    
+    //***************************************************************************
+    //***************************************************************************
+    // check if server is busy
+    public static boolean isRWSAvailable(ConnectionProperties cp) throws RancidApiException {
+
+        if (!inited){
+            throw(new RancidApiException("Error: Api not initialized"));
+        }
+
+        Response response=getMethodRWS(cp, cp.getUrl()+cp.getDirectory() + "/");
+        DomRepresentation dmr = response.getEntityAsDom();
+        
+        try {
+            Document doc = dmr.getDocument();
+            if (doc.getElementsByTagName("Code").item(0).getTextContent().compareTo("ErrBusy") == 0){
+                return false;
+            }
+            else
+                return true;
+        }
+        catch( IOException e){
+            throw(new RancidApiException("Error: IOException", RancidApiException.OTHER_ERROR));
+        }
+    }
+    
     //***************************************************************************
     //***************************************************************************
     //LISTS    
@@ -211,18 +236,18 @@ public class RWSClientApi {
             }
         }
         catch( IOException e){
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            throw(new RancidApiException("Error: IOException", RancidApiException.OTHER_ERROR));
         }
         return data;
     }
     
     //***************************************************************************
     //***************************************************************************
-    //Rancid Node Info retrieve
-    
-    public static RancidNode getRWSRancidNode(ConnectionProperties cp ,String group, String devicename) throws RancidApiException{
-
+    //Rancid Node Info retrieve 
+    //
+    // TLO = Top Level Only, no config is queried from server
+    public static RancidNode getRWSRancidNodeTLO(ConnectionProperties cp ,String group, String devicename) throws RancidApiException{
+        
         if (!inited){
             throw(new RancidApiException("Error: Api not initialized"));
         }
@@ -243,31 +268,50 @@ public class RWSClientApi {
             
         }
         catch( IOException e){
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            throw(new RancidApiException("Error: IOException", RancidApiException.OTHER_ERROR));
+        }
+        return rn;
+    }
+
+    
+    public static RancidNode getRWSRancidNode(ConnectionProperties cp ,String group, String devicename) throws RancidApiException{
+
+        if (!inited){
+            throw(new RancidApiException("Error: Api not initialized"));
         }
         
-        //http://www.rionero.com/rws-current/rws/rancid/groups/laboratorio/7206PED.wind.lab/configs
-        //Get the following
-//        <TotalRevisions>18</TotalRevisions>
-//        <HeadRevision>1.18</HeadRevision>
-//        <UrlViewVC>
-//        http://www.rionero.com/viewvc/laboratorio/configs/7206PED.wind.lab?view=log
-//        </UrlViewVC>
+        Response response =getMethodRWS(cp, cp.getUrl() + cp.getDirectory()+"/rancid/groups/" + group + "/" + devicename);
+        DomRepresentation dmr = response.getEntityAsDom();
+        
+        RancidNode rn = new RancidNode();
+       
+        try {
+            Document doc1 = dmr.getDocument();
+
+            rn.setDeviceName(devicename);
+            rn.setDeviceType(doc1.getElementsByTagName("deviceType").item(0).getTextContent());
+            rn.setStateUp(doc1.getElementsByTagName("state").item(0).getTextContent().compareTo("up") == 0);
+            rn.setComment(doc1.getElementsByTagName("comment").item(0).getTextContent());
+            rn.setGroup(group);
+            
+        }
+        catch( IOException e){
+            throw(new RancidApiException("Error: IOException", RancidApiException.OTHER_ERROR));
+        }
+
         Response response2 = getMethodRWS(cp, cp.getUrl() + cp.getDirectory()+"/rancid/groups/" + group + "/" + devicename+"/configs");
         DomRepresentation dmr2 = response2.getEntityAsDom();
    
         try {
-            Document doc = dmr2.getDocument();
+            Document doc2 = dmr2.getDocument();
 
-            rn.setRootConfigurationUrl(doc.getElementsByTagName("UrlViewVC").item(0).getTextContent());
-            rn.setTotalRevisions(doc.getElementsByTagName("TotalRevisions").item(0).getTextContent());
-            rn.setHeadRevision(doc.getElementsByTagName("HeadRevision").item(0).getTextContent());        
+            rn.setRootConfigurationUrl(doc2.getElementsByTagName("UrlViewVC").item(0).getTextContent());
+            rn.setTotalRevisions(doc2.getElementsByTagName("TotalRevisions").item(0).getTextContent());
+            rn.setHeadRevision(doc2.getElementsByTagName("HeadRevision").item(0).getTextContent());        
         }
-        catch( IOException e){
-            // TODO Auto-generated catch block
-            //Silent
-        }
+            catch( IOException e){
+                throw(new RancidApiException("Error: IOException", RancidApiException.OTHER_ERROR));
+            }
         return rn;
     }
         
@@ -276,46 +320,6 @@ public class RWSClientApi {
         return getRWSRancidNode(cp, group, devicename );
     }
     
-//    public static RancidNodeAggregate getRancidNodeAggregate(String baseUri,String deviceName) throws RancidApiException {
-//        
-//        if (!inited){
-//            throw(new RancidApiException("Error: Api not initialized"));
-//        }
-//        
-//        try {
-//            RWSResourceList groups = getRWSResourceGroupsList(baseUri);
-//
-//    
-//            List<String> groupList = groups.getResource();
-//            
-//            Iterator iter = groupList.iterator();
-//            
-//            Object tmpGroup;
-//            
-//            RancidNodeAggregate rna = new RancidNodeAggregate();
-//            
-//            rna.setGroups(groupList);
-//            
-//            while (iter.hasNext()) {
-//                RancidNode rn = new RancidNode();
-//                tmpGroup = iter.next();
-//                try {
-//                    //System.out.println("Adding " + (String)tmpGroup + " " + deviceName);
-//                    rn = getRWSRancidNodeInventory(baseUri ,(String)tmpGroup, deviceName);
-//                    rna.addRancidAggregate((String)tmpGroup, rn);
-//                }
-//                catch (Exception e) {
-//                    //skip, Rancid Node not in group
-//                    //but at least in one group
-//                }
-//            }
-//            return rna;
-//        }
-//        catch (Exception e){
-//                e.printStackTrace();
-//        }
-//        return null;
-//    }
     
     //***************************************************************************
     //Rancid Group provisioning
@@ -373,9 +377,9 @@ public class RWSClientApi {
 
             if (doc.getElementsByTagName("Code").item(0).getTextContent().compareTo("ErrBusy") == 0){
                 throw(new RancidApiException("Error: Server Busy", RancidApiException.RWS_BUSY));
-            }        
-            //response.getEntity().write(System.out);
-        } catch (IOException e) {
+            }  
+        }
+        catch( IOException e){
             throw(new RancidApiException("Error: IOException", RancidApiException.OTHER_ERROR));
         }
     }
@@ -408,8 +412,9 @@ public class RWSClientApi {
 
             if (doc.getElementsByTagName("Code").item(0).getTextContent().compareTo("ErrBusy") == 0){
                 throw(new RancidApiException("Error: Server Busy", RancidApiException.RWS_BUSY));
-            }        
-        } catch (IOException e) {
+            }
+         }      
+        catch( IOException e){
             throw(new RancidApiException("Error: IOException", RancidApiException.OTHER_ERROR));
         }
     }
@@ -422,7 +427,7 @@ public class RWSClientApi {
     public static void createOrUpdateRWSRancidNode(ConnectionProperties cp, RancidNode rnode) throws RancidApiException{
      
         try {
-            RancidNode rnx = getRWSRancidNode( cp, rnode.getGroup(), rnode.getDeviceName());
+            RancidNode rnx = getRWSRancidNodeTLO( cp, rnode.getGroup(), rnode.getDeviceName());
             // no exception here so it exist so update it
             updateRWSRancidNode(cp, rnode);
         }
@@ -466,7 +471,7 @@ public class RWSClientApi {
             if (doc.getElementsByTagName("Code").item(0).getTextContent().compareTo("ErrBusy") == 0){
                 throw(new RancidApiException("Error: Server Busy", RancidApiException.RWS_BUSY));
             }        
-        } catch (IOException e) {
+        } catch( IOException e){
             throw(new RancidApiException("Error: IOException", RancidApiException.OTHER_ERROR));
         }
     }
@@ -507,14 +512,14 @@ public class RWSClientApi {
             
             in.setVersionId(version);
                       
+        
         }
         catch( IOException e){
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            throw(new RancidApiException("Error: IOException", RancidApiException.OTHER_ERROR));
         }
-        catch( ParseException e){
+        catch (ParseException e){
             // TODO Auto-generated catch block
-            e.printStackTrace();
+            throw(new RancidApiException("Error: ParseException", RancidApiException.OTHER_ERROR));
         }
         return in;
 
@@ -583,7 +588,7 @@ public class RWSClientApi {
                 rna.setAutoEnable(doc.getElementsByTagName("autoenable").item(0).getTextContent().compareTo("1") == 0);
             }
             catch (Exception e) {
-                System.out.println("auto enable field not found");
+                System.out.println("optional auto enable field not found");
             }
             //rna.setAuthType(doc.getElementsByTagName("authType").item(0).getTextContent());
             //System.out.println("nel metodo "+ doc.getElementsByTagName("method").item(0).getTextContent());
@@ -591,15 +596,11 @@ public class RWSClientApi {
 
         }
         catch( IOException e){
-            // TODO Auto-generated catch block
-            System.out.println("IOException " + e.getMessage());
-            e.printStackTrace();
+            throw(new RancidApiException("Error: IOException", RancidApiException.OTHER_ERROR));
         }
-        //TODO get data
-        // copy data
         return rna;
-
     }
+    
     public static RancidNodeAuthentication getRWSAuthNode(String baseUri, String devicename) throws RancidApiException{
         ConnectionProperties cp = new ConnectionProperties("","",baseUri,"/rws",30);
         return getRWSAuthNode(cp, devicename);
@@ -639,10 +640,9 @@ public class RWSClientApi {
         try {
             System.out.println("createOrUpdateRWSAuthNode sent:");
             response.getEntity().write(System.out);
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            System.out.println("createOrUpdateRWSAuthNode exception " + e.getMessage());
-            e.printStackTrace();
+        }
+        catch( IOException e){
+            throw(new RancidApiException("Error: IOException", RancidApiException.OTHER_ERROR));
         }
 
     }
@@ -674,9 +674,9 @@ public class RWSClientApi {
         Response response = deleteMethodRWS(cp, cp.getUrl() + cp.getDirectory() + "/rancid/clogin/" +rnodea.getDeviceName());
         try {
             response.getEntity().write(System.out);
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+        }
+        catch( IOException e){
+            throw(new RancidApiException("Error: IOException", RancidApiException.OTHER_ERROR));
         }
         return;
     }

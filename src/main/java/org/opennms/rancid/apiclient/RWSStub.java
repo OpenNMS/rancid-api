@@ -70,7 +70,7 @@ public class RWSStub {
             System.out.println("*************************************************************");
     
             String url = new String("http://www.rionero.com/rws-current");
-            int test = 6;
+            int test = 7;
             
             if (test == 1) {
 //                System.out.println("*************************************************************");
@@ -614,8 +614,10 @@ public class RWSStub {
         
                 RancidNode rn3 = RWSClientApi.getRWSRancidNode(cp, "laboratorio", "7206PED.wind.lab");
                 System.out.println("rn3 " + rn3.getDeviceName()  +" "+ rn3.getDeviceType()+" "+rn3.getState()+" "+ rn3.getComment());
-                
-                RancidNode rn8 = new RancidNode("laboratorio", "7206PED.wind.lab");
+                RancidNode rn4 = RWSClientApi.getRWSRancidNodeTLO(cp, "laboratorio", "node4Anto");
+                System.out.println("rn4 " + rn4.getDeviceName()  +" "+ rn4.getDeviceType()+" "+rn4.getState()+" "+ rn4.getComment());
+
+                RancidNode rn8 = new RancidNode("laboratorio", "node4Anto");
                 //rn8.setDeviceType(RancidNode.DEVICE_TYPE_BAYNET);
                 rn8.setComment("Dic2 1759");
                 rn8.setStateUp(false);
@@ -623,6 +625,24 @@ public class RWSStub {
                 //RWSClientApi.updateRWSRancidNode(cp, rn8);
                 System.out.println("andata...");
 
+
+            }
+            else if (test == 7){
+                
+                ConnectionProperties cp = new ConnectionProperties(url, "/rws", 60);
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+
+                System.out.println("Server busy test");
+                
+                if (RWSClientApi.testRWSStatus(cp)) {
+                    System.out.println("free");
+                } else {
+                    System.out.println("busy");
+                }
 
             }
             }
