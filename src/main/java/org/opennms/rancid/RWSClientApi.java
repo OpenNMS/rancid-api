@@ -3,7 +3,6 @@ package org.opennms.rancid;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Iterator;
-import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.text.ParseException;
 import java.util.Date;
@@ -199,6 +198,18 @@ public class RWSClientApi {
         ConnectionProperties cp = new ConnectionProperties("","",baseUri,"/rws",30);
         return getRWSResourceLoginPatternList(cp);
     }
+    //***************************************************************************
+    // DeviceType Pattern List
+    public static RWSResourceList getRWSResourceDeviceTypesPatternList(ConnectionProperties cp)  throws RancidApiException {
+        RWSResourceListImpl rwsImpl = new RWSResourceListImpl();
+        rwsImpl.ResourcesList = getInfo(cp, "/rancid/devicetypes/");
+        return rwsImpl;
+    }
+    public static RWSResourceList getRWSResourceDeviceTypesPatternList(String baseUri)  throws RancidApiException {
+        ConnectionProperties cp = new ConnectionProperties("","",baseUri,"/rws",30);
+        return getRWSResourceDeviceTypesPatternList(cp);
+    }
+
     //***************************************************************************
     // Version List
     public static RWSResourceList getRWSResourceConfigList(ConnectionProperties cp, String group, String deviceName)  throws RancidApiException {
@@ -434,7 +445,7 @@ public class RWSClientApi {
     public static void createOrUpdateRWSRancidNode(ConnectionProperties cp, RancidNode rnode) throws RancidApiException{
      
         try {
-            RancidNode rnx = getRWSRancidNodeTLO( cp, rnode.getGroup(), rnode.getDeviceName());
+            //RancidNode rnx = getRWSRancidNodeTLO( cp, rnode.getGroup(), rnode.getDeviceName());
             // no exception here so it exist so update it
             updateRWSRancidNode(cp, rnode);
         }
@@ -548,11 +559,11 @@ public class RWSClientApi {
         RancidNode rn = getRWSRancidNode(cp.getUrl(), group, deviceName);
         
         List<String> configlist = versions.getResource();
-        Iterator iter1 = configlist.iterator();
+        Iterator<String> iter1 = configlist.iterator();
         String tmpg1;
         
         while (iter1.hasNext()) {
-            tmpg1 = (String)iter1.next();
+            tmpg1 = iter1.next();
             //System.out.println("Version " + tmpg1);
             InventoryNode in = getRWSInventoryNode(rn, cp.getUrl(), tmpg1);
             rn.addInventoryNode(tmpg1, in);
