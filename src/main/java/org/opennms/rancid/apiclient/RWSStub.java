@@ -17,6 +17,7 @@ import org.opennms.rancid.RancidNodeAuthentication;
 import org.opennms.rancid.RWSClientApi;
 import org.opennms.rancid.RWSResourceList;
 import org.opennms.rancid.InventoryNode;
+import org.opennms.rancid.InventoryElement;
 
 import org.opennms.rancid.RWS_MT_ClientApi;
 
@@ -70,7 +71,7 @@ public class RWSStub {
             System.out.println("*************************************************************");
     
             String url = new String("http://www.rionero.com/rws-current");
-            int test = 7;
+            int test = 8;
             
             if (test == 1) {
 //                System.out.println("*************************************************************");
@@ -638,11 +639,78 @@ public class RWSStub {
 
                 System.out.println("Server busy test");
                 
-//                if (RWSClientApi.testRWSStatus(cp)) {
-//                    System.out.println("free");
-//                } else {
-//                    System.out.println("busy");
-//                }
+                if (RWSClientApi.isRWSAvailable(cp)) { 
+                    System.out.println("free");
+                } else {
+                    System.out.println("busy");
+                }
+
+
+            }
+            else if (test == 8) {
+                
+                url = "http://www.rionero.com/rws-devel";
+
+                ConnectionProperties cp = new ConnectionProperties(url, "/rws", 60);
+                System.out.println("*************************************************************");
+                System.out.println("************INVENTORY****************************************");
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+
+                RancidNode rn8 = RWSClientApi.getRWSRancidNodeTLO(cp, "laboratorio", "7206ped.wind.lab");
+                
+                InventoryElement ie1 = RWSClientApi.getRWSRancidNodeInventoryElement(cp, rn8, "1.18");
+                
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+
+                System.out.println("ie1.expand [" + ie1.expand()+"]");
+                
+                InventoryElement ie2 = RWSClientApi.getRWSRancidNodeInventoryElement(cp, rn8, "1.17");
+                
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+
+                System.out.println("ie2.expand [" + ie2.expand()+"]");
+
+                InventoryElement ie3 = RWSClientApi.getRWSRancidNodeInventoryElement(cp, rn8, "1.16");
+                
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+
+                System.out.println("ie3.expand [" + ie3.expand()+"]");
+
+                InventoryElement ie4 = RWSClientApi.getRWSRancidNodeInventoryElement(cp, rn8, "1.15");
+                
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+
+                System.out.println("ie4.expand [" + ie4.expand()+"]");
+
+                InventoryElement ie5 = RWSClientApi.getRWSRancidNodeInventoryElement(cp, rn8, "1.14");
+                
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+
+                System.out.println("ie5.expand [" + ie5.expand()+"]");
+
+                InventoryElement ie6 = RWSClientApi.getRWSRancidNodeInventoryElement(cp, rn8, "1.13");
+                
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+
+                System.out.println("ie6.expand [" + ie6.expand()+"]");
+
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
+
 
             }
             }

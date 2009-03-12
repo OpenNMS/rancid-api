@@ -7,6 +7,8 @@ import java.text.SimpleDateFormat;
 import java.text.ParseException;
 import java.util.Date;
 
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 import java.io.IOException;
 
@@ -578,6 +580,193 @@ public class RWSClientApi {
         return getRWSRancidNodeInventory(cp, group, deviceName);
     }
 
+    
+    //***************************************************************************
+    // Inventory element
+    public static InventoryElement getRWSRancidNodeInventoryElement(ConnectionProperties cp, RancidNode rancidNode, String version) throws RancidApiException {
+
+        if (!inited){
+            throw(new RancidApiException("Error: Api not initialized"));
+        }
+        
+        InventoryElement ie = new InventoryElement();
+
+        String url = cp.getUrl() + cp.getDirectory()+"/rancid/groups/" + rancidNode.getGroup() + "/" + rancidNode.getDeviceName() + "/configs/" + version + "/inventory";
+        
+        Response response = getMethodRWS(cp, url);
+
+        DomRepresentation dmr = response.getEntityAsDom();
+
+        try {
+            Document doc = dmr.getDocument();
+            
+            //Global part flat nodes
+            System.out.println("**************");
+            System.out.println("Chasis " + doc.getElementsByTagName("Chassis").item(0).getTextContent());
+            System.out.println("**************");
+            System.out.println("CPU " + doc.getElementsByTagName("CPU").item(0).getTextContent());
+            System.out.println("**************");
+            System.out.println("Processor-ID " + doc.getElementsByTagName("Processor-ID").item(0).getTextContent());
+            System.out.println("**************");
+            
+            ie.setChassis(doc.getElementsByTagName("Chassis").item(0).getTextContent());
+            ie.setCpu(doc.getElementsByTagName("CPU").item(0).getTextContent());
+            ie.setProcessorId(doc.getElementsByTagName("Processor-ID").item(0).getTextContent());
+            
+            NodeList memoryNL = doc.getDocumentElement().getElementsByTagName("Memory");
+            System.out.println("Memory " + memoryNL.getLength());
+            System.out.println("Memory/DRAM/Size " + memoryNL.item(0).getChildNodes().item(1).getChildNodes().item(1).getTextContent());
+            System.out.println("Memory/NVRAM/Size " + memoryNL.item(0).getChildNodes().item(3).getChildNodes().item(1).getTextContent());
+            System.out.println("Memory/BootFlash/Size " + memoryNL.item(0).getChildNodes().item(5).getChildNodes().item(1).getTextContent());
+            System.out.println("Memory/PCMCIA-ATA/Name " + memoryNL.item(0).getChildNodes().item(7).getChildNodes().item(1).getTextContent());
+            System.out.println("Memory/PCMCIA-ATA/Size " + memoryNL.item(0).getChildNodes().item(7).getChildNodes().item(3).getTextContent());
+            
+            ie.setDRam(memoryNL.item(0).getChildNodes().item(1).getChildNodes().item(1).getTextContent());
+            ie.setNvRam(memoryNL.item(0).getChildNodes().item(3).getChildNodes().item(1).getTextContent());
+            ie.setBootFlash(memoryNL.item(0).getChildNodes().item(5).getChildNodes().item(1).getTextContent());
+            ie.setPcmciaName(memoryNL.item(0).getChildNodes().item(7).getChildNodes().item(1).getTextContent());
+            ie.setPcmciaSize(memoryNL.item(0).getChildNodes().item(7).getChildNodes().item(3).getTextContent());
+            
+            NodeList powerNL = doc.getDocumentElement().getElementsByTagName("Power");
+            System.out.println("Power " + powerNL.getLength());            
+            
+            List<Tuple> power = new ArrayList<Tuple>();
+            boolean has_power = false;
+            for (int i = 1 ; i < powerNL.item(0).getChildNodes().getLength() ; i++) {
+                System.out.println("Power/item0/Name " + powerNL.item(0).getChildNodes().item(i).getChildNodes().item(1).getTextContent());
+                System.out.println("Power/item0/Desc " + powerNL.item(0).getChildNodes().item(i).getChildNodes().item(3).getTextContent());
+
+                Tuple pw = new Tuple( powerNL.item(0).getChildNodes().item(i).getChildNodes().item(1).getTextContent(),
+                                      powerNL.item(0).getChildNodes().item(i).getChildNodes().item(3).getTextContent()); 
+                
+                power.add(pw);
+                has_power = true;
+                i++;
+            }
+            if (has_power){
+                ie.setPower(power);
+            }            
+            
+            NodeList softNL = doc.getDocumentElement().getElementsByTagName("Software");
+            System.out.println("Software " + softNL.getLength());
+            System.out.println("Software/OperatingSystem " + softNL.item(0).getChildNodes().item(1).getTextContent());
+            System.out.println("Software/ROM-Bootstrap " + softNL.item(0).getChildNodes().item(3).getTextContent());
+            System.out.println("Software/Bootloader " + softNL.item(0).getChildNodes().item(5).getTextContent());
+
+            ie.setOs(softNL.item(0).getChildNodes().item(1).getTextContent());
+            ie.setRomBootstarp(softNL.item(0).getChildNodes().item(3).getTextContent());
+            ie.setBootLoader(softNL.item(0).getChildNodes().item(5).getTextContent());
+            
+            NodeList intfNL = doc.getDocumentElement().getElementsByTagName("Interfaces");
+            System.out.println("Interfaces " + intfNL.getLength());
+
+            List<Tuple> intflist = new ArrayList<Tuple>();
+            boolean has_intf = false;
+            for (int i = 1 ; i < intfNL.item(0).getChildNodes().getLength() ; i++) {
+                System.out.println("Interfaces/item"+i+"/Name " + intfNL.item(0).getChildNodes().item(i).getChildNodes().item(1).getTextContent());
+                System.out.println("Interfaces/item"+i+"/Desc " + intfNL.item(0).getChildNodes().item(i).getChildNodes().item(3).getTextContent());
+
+                Tuple intf = new Tuple( intfNL.item(0).getChildNodes().item(i).getChildNodes().item(1).getTextContent(),
+                                        intfNL.item(0).getChildNodes().item(i).getChildNodes().item(3).getTextContent()); 
+                
+                intflist.add(intf);
+                has_intf = true;
+                i++;
+            }
+            if (has_intf){
+                ie.setNwInterface(intflist);
+            }            
+            
+            NodeList slotsNL = doc.getDocumentElement().getElementsByTagName("Slots");
+            System.out.println("Slots " + slotsNL.getLength());
+
+            List<InventorySlot> slots = new ArrayList<InventorySlot>();
+            boolean has_slots = false;
+            for (int i = 1 ; i < slotsNL.item(0).getChildNodes().getLength() ; i++) {
+                
+                if ( slotsNL.item(0).getChildNodes().item(i).getChildNodes().getLength() == 11){
+                    System.out.println("Slots/item"+i+"/Name " +        slotsNL.item(0).getChildNodes().item(i).getChildNodes().item(1).getTextContent());
+                    System.out.println("Slots/item"+i+"/item0/type " +  slotsNL.item(0).getChildNodes().item(i).getChildNodes().item(3).getChildNodes().item(1).getTextContent());
+                    System.out.println("Slots/item"+i+"/item1/hvers " + slotsNL.item(0).getChildNodes().item(i).getChildNodes().item(5).getChildNodes().item(1).getTextContent());
+                    System.out.println("Slots/item"+i+"/item2/part " +  slotsNL.item(0).getChildNodes().item(i).getChildNodes().item(7).getChildNodes().item(1).getTextContent());
+                    System.out.println("Slots/item"+i+"/item2/sn " +    slotsNL.item(0).getChildNodes().item(i).getChildNodes().item(7).getChildNodes().item(3).getTextContent());
+    
+                    InventorySlot slot = new InventorySlot(slotsNL.item(0).getChildNodes().item(i).getChildNodes().item(1).getTextContent(),
+                                                                         slotsNL.item(0).getChildNodes().item(i).getChildNodes().item(3).getChildNodes().item(1).getTextContent(),
+                                                                         slotsNL.item(0).getChildNodes().item(i).getChildNodes().item(5).getChildNodes().item(1).getTextContent(),
+                                                                         slotsNL.item(0).getChildNodes().item(i).getChildNodes().item(7).getChildNodes().item(1).getTextContent(),
+                                                                         slotsNL.item(0).getChildNodes().item(i).getChildNodes().item(7).getChildNodes().item(3).getTextContent()); 
+                    
+                    slots.add(slot);
+                }
+                if ( slotsNL.item(0).getChildNodes().item(i).getChildNodes().getLength() == 9){
+                    System.out.println("Slots/item"+i+"/Name " +        slotsNL.item(0).getChildNodes().item(i).getChildNodes().item(1).getTextContent());
+                    System.out.println("Slots/item"+i+"/item1/hvers " + slotsNL.item(0).getChildNodes().item(i).getChildNodes().item(3).getChildNodes().item(1).getTextContent());
+                    System.out.println("Slots/item"+i+"/item2/part " +  slotsNL.item(0).getChildNodes().item(i).getChildNodes().item(7).getChildNodes().item(1).getTextContent());
+                    System.out.println("Slots/item"+i+"/item2/sn " +    slotsNL.item(0).getChildNodes().item(i).getChildNodes().item(7).getChildNodes().item(3).getTextContent());
+    
+                    InventorySlot slot = new InventorySlot(slotsNL.item(0).getChildNodes().item(i).getChildNodes().item(1).getTextContent(),
+                                                                         slotsNL.item(0).getChildNodes().item(i).getChildNodes().item(3).getChildNodes().item(1).getTextContent(),
+                                                                         "",
+                                                                         slotsNL.item(0).getChildNodes().item(i).getChildNodes().item(7).getChildNodes().item(1).getTextContent(),
+                                                                         slotsNL.item(0).getChildNodes().item(i).getChildNodes().item(7).getChildNodes().item(3).getTextContent()); 
+                    
+                    slots.add(slot);
+                }
+
+                has_slots = true;
+                i++;
+            }
+            if (has_slots){
+                ie.setSlot(slots);
+            }            
+
+            
+            NodeList invNL = doc.getDocumentElement().getElementsByTagName("Inventory");
+            System.out.println("Inventory " + invNL.item(0).getChildNodes().getLength());
+
+            List<InventoryItem> invits = new ArrayList<InventoryItem>();
+            boolean has_invits = false;
+            for (int i = 1 ; i < invNL.item(0).getChildNodes().getLength(); i++) {
+
+                System.out.println("Inventory " + i +" " + invNL.item(0).getChildNodes().item(i).getChildNodes().getLength());
+                if (invNL.item(0).getChildNodes().item(i).getChildNodes().getLength() == 5){
+                    System.out.println("Inventory/item"+i+"/Name " +  invNL.item(0).getChildNodes().item(i).getChildNodes().item(1).getTextContent());
+                    System.out.println("Inventory/item"+i+"/Desc " +  invNL.item(0).getChildNodes().item(i).getChildNodes().item(3).getTextContent());
+                    
+                    InventoryItem invit = new InventoryItem(invNL.item(0).getChildNodes().item(i).getChildNodes().item(1).getTextContent(),
+                                                            invNL.item(0).getChildNodes().item(i).getChildNodes().item(3).getTextContent(),"","","");
+                    invits.add(invit);
+                }
+                if (invNL.item(0).getChildNodes().item(i).getChildNodes().getLength() == 11){
+                    System.out.println("Inventory/item"+i+"/Name " +  invNL.item(0).getChildNodes().item(i).getChildNodes().item(1).getTextContent());
+                    System.out.println("Inventory/item"+i+"/Desc " +  invNL.item(0).getChildNodes().item(i).getChildNodes().item(3).getTextContent());
+                    System.out.println("Inventory/item"+i+"/pid " +   invNL.item(0).getChildNodes().item(i).getChildNodes().item(5).getTextContent());
+                    System.out.println("Inventory/item"+i+"/vid " +   invNL.item(0).getChildNodes().item(i).getChildNodes().item(7).getTextContent());
+                    System.out.println("Inventory/item"+i+"/sn " +    invNL.item(0).getChildNodes().item(i).getChildNodes().item(9).getTextContent());
+                    InventoryItem invit = new InventoryItem(invNL.item(0).getChildNodes().item(i).getChildNodes().item(1).getTextContent(),
+                                                            invNL.item(0).getChildNodes().item(i).getChildNodes().item(3).getTextContent(),
+                                                            invNL.item(0).getChildNodes().item(i).getChildNodes().item(5).getTextContent(),
+                                                            invNL.item(0).getChildNodes().item(i).getChildNodes().item(7).getTextContent(),
+                                                            invNL.item(0).getChildNodes().item(i).getChildNodes().item(9).getTextContent());
+                    invits.add(invit);
+                }
+                has_invits = true;
+                i++;
+            }
+            if (has_invits){
+                ie.setInventoryItem(invits);
+            }            
+
+                  
+            return ie;
+            
+            
+        }
+        catch( IOException e){
+            throw(new RancidApiException("Error getRWSRancidNodeInventoryElement: IOException Method GET: URL:" +url, RancidApiException.OTHER_ERROR));
+        }
+    }
     
     //***************************************************************************
     //***************************************************************************

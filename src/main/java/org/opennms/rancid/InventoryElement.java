@@ -1,8 +1,38 @@
 package org.opennms.rancid;
 
+import java.util.List;
+import java.util.ArrayList;
+
 public class InventoryElement {
 
     private InventoryNode parent;
+    
+    //New RWS structure March 2 2009
+    //Global
+    private String chassis;
+    private String cpu;
+    private String processorId;
+    private String dRam;
+    private String nvRam;
+    private String bootFlash;
+    private String pcmciaName;
+    private String pcmciaSize;
+    
+    private List<Tuple> power;
+    
+    private String os;
+    private String romBootstarp;
+    private String bootLoader;
+    
+    private List<Tuple> nwInterface;
+    //End of Global section
+    
+    private List<InventorySlot> slot;
+    
+    private List<InventoryItem> inventoryItem;
+    //End of new structure March 2 2009
+    
+    
 	private String elementName;
     private int elementId;
 	private String vendor;
@@ -14,6 +44,15 @@ public class InventoryElement {
 	private int ramSize;
 	private int nwRamSize;
 
+	public InventoryElement(){
+	    super();
+	    
+	    power = new ArrayList<Tuple>();
+	    nwInterface = new ArrayList<Tuple>();
+	    slot = new ArrayList<InventorySlot>();
+	    inventoryItem = new ArrayList<InventoryItem>();
+	    
+	}
 	
 	public String getElementName() {
 		return elementName;
@@ -106,6 +145,164 @@ public class InventoryElement {
     public InventoryElement(InventoryNode parent) {
         this.parent = parent;
     }
+
+    public String getChassis() {
+        return chassis;
+    }
+
+    public void setChassis(String chassis) {
+        this.chassis = chassis;
+    }
+
+    public String getCpu() {
+        return cpu;
+    }
+
+    public void setCpu(String cpu) {
+        this.cpu = cpu;
+    }
+
+    public String getProcessorId() {
+        return processorId;
+    }
+
+    public void setProcessorId(String processorId) {
+        this.processorId = processorId;
+    }
+
+    public String getDRam() {
+        return dRam;
+    }
+
+    public void setDRam(String ram) {
+        dRam = ram;
+    }
+
+    public String getNvRam() {
+        return nvRam;
+    }
+
+    public void setNvRam(String nvRam) {
+        this.nvRam = nvRam;
+    }
+
+    public String getBootFlash() {
+        return bootFlash;
+    }
+
+    public void setBootFlash(String bootFlash) {
+        this.bootFlash = bootFlash;
+    }
+
+    public String getPcmciaName() {
+        return pcmciaName;
+    }
+
+    public void setPcmciaName(String pcmciaName) {
+        this.pcmciaName = pcmciaName;
+    }
+
+    public String getPcmciaSize() {
+        return pcmciaSize;
+    }
+
+    public void setPcmciaSize(String pcmciaSize) {
+        this.pcmciaSize = pcmciaSize;
+    }
+
+    public List<Tuple> getPower() {
+        return power;
+    }
+
+    public void setPower(List<Tuple> power) {
+        this.power = power;
+    }
+
+    public String getOs() {
+        return os;
+    }
+
+    public void setOs(String os) {
+        this.os = os;
+    }
+
+    public String getRomBootstarp() {
+        return romBootstarp;
+    }
+
+    public void setRomBootstarp(String romBootstarp) {
+        this.romBootstarp = romBootstarp;
+    }
+
+    public String getBootLoader() {
+        return bootLoader;
+    }
+
+    public void setBootLoader(String bootLoader) {
+        this.bootLoader = bootLoader;
+    }
+
+    public List<Tuple> getNwInterface() {
+        return nwInterface;
+    }
+
+    public void setNwInterface(List<Tuple> nwInterface) {
+        this.nwInterface = nwInterface;
+    }
+
+    public List<InventorySlot> getSlot() {
+        return slot;
+    }
+
+    public void setSlot(List<InventorySlot> slot) {
+        this.slot = slot;
+    }
+
+    public List<InventoryItem> getInventoryItem() {
+        return inventoryItem;
+    }
+
+    public void setInventoryItem(List<InventoryItem> inventoryItem) {
+        this.inventoryItem = inventoryItem;
+    }
     
+    public String expand() {
+        
+        String powerS = new String();
+        String nwInterfaceS = new String();
+        String slotS = new String();
+        String inventoryItemS = new String();
+        
+        for (int i = 0 ; i < power.size(); i++)
+            powerS = powerS + power.get(i).expand();
+        
+        for (int i = 0 ; i < nwInterface.size(); i++)
+            nwInterfaceS = nwInterfaceS + nwInterface.get(i).expand();
+
+        for (int i = 0 ; i < slot.size(); i++)
+            slotS = slotS + slot.get(i).expand();
+
+        for (int i = 0 ; i < inventoryItem.size(); i++)
+            inventoryItemS = inventoryItemS + inventoryItem.get(i).expand();
+
+        
+        return
+        "chassis [" + chassis + "] "+
+        "cpu [" + cpu + "] "+
+        "processorId [" + processorId + "] "+
+        "dRam [" + dRam + "] "+
+        "nvRam [" + nvRam + "] "+
+        "bootFlash [" + bootFlash + "] "+
+        "bootFlash [" + pcmciaName + "] "+
+        "pcmciaSize [" + pcmciaSize + "] "+
+        powerS +
+        "os [" + os + "] "+
+        "romBootstarp [" + romBootstarp + "] "+
+        "bootLoader [" + bootLoader + "] "+
+        nwInterfaceS + 
+        slotS + 
+        inventoryItemS;
+
+    }
     
 }

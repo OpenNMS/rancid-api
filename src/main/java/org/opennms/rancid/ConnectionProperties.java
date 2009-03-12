@@ -10,7 +10,7 @@ public class ConnectionProperties {
     private boolean authOn;
     
     public ConnectionProperties(String username, String password, String url, String directory, int timeout){
-        this.userName = userName;
+        this.userName = username;
         this.password = password;
         this.authOn = true;
         this.url = url;
