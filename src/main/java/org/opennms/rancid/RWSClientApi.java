@@ -7,7 +7,6 @@ import java.text.SimpleDateFormat;
 import java.text.ParseException;
 import java.util.Date;
 
-import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import java.io.IOException;
