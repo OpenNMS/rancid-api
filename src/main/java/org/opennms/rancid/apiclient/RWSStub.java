@@ -649,9 +649,9 @@ public class RWSStub {
             }
             else if (test == 8) {
                 
-                url = "http://www.rionero.com/rws-devel";
+                url = "http://www.rionero.com/auth/rws-devel";
 
-                ConnectionProperties cp = new ConnectionProperties(url, "/rws", 60);
+                ConnectionProperties cp = new ConnectionProperties("opennms","MyRancidApi",url, "/rws", 60);
                 System.out.println("*************************************************************");
                 System.out.println("************INVENTORY****************************************");
                 System.out.println("*************************************************************");

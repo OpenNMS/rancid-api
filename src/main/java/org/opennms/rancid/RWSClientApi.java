@@ -557,18 +557,18 @@ public class RWSClientApi {
             throw(new RancidApiException("Error: Api not initialized"));
         }
         
-        RWSResourceList versions = getRWSResourceConfigList(cp.getUrl(), group, deviceName);
-        RancidNode rn = getRWSRancidNode(cp.getUrl(), group, deviceName);
+        RWSResourceList versions = getRWSResourceConfigList(cp, group, deviceName);
+        RancidNode rn = getRWSRancidNode(cp, group, deviceName);
         
         List<String> configlist = versions.getResource();
         Iterator<String> iter1 = configlist.iterator();
-        String tmpg1;
+        String vstmp;
         
         while (iter1.hasNext()) {
-            tmpg1 = iter1.next();
+            vstmp = iter1.next();
             //System.out.println("Version " + tmpg1);
-            InventoryNode in = getRWSInventoryNode(rn, cp.getUrl(), tmpg1);
-            rn.addInventoryNode(tmpg1, in);
+            InventoryNode in = getRWSInventoryNode(cp, rn, vstmp);
+            rn.addInventoryNode(vstmp, in);
         }
         
         return rn;
