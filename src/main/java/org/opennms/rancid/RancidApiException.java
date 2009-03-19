@@ -16,6 +16,7 @@ public class RancidApiException extends IOException {
     public static int RWS_RESOURCE_NOT_FOUND = 2;
     public static int RWS_TIMEOUT = 3;
     public static int RWS_AUTH_FAILES = 4;
+    public static int RWS_RESOURCE_EXISTS = 5;
 
     public static int OTHER_ERROR =   999;
 
