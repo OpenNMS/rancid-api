@@ -250,7 +250,7 @@ public class RWSClientApi {
             }
         }
         catch( IOException e){
-            throw(new RancidApiException("Error: IOException Method GET: URL:" +url, RancidApiException.OTHER_ERROR));
+            throw(new RancidApiException("Error: IOException Method GET: URL:" +url + ":" + e.getMessage(), RancidApiException.OTHER_ERROR));
         }
         return data;
     }
@@ -283,7 +283,7 @@ public class RWSClientApi {
             
         }
         catch( IOException e){
-            throw(new RancidApiException("Error: IOException Method GET: URL:" +url, RancidApiException.OTHER_ERROR));
+            throw(new RancidApiException("Error: IOException Method GET: URL:" +url + ":" + e.getMessage(), RancidApiException.OTHER_ERROR));
        }
         return rn;
     }
@@ -312,7 +312,7 @@ public class RWSClientApi {
             
         }
         catch( IOException e){
-            throw(new RancidApiException("Error: IOException Method GET: URL:" +url, RancidApiException.OTHER_ERROR));
+            throw(new RancidApiException("Error: IOException Method GET: URL:" +url + ":" + e.getMessage(), RancidApiException.OTHER_ERROR));
         }
 
         String url2 = cp.getUrl() + cp.getDirectory()+"/rancid/groups/" + group + "/" + devicename+"/configs";
@@ -327,7 +327,7 @@ public class RWSClientApi {
             rn.setHeadRevision(doc2.getElementsByTagName("HeadRevision").item(0).getTextContent());        
         }
             catch( IOException e){
-                throw(new RancidApiException("Error: IOException Method GET: URL:" +url2, RancidApiException.OTHER_ERROR));
+                throw(new RancidApiException("Error: IOException Method GET: URL:" +url2 + ":" + e.getMessage(), RancidApiException.OTHER_ERROR));
             }
         return rn;
     }
@@ -400,7 +400,7 @@ public class RWSClientApi {
             } 
         }
         catch( IOException e){
-            throw(new RancidApiException("Error: IOException Method PUT: URL:" +url, RancidApiException.OTHER_ERROR));
+            throw(new RancidApiException("Error: IOException Method PUT: URL:" +url + ":" + e.getMessage(), RancidApiException.OTHER_ERROR));
         }
     }
 
@@ -439,7 +439,7 @@ public class RWSClientApi {
             }
          }      
         catch( IOException e){
-            throw(new RancidApiException("Error: IOException Method POST: URL:" +url, RancidApiException.OTHER_ERROR));
+            throw(new RancidApiException("Error: IOException Method POST: URL:" +url+ ":" + e.getMessage(), RancidApiException.OTHER_ERROR));
         }
     }
 
@@ -497,7 +497,7 @@ public class RWSClientApi {
                 throw(new RancidApiException("Error: Server Busy", RancidApiException.RWS_BUSY));
             }        
         } catch( IOException e){
-            throw(new RancidApiException("Error: IOException Method DELETE: URL:" +url, RancidApiException.OTHER_ERROR));
+            throw(new RancidApiException("Error: IOException Method DELETE: URL:" +url+ ":" + e.getMessage(), RancidApiException.OTHER_ERROR));
         }
     }
     public static void deleteRWSRancidNode(String baseUri, RancidNode rnode) throws RancidApiException{
@@ -540,7 +540,7 @@ public class RWSClientApi {
         
         }
         catch( IOException e){
-            throw(new RancidApiException("Error: IOException Method GET: URL:" +url, RancidApiException.OTHER_ERROR));
+            throw(new RancidApiException("Error: IOException Method GET: URL:" +url+ ":" + e.getMessage(), RancidApiException.OTHER_ERROR));
         }
         catch (ParseException e){
             throw(new RancidApiException("Error: ParseException Method GET: URL:" +url + " ParseException" + e, RancidApiException.OTHER_ERROR));
@@ -769,7 +769,7 @@ public class RWSClientApi {
             
         }
         catch( IOException e){
-            throw(new RancidApiException("Error getRWSRancidNodeInventoryElement: IOException Method GET: URL:" +url, RancidApiException.OTHER_ERROR));
+            throw(new RancidApiException("Error getRWSRancidNodeInventoryElement: IOException Method GET: URL:" +url+ ":" + e.getMessage(), RancidApiException.OTHER_ERROR));
         }
     }
     
@@ -808,7 +808,7 @@ public class RWSClientApi {
 
         }
         catch( IOException e){
-            throw(new RancidApiException("Error: IOException Method GET: URL:" +url, RancidApiException.OTHER_ERROR));
+            throw(new RancidApiException("Error: IOException Method GET: URL:" +url+ ":" + e.getMessage(), RancidApiException.OTHER_ERROR));
         }
         return rna;
     }
@@ -853,7 +853,7 @@ public class RWSClientApi {
             }
         }
         catch( IOException e){
-            throw(new RancidApiException("Error: IOException Method PUT: URL:" +url, RancidApiException.OTHER_ERROR));
+            throw(new RancidApiException("Error: IOException Method PUT: URL:" +url+ ":" + e.getMessage(), RancidApiException.OTHER_ERROR));
         }
 
     }
@@ -993,9 +993,9 @@ public class RWSClientApi {
             return response;
         } else if (response.getStatus() == Status.CLIENT_ERROR_REQUEST_TIMEOUT){
             throw(new RancidApiException("Error: RWS GET request timeout for URL:" + uriReference));
-        }else if (response.getStatus() == Status.CLIENT_ERROR_UNAUTHORIZED){
+        } else if (response.getStatus() == Status.CLIENT_ERROR_UNAUTHORIZED){
             throw(new RancidApiException("Error: RWS GET authentication failed for URL:" + uriReference));
-        }else if (response.getStatus().getCode() == 404){
+        } else if (response.getStatus().getCode() == 404){
             throw(new RancidApiException("Error: RWS GET resource not found for URL:" + uriReference, RancidApiException.RWS_RESOURCE_NOT_FOUND));
         } else {
             throw(new RancidApiException("Error: RWS GET request failed for URL: "+ uriReference+ " Status: "+ response.getStatus()));
