@@ -1020,7 +1020,6 @@ public class RWSClientApi {
             
         }
         Response response = client.handle(request); 
-        
         if (response.getStatus().isSuccess()) {
             return response;
         } else if (response.getStatus() == Status.CLIENT_ERROR_REQUEST_TIMEOUT){
@@ -1028,7 +1027,7 @@ public class RWSClientApi {
         }else if (response.getStatus() == Status.CLIENT_ERROR_UNAUTHORIZED){
             throw(new RancidApiException("Error: RWS POST authentication failed"));
         } else {
-            throw(new RancidApiException("Error: RWS POST request failed: "+ response.getStatus()));
+        	return response;
         }
         
     }
@@ -1058,7 +1057,7 @@ public class RWSClientApi {
         }else if (response.getStatus() == Status.CLIENT_ERROR_UNAUTHORIZED){
             throw(new RancidApiException("Error: RWS PUT authentication failed"));
         } else {
-            throw(new RancidApiException("Error: RWS PUT request failed: "+ response.getStatus()));
+        	return response;
         }
         
     }
@@ -1088,7 +1087,7 @@ public class RWSClientApi {
         }else if (response.getStatus() == Status.CLIENT_ERROR_UNAUTHORIZED){
             throw(new RancidApiException("Error: RWS DELETE authentication failed"));
         } else {
-            throw(new RancidApiException("Error: RWS DELETE request failed: "+ response.getStatus()));
+        	return response;
         }
         
     }
