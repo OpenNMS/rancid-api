@@ -63,7 +63,7 @@ public class RWSStub {
             System.out.println("*************************************************************");
             System.out.println("*************************************************************");
             System.out.println(" START RWSClientApi.encode_test(); ");
-            RWSClientApi.encode_test();
+            //RWSClientApi.encode_test();
             System.out.println(" END RWSClientApi.encode_test(); ");
             System.out.println("*************************************************************");
             System.out.println("*************************************************************");

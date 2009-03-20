@@ -70,7 +70,8 @@ public class RWSClientApi {
 
     }
     
-    //Test encoding againts test server http://www.rionero.com/cgi-bin/cgitest
+    //Test encoding againts test server http://www.rionero.com/cgi-bin/cgites
+    /*
     public static void encode_test() throws RancidApiException {
         
         if (!inited){
@@ -95,7 +96,7 @@ public class RWSClientApi {
             e.printStackTrace();
         }
     }
-    
+    */
     //***************************************************************************
     //***************************************************************************
     // check if server is busy
@@ -106,20 +107,21 @@ public class RWSClientApi {
         }
 
         String url = cp.getUrl()+cp.getDirectory() + "/";
-        Response response=getMethodRWS(cp, url);
-        DomRepresentation dmr = response.getEntityAsDom();
+
         
         try {
-            Document doc = dmr.getDocument();
-            if (doc.getElementsByTagName("Code").item(0).getTextContent().compareTo("ErrBusy") == 0){
-                return false;
-            }
-            else
-                return true;
+        	Response response=getMethodRWS(cp, url);
+        	if (response.isEntityAvailable())
+        		return true;
         }
-        catch( IOException e){
-            throw(new RancidApiException("Error: IOException Method GET: URL:" +url, RancidApiException.OTHER_ERROR));
+        catch( RancidApiException e){
+        	if (e.getRancidCode() == RancidApiException.RWS_BUSY) {
+        		return false;
+        	} else {
+        		throw(e);
+        	}
         }
+        return true;
     }
     
     //***************************************************************************
@@ -386,22 +388,8 @@ public class RWSClientApi {
         Representation rep = form.getWebRepresentation();
 
         String url = cp.getUrl()+cp.getDirectory()+"/rancid/groups/"+rnode.getGroup()+"/"+rnode.getDeviceName();
-        Response response = putMethodRWS(cp, url,rep);
+        putMethodRWS(cp, url,rep);
         
-        DomRepresentation dmr2 = response.getEntityAsDom();
-        
-        try {
-            Document doc = dmr2.getDocument();
-
-            if (doc.getElementsByTagName("Code").item(0).getTextContent().compareTo("ErrBusy") == 0){
-                throw(new RancidApiException("Error: Server Busy", RancidApiException.RWS_BUSY));
-            } else if (doc.getElementsByTagName("Code").item(0).getTextContent().compareTo("ErrExists") == 0){
-                throw(new RancidApiException("Error: Resource Already Exists", RancidApiException.RWS_RESOURCE_EXISTS));
-            } 
-        }
-        catch( IOException e){
-            throw(new RancidApiException("Error: IOException Method PUT: URL:" +url + ":" + e.getMessage(), RancidApiException.OTHER_ERROR));
-        }
     }
 
     public static void createRWSRancidNode(String baseUri, RancidNode rnode) throws RancidApiException{
@@ -425,22 +413,8 @@ public class RWSClientApi {
 
         String url = cp.getUrl()+cp.getDirectory()+"/rancid/groups/"+rnode.getGroup()+"/"+rnode.getDeviceName();
 
-        Response response = postMethodRWS(cp, url,rep);
+        postMethodRWS(cp, url,rep);
         
-        DomRepresentation dmr2 = response.getEntityAsDom();
-        
-        try {
-            Document doc = dmr2.getDocument();
-
-            if (doc.getElementsByTagName("Code").item(0).getTextContent().compareTo("ErrBusy") == 0){
-                throw(new RancidApiException("Error: Server Busy", RancidApiException.RWS_BUSY));
-            } else if (doc.getElementsByTagName("Code").item(0).getTextContent().compareTo("ErrNotFound") == 0) {
-            	throw(new RancidApiException("Error: Resource not found",RancidApiException.RWS_RESOURCE_NOT_FOUND));
-            }
-         }      
-        catch( IOException e){
-            throw(new RancidApiException("Error: IOException Method POST: URL:" +url+ ":" + e.getMessage(), RancidApiException.OTHER_ERROR));
-        }
     }
 
     public static void updateRWSRancidNode(String baseUri, RancidNode rnode) throws RancidApiException{
@@ -480,25 +454,8 @@ public class RWSClientApi {
         form.add("state", rnode.getState());
         form.add("comment", rnode.getComment());
                 
-//        Representation rep = form.getWebRepresentation();
-
-        //rep.setMediaType(MediaType.APPLICATION_XHTML_XML);
-        // Launch the request
-
         String url = cp.getUrl()+cp.getDirectory()+"/rancid/groups/"+rnode.getGroup()+"/"+rnode.getDeviceName();
-        Response response = deleteMethodRWS(cp, url);
-        
-        DomRepresentation dmr2 = response.getEntityAsDom();
-        
-        try {
-            Document doc = dmr2.getDocument();
-
-            if (doc.getElementsByTagName("Code").item(0).getTextContent().compareTo("ErrBusy") == 0){
-                throw(new RancidApiException("Error: Server Busy", RancidApiException.RWS_BUSY));
-            }        
-        } catch( IOException e){
-            throw(new RancidApiException("Error: IOException Method DELETE: URL:" +url+ ":" + e.getMessage(), RancidApiException.OTHER_ERROR));
-        }
+        deleteMethodRWS(cp, url);
     }
     public static void deleteRWSRancidNode(String baseUri, RancidNode rnode) throws RancidApiException{
         ConnectionProperties cp = new ConnectionProperties("","",baseUri,"/rws",30);
@@ -839,23 +796,7 @@ public class RWSClientApi {
         Representation rep = form.getWebRepresentation();
 
         String url = cp.getUrl() + cp.getDirectory() + "/rancid/clogin/" +rnodea.getDeviceName();
-        Response response = putMethodRWS(cp, url,rep);
-        
-        DomRepresentation dmr2 = response.getEntityAsDom();
-        
-        try {
-            Document doc = dmr2.getDocument();
-
-            if (doc.getElementsByTagName("Code").item(0).getTextContent().compareTo("ErrBusy") == 0){
-                throw(new RancidApiException("Error: Server Busy", RancidApiException.RWS_BUSY));
-            }  else if (doc.getElementsByTagName("Code").item(0).getTextContent().compareTo("ErrExists") == 0){
-                throw(new RancidApiException("Error: Resource Already Exists", RancidApiException.RWS_RESOURCE_EXISTS));
-            }
-        }
-        catch( IOException e){
-            throw(new RancidApiException("Error: IOException Method PUT: URL:" +url+ ":" + e.getMessage(), RancidApiException.OTHER_ERROR));
-        }
-
+        putMethodRWS(cp, url,rep);        
     }
 
     public static void updateRWSAuthNode(ConnectionProperties cp, RancidNodeAuthentication rnodea) throws RancidApiException{
@@ -879,22 +820,7 @@ public class RWSClientApi {
 
         String url = cp.getUrl() + cp.getDirectory() + "/rancid/clogin/" +rnodea.getDeviceName();
 
-        Response response = postMethodRWS(cp, url,rep);
-        
-        DomRepresentation dmr2 = response.getEntityAsDom();
-        
-        try {
-            Document doc = dmr2.getDocument();
-
-            if (doc.getElementsByTagName("Code").item(0).getTextContent().compareTo("ErrBusy") == 0){
-                throw(new RancidApiException("Error: Server Busy", RancidApiException.RWS_BUSY));
-            } else if (doc.getElementsByTagName("Code").item(0).getTextContent().compareTo("ErrNotFound") == 0) {
-            	throw(new RancidApiException("Error: Resource not found",RancidApiException.RWS_RESOURCE_NOT_FOUND));
-            }
-        }      
-        catch( IOException e){
-            throw(new RancidApiException("Error: IOException Method POST: URL:" +url, RancidApiException.OTHER_ERROR));
-        }
+        postMethodRWS(cp, url,rep);        
     }
 
     //***************************************************************************
@@ -923,8 +849,6 @@ public class RWSClientApi {
     public static void createOrUpdateRWSAuthNode(String baseUri, RancidNodeAuthentication rnodea) throws RancidApiException{
         ConnectionProperties cp = new ConnectionProperties("","",baseUri,"/rws",30);
         createOrUpdateRWSAuthNode(cp, rnodea);
-        return;
-
     }   
     
     public static void deleteRWSAuthNode(ConnectionProperties cp, RancidNodeAuthentication rnodea)throws RancidApiException{
@@ -945,19 +869,7 @@ public class RWSClientApi {
         //rep.setMediaType(MediaType.APPLICATION_XHTML_XML);
         // Launch the request
         String url = cp.getUrl() + cp.getDirectory() + "/rancid/clogin/" +rnodea.getDeviceName();
-        Response response = deleteMethodRWS(cp, url);
-        DomRepresentation dmr2 = response.getEntityAsDom();
-        
-        try {
-            Document doc = dmr2.getDocument();
-
-            if (doc.getElementsByTagName("Code").item(0).getTextContent().compareTo("ErrBusy") == 0){
-                throw(new RancidApiException("Error: Server Busy", RancidApiException.RWS_BUSY));
-            }        
-        } catch( IOException e){
-            throw(new RancidApiException("Error: IOException Method DELETE: URL:" +url, RancidApiException.OTHER_ERROR));
-        }
-        return;
+        deleteMethodRWS(cp, url);
     }
 
     
@@ -965,7 +877,6 @@ public class RWSClientApi {
     public static void deleteRWSAuthNode(String baseUri, RancidNodeAuthentication rnodea)throws RancidApiException{
         ConnectionProperties cp = new ConnectionProperties("","",baseUri,"/rws",30);
         deleteRWSAuthNode(cp, rnodea);
-        return;
     }
     
     //*********************************************************************************************
@@ -991,17 +902,13 @@ public class RWSClientApi {
         
         if (response.getStatus().isSuccess()) {
             return response;
-        } else if (response.getStatus() == Status.CLIENT_ERROR_REQUEST_TIMEOUT){
-            throw(new RancidApiException("Error: RWS GET request timeout for URL:" + uriReference));
-        } else if (response.getStatus() == Status.CLIENT_ERROR_UNAUTHORIZED){
-            throw(new RancidApiException("Error: RWS GET authentication failed for URL:" + uriReference));
-        } else if (response.getStatus().getCode() == 404){
-            throw(new RancidApiException("Error: RWS GET resource not found for URL:" + uriReference, RancidApiException.RWS_RESOURCE_NOT_FOUND));
         } else {
-            throw(new RancidApiException("Error: RWS GET request failed for URL: "+ uriReference+ " Status: "+ response.getStatus()));
+        	throw(handleException(response, "GET" ,uriReference));
         }
+
         
     }
+    
     static Response postMethodRWS(ConnectionProperties cp, String uriReference, Representation form) throws RancidApiException {
         
         client.setConnectTimeout(cp.getTimeout());
@@ -1022,15 +929,12 @@ public class RWSClientApi {
         Response response = client.handle(request); 
         if (response.getStatus().isSuccess()) {
             return response;
-        } else if (response.getStatus() == Status.CLIENT_ERROR_REQUEST_TIMEOUT){
-            throw(new RancidApiException("Error: RWS POST request timeout "));
-        }else if (response.getStatus() == Status.CLIENT_ERROR_UNAUTHORIZED){
-            throw(new RancidApiException("Error: RWS POST authentication failed"));
         } else {
-        	return response;
+        	throw(handleException(response, "POST" ,uriReference));
         }
         
     }
+    
     static Response putMethodRWS(ConnectionProperties cp, String uriReference, Representation form) throws RancidApiException {
         
         client.setConnectTimeout(cp.getTimeout());
@@ -1052,15 +956,12 @@ public class RWSClientApi {
         
         if (response.getStatus().isSuccess()) {
             return response;
-        } else if (response.getStatus() == Status.CLIENT_ERROR_REQUEST_TIMEOUT){
-            throw(new RancidApiException("Error: RWS PUT request timeout "));
-        }else if (response.getStatus() == Status.CLIENT_ERROR_UNAUTHORIZED){
-            throw(new RancidApiException("Error: RWS PUT authentication failed"));
         } else {
-        	return response;
+        	throw(handleException(response, "PUT" ,uriReference));
         }
         
     }
+    
     static Response deleteMethodRWS(ConnectionProperties cp, String uriReference) throws RancidApiException {
         
         client.setConnectTimeout(cp.getTimeout());
@@ -1082,16 +983,35 @@ public class RWSClientApi {
         
         if (response.getStatus().isSuccess()) {
             return response;
-        } else if (response.getStatus() == Status.CLIENT_ERROR_REQUEST_TIMEOUT){
-            throw(new RancidApiException("Error: RWS DELETE request timeout "));
-        }else if (response.getStatus() == Status.CLIENT_ERROR_UNAUTHORIZED){
-            throw(new RancidApiException("Error: RWS DELETE authentication failed"));
         } else {
-        	return response;
+        	throw(handleException(response, "DELETE" ,uriReference));
         }
         
     }
     
+    static RancidApiException handleException(Response response, String method, String uriReference ) throws RancidApiException {
+    
+	    if (response.getStatus() == Status.CLIENT_ERROR_REQUEST_TIMEOUT){
+	        return new RancidApiException("Error: RWS "+ method + " failed for URL:" + uriReference + " Status: "+ response.getStatus(), 
+	        		RancidApiException.RWS_TIMEOUT);
+	    } else if (response.getStatus() == Status.CLIENT_ERROR_UNAUTHORIZED){
+	        return new RancidApiException("Error: RWS "+ method + " failed for URL:" + uriReference + " Status: "+ response.getStatus(),
+	        		RancidApiException.RWS_AUTH_FAILES);
+	    } else if (response.getStatus().getCode() == 404){
+	        return new RancidApiException("Error: RWS "+ method + " failed for URL:" + uriReference + " Status: "+ response.getStatus(), 
+	        		RancidApiException.RWS_RESOURCE_NOT_FOUND);
+	    } else if (response.getStatus().getCode() == 409){
+	        return new RancidApiException("Error: RWS "+ method + " failed for URL:" + uriReference + " Status: "+ response.getStatus(), 
+	        		RancidApiException.RWS_RESOURCE_EXISTS);
+	    } else if (response.getStatus().getCode() == 503){
+	        return new RancidApiException("Error: RWS "+ method + " failed for URL:" + uriReference + " Status: "+ response.getStatus(), 
+	        		RancidApiException.RWS_BUSY);
+	    } else {    	
+	        return new RancidApiException("Error: RWS "+ method + " failed for URL: "+ uriReference + " Status: "+ response.getStatus(), 
+	        		RancidApiException.OTHER_ERROR);
+	    }
+
+    }
     //private  String BaseUri;
     
 //user password
