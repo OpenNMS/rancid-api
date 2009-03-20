@@ -12,18 +12,19 @@ import org.w3c.dom.NodeList;
 import java.io.IOException;
 
 import org.restlet.Client;
-//import org.restlet.data.CharacterSet;
+
 import org.restlet.data.Form;
 import org.restlet.data.Protocol;
-import org.restlet.data.Reference;
 import org.restlet.data.Request;
 import org.restlet.data.Method;
 import org.restlet.data.Status;
 import org.restlet.data.Response;
 import org.restlet.data.ChallengeScheme;
 import org.restlet.data.ChallengeResponse;
+
 import org.restlet.resource.DomRepresentation;
 import org.restlet.resource.Representation;
+
 import org.w3c.dom.Document;
 
 /**
@@ -110,9 +111,7 @@ public class RWSClientApi {
 
         
         try {
-        	Response response=getMethodRWS(cp, url);
-        	if (response.isEntityAvailable())
-        		return true;
+        	getMethodRWS(cp, url);
         }
         catch( RancidApiException e){
         	if (e.getRancidCode() == RancidApiException.RWS_BUSY) {
