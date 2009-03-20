@@ -160,7 +160,8 @@ public class RancidNode {
     
     public RancidNode(String group, String deviceName) {
         this.group = group;
-        this.deviceName = deviceName.toLowerCase();
+        if (deviceName != null )
+        	this.deviceName = deviceName.toLowerCase();
         this.nodeVersions = new HashMap<String, InventoryNode>();
     }
 
@@ -176,7 +177,8 @@ public class RancidNode {
     
     //force this to lower case
     public void setDeviceName(String deviceName) {
-        this.deviceName = deviceName.toLowerCase();
+    	if (deviceName != null )
+    		this.deviceName = deviceName.toLowerCase();
     }
     public String getDeviceType() {
         return deviceType;
