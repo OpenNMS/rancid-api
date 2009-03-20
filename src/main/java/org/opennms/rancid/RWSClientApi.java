@@ -542,7 +542,14 @@ public class RWSClientApi {
     
     //***************************************************************************
     // Inventory element list
-    public static List<InventoryElement2> getRWSRancidNodeInventoryElement(ConnectionProperties cp, RancidNode rancidNode, String version) throws RancidApiException {
+    // for backward compatibility
+    public static InventoryElement getRWSRancidNodeInventoryElement(ConnectionProperties cp, RancidNode rancidNode, String version) throws RancidApiException {
+        throw(new RancidApiException("Error: Api is deprecated"));
+    }
+    //***************************************************************************
+    // Inventory element list
+
+    public static List<InventoryElement2> getRWSRancidNodeInventoryElement2(ConnectionProperties cp, RancidNode rancidNode, String version) throws RancidApiException {
         
         if (!inited){
             throw(new RancidApiException("Error: Api not initialized"));

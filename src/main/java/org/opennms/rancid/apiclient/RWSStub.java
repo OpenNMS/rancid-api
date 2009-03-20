@@ -665,7 +665,7 @@ public class RWSStub {
                 System.out.println("*************************************************************");
                 System.out.println("*************************************************************");
                 RancidNode rn8 = RWSClientApi.getRWSRancidNodeTLO(cp, "laboratorio", "7206ped.wind.lab");
-                List<InventoryElement2> ie1 = RWSClientApi.getRWSRancidNodeInventoryElement(cp, rn8, "1.18");
+                List<InventoryElement2> ie1 = RWSClientApi.getRWSRancidNodeInventoryElement2(cp, rn8, "1.18");
                 Iterator<InventoryElement2> iter1 = ie1.iterator();
                 while (iter1.hasNext()){
                     System.out.println("<item>");
