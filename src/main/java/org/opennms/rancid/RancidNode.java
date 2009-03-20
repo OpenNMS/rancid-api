@@ -42,10 +42,18 @@ import java.util.HashMap;
  * 
  * @author <a href="mailto:guglielmoincisa@gmail.com">Guglielmo Incisa</a>
  * @author <a href="mailto:antonio@opennms.it">Antonio Russo</a>
- *
  */
 public class RancidNode {
 
+    @Override
+    public int hashCode() {
+      int hash = 7;
+      hash = 31 * hash + (null == this.deviceName ? 0 : this.deviceName.hashCode());
+      hash = 31 * hash + (null == this.group ? 0 : this.group.hashCode());
+
+      return hash;
+    }
+    
     /**
      * Override equals so that we equal based on deviceName and group
      */
@@ -59,11 +67,15 @@ public class RancidNode {
             throw new IllegalArgumentException("The comparison object is either null or of the wrong class");
         } 
         
+        //probably don't need this case insensitivity check now that we force the deviceName to
+        //lower case
         RancidNode that = (RancidNode)obj;
+        
         if (this.deviceName.equalsIgnoreCase(that.deviceName) 
                 && this.group.equalsIgnoreCase(that.group)) {
             equal = true;
         }
+        
         return equal;
     };
     
@@ -148,7 +160,7 @@ public class RancidNode {
     
     public RancidNode(String group, String deviceName) {
         this.group = group;
-        this.deviceName = deviceName;
+        this.deviceName = deviceName.toLowerCase();
         this.nodeVersions = new HashMap<String, InventoryNode>();
     }
 
@@ -161,8 +173,10 @@ public class RancidNode {
     public String getDeviceName() {
         return deviceName;
     }
+    
+    //force this to lower case
     public void setDeviceName(String deviceName) {
-        this.deviceName = deviceName;
+        this.deviceName = deviceName.toLowerCase();
     }
     public String getDeviceType() {
         return deviceType;
