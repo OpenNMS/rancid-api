@@ -1,9 +1,84 @@
+/*
+ * This file is part of the OpenNMS(R) Application.
+ *
+ * OpenNMS(R) is Copyright (C) 2009 The OpenNMS Group, Inc.  All rights reserved.
+ * OpenNMS(R) is a derivative work, containing both original code, included code and modified
+ * code that was published under the GNU General Public License. Copyrights for modified
+ * and included code are below.
+ *
+ * OpenNMS(R) is a registered trademark of The OpenNMS Group, Inc.
+ *
+ * Modifications:
+ * 
+ * Created: March 17, 2009
+ *
+ * Copyright (C) 2009 The OpenNMS Group, Inc.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+ *
+ * For more information contact:
+ *      OpenNMS Licensing       <license@opennms.org>
+ *      http://www.opennms.org/
+ *      http://www.opennms.com/
+ */
 package org.opennms.rancid;
 
 import java.util.HashMap;
 
+/**
+ * An Object Representation of a node in RANCID
+ * 
+ * @author <a href="mailto:guglielmoincisa@gmail.com">Guglielmo Incisa</a>
+ * @author <a href="mailto:antonio@opennms.it">Antonio Russo</a>
+ *
+ */
 public class RancidNode {
 
+    /**
+     * Override equals so that we equal based on deviceName and group
+     */
+    @Override
+    public boolean equals(Object obj) {
+        boolean equal = false;
+
+        if (this == obj) {
+            return true;
+        } else if (obj == null || obj.getClass() != this.getClass()) {
+            throw new IllegalArgumentException("The comparison object is either null or of the wrong class");
+        } 
+        
+        RancidNode that = (RancidNode)obj;
+        if (this.deviceName.equalsIgnoreCase(that.deviceName) 
+                && this.group.equalsIgnoreCase(that.group)) {
+            equal = true;
+        }
+        return equal;
+    };
+    
+    /**
+     * Override to string for better log messages.
+     */
+    @Override
+    public String toString() {
+        StringBuilder bldr = new StringBuilder();
+        bldr.append("RANICD Node: ");
+        bldr.append(deviceName);
+        bldr.append(" of Group: ");
+        bldr.append(this.group);
+        return bldr.toString();
+    }
 
     public static String DEVICE_TYPE_ALTEON = "alteon";
     //An Alteon WebOS switches.
@@ -61,21 +136,20 @@ public class RancidNode {
     
     private String group;
     
+    private RancidNodeAuthentication m_auth;
+    
     // The list of downloaded versions
     private HashMap<String, InventoryNode> nodeVersions;
 
     
     public RancidNode() {
-        super();
-        nodeVersions = new HashMap<String, InventoryNode>();
+        this(null, null);
     }
+    
     public RancidNode(String group, String deviceName) {
-        super();
-        
         this.group = group;
         this.deviceName = deviceName;
-
-        nodeVersions = new HashMap<String, InventoryNode>();
+        this.nodeVersions = new HashMap<String, InventoryNode>();
     }
 
     public String getComment() {
@@ -137,6 +211,14 @@ public class RancidNode {
     public void setHeadRevision(String HeadRevision){
         this.HeadRevision = HeadRevision;
     }
+    public void setAuth(RancidNodeAuthentication auth) {
+        m_auth = auth;
+    }
+
+    public RancidNodeAuthentication getAuth() {
+        return m_auth;
+    }
+
     public void addInventoryNode(String version, InventoryNode invNode) {
         this.nodeVersions.put(version,invNode);
     }
