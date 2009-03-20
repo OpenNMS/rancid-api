@@ -17,7 +17,8 @@ import org.opennms.rancid.RancidNodeAuthentication;
 import org.opennms.rancid.RWSClientApi;
 import org.opennms.rancid.RWSResourceList;
 import org.opennms.rancid.InventoryNode;
-import org.opennms.rancid.InventoryElement;
+import org.opennms.rancid.InventoryElement2;
+import org.opennms.rancid.Tuple;
 
 import org.opennms.rancid.RWS_MT_ClientApi;
 
@@ -649,66 +650,42 @@ public class RWSStub {
             }
             else if (test == 8) {
                 
-                url = "http://www.rionero.com/auth/rws-devel";
+//                url = "http://www.rionero.com/auth/rws-devel";
+//
+//                ConnectionProperties cp = new ConnectionProperties("opennms","MyRancidApi",url, "/rws", 60);
+                
+                url = "http://www.rionero.com/rws-devel";
 
-                ConnectionProperties cp = new ConnectionProperties("opennms","MyRancidApi",url, "/rws", 60);
+                ConnectionProperties cp = new ConnectionProperties(url, "/rws", 60);
+
                 System.out.println("*************************************************************");
                 System.out.println("************INVENTORY****************************************");
                 System.out.println("*************************************************************");
-                System.out.println("*************************************************************");
-                System.out.println("*************************************************************");
 
+                System.out.println("*************************************************************");
+                System.out.println("*************************************************************");
                 RancidNode rn8 = RWSClientApi.getRWSRancidNodeTLO(cp, "laboratorio", "7206ped.wind.lab");
-                
-                InventoryElement ie1 = RWSClientApi.getRWSRancidNodeInventoryElement(cp, rn8, "1.18");
-                
-                System.out.println("*************************************************************");
-                System.out.println("*************************************************************");
-                System.out.println("*************************************************************");
+                List<InventoryElement2> ie1 = RWSClientApi.getRWSRancidNodeInventoryElement(cp, rn8, "1.18");
+                Iterator<InventoryElement2> iter1 = ie1.iterator();
+                while (iter1.hasNext()){
+                    System.out.println("<item>");
+                    System.out.println(iter1.next().expand());
+                    System.out.println("</item>");
+                }
 
-                System.out.println("ie1.expand [" + ie1.expand()+"]");
-                
-                InventoryElement ie2 = RWSClientApi.getRWSRancidNodeInventoryElement(cp, rn8, "1.17");
-                
-                System.out.println("*************************************************************");
-                System.out.println("*************************************************************");
-                System.out.println("*************************************************************");
-
-                System.out.println("ie2.expand [" + ie2.expand()+"]");
-
-                InventoryElement ie3 = RWSClientApi.getRWSRancidNodeInventoryElement(cp, rn8, "1.16");
-                
-                System.out.println("*************************************************************");
-                System.out.println("*************************************************************");
-                System.out.println("*************************************************************");
-
-                System.out.println("ie3.expand [" + ie3.expand()+"]");
-
-                InventoryElement ie4 = RWSClientApi.getRWSRancidNodeInventoryElement(cp, rn8, "1.15");
-                
-                System.out.println("*************************************************************");
-                System.out.println("*************************************************************");
-                System.out.println("*************************************************************");
-
-                System.out.println("ie4.expand [" + ie4.expand()+"]");
-
-                InventoryElement ie5 = RWSClientApi.getRWSRancidNodeInventoryElement(cp, rn8, "1.14");
-                
-                System.out.println("*************************************************************");
-                System.out.println("*************************************************************");
-                System.out.println("*************************************************************");
-
-                System.out.println("ie5.expand [" + ie5.expand()+"]");
-
-                InventoryElement ie6 = RWSClientApi.getRWSRancidNodeInventoryElement(cp, rn8, "1.13");
-                
-                System.out.println("*************************************************************");
-                System.out.println("*************************************************************");
-                System.out.println("*************************************************************");
-
-                System.out.println("ie6.expand [" + ie6.expand()+"]");
+//                System.out.println("*************************************************************");
+//                System.out.println("*************************************************************");
+//                RancidNode rn9 = RWSClientApi.getRWSRancidNodeTLO(cp, "laboratorio", "7206ped.wind.lab");
+//                List<InventoryElement2> ie2 = RWSClientApi.getRWSRancidNodeInventoryElement(cp, rn9, "1.17");
+//                Iterator<InventoryElement2> iter2 = ie2.iterator();
+//                while (iter2.hasNext()){
+//                    System.out.println("--------");
+//                    System.out.println(iter2.next().expand());
+//                    System.out.println("--------");
+//                }
 
                 System.out.println("*************************************************************");
+                System.out.println("************INVENTORY****************************************");
                 System.out.println("*************************************************************");
 
 
