@@ -1,0 +1,135 @@
+   ---
+   --- SNMP v1 MIB FILE
+   --- RANCID SNMP NOTIFICATIONS
+   --- (as implemented for the OpenNMS/rancid integration project)
+   ---
+   --- Version 1.0 (2009 03 27)
+   ---
+   --- The enclosed MIB definitions were implemented under a private
+   --- enterprise number officially assigned by IANA to a member of
+   --- the OpenNMS/rancid integration project team.
+   ---
+   --- If you need any information or want to modify or extend this MIB,
+   --- PLEASE, contact <iana-pen-contact@rionero.com>. Thank you.
+   ---
+
+   RANCID-CUSTOM-MIB DEFINITIONS ::= BEGIN
+
+
+   IMPORTS
+       OBJECT-TYPE
+           FROM RFC-1212
+       enterprises
+           FROM RFC1155-SMI
+       DisplayString
+           FROM RFC1213-MIB
+       TRAP-TYPE
+           FROM RFC-1215;
+
+
+
+   ---
+   --- Following are pre-requisites placed here to keep this module short
+   --- and to avoid importing other not needed private MIBs
+   ---
+
+   RIONERO                  OBJECT IDENTIFIER ::= { enterprises 31543 }
+
+   SoftwareApplications     OBJECT IDENTIFIER ::= { RIONERO 1 }
+
+   OpenSource               OBJECT IDENTIFIER ::= { SoftwareApplications 1 }
+
+   customizations           OBJECT IDENTIFIER ::= { OpenSource 2 }
+
+
+
+   ---
+   --- Here the actual module definitions begin
+   ---
+
+   rancidCustomMIB          OBJECT IDENTIFIER ::= { customizations 1 }
+
+   rancidObjects            OBJECT IDENTIFIER ::= { rancidCustomMIB 1 }
+
+   rancidTraps              OBJECT IDENTIFIER ::= { rancidCustomMIB 2 }
+
+
+
+   ---
+   --- data objects
+   ---
+   
+   rancidDeviceName OBJECT-TYPE
+       SYNTAX      OCTET STRING (SIZE (0..64))
+       ACCESS      read-only
+       STATUS      current
+       DESCRIPTION "The name of a rancid's managed device."
+       ::= { rancidObjects 1 }
+
+
+   rancidDeviceType OBJECT-TYPE
+       SYNTAX      OCTET STRING (SIZE (0..32))
+       ACCESS      read-only
+       STATUS      current
+       DESCRIPTION "The name of a rancid's deviceType."
+       ::= { rancidObjects 2 }
+
+
+   rancidGroupName OBJECT-TYPE
+       SYNTAX      OCTET STRING (SIZE (0..64))
+       ACCESS      read-only
+       STATUS      current
+       DESCRIPTION "The name of a rancid's group of managed devices."
+       ::= { rancidObjects 3 }
+
+
+   rancidFailureMessage OBJECT-TYPE
+       SYNTAX      DisplayString
+       ACCESS      read-only
+       STATUS      current
+       DESCRIPTION "A string describing a failure condition for which
+                   is not defined any specific trap."
+       ::= { rancidObjects 4 }
+
+
+
+
+   --
+   -- notifications, i.e., traps
+   --
+
+   rancidTrapGenericFailure TRAP-TYPE
+       ENTERPRISE  rancidTraps
+       VARIABLES   { rancidFailureMessage }
+       DESCRIPTION "This trap is sent each time rancid successfully downloads
+                   the configuration from a device."
+   ::= 1
+
+
+   rancidTrapDownloadSuccess TRAP-TYPE
+       ENTERPRISE  rancidTraps
+       VARIABLES   { rancidGroupName, rancidDeviceName }
+       DESCRIPTION "This trap is sent each time rancid successfully downloads
+                   the configuration from a device."
+   ::= 2
+
+
+   rancidTrapDownloadFailure TRAP-TYPE
+       ENTERPRISE  rancidTraps
+       VARIABLES   { rancidGroupName, rancidDeviceName }
+       DESCRIPTION "This trap is sent each time rancid fails to download the
+                   configuration from a device."
+   ::= 3
+
+
+   rancidTrapGroupLocked TRAP-TYPE
+       ENTERPRISE  rancidTraps
+       VARIABLES   { rancidGroupName }
+       DESCRIPTION "This trap is sent each time rancid is not able to process a group
+                   of devices due to the existence of a group's lock file."
+   ::= 4
+
+
+
+   END
+
