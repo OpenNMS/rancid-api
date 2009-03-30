@@ -3,7 +3,7 @@
    --- RANCID SNMP NOTIFICATIONS
    --- (as implemented for the OpenNMS/rancid integration project)
    ---
-   --- Version 1.0 (2009 03 27)
+   --- Version 1.1 (2009 03 28)
    ---
    --- The enclosed MIB definitions were implemented under a private
    --- enterprise number officially assigned by IANA to a member of
@@ -12,6 +12,15 @@
    --- If you need any information or want to modify or extend this MIB,
    --- PLEASE, contact <iana-pen-contact@rionero.com>. Thank you.
    ---
+   ---
+   --- History of changes:
+   ---
+   ---	1.1	corrected the descriptions for "rancidTrapGenericFailure"
+   ---		and "rancidFailureMessage" (typical "copy-and-paste" error)
+   ---
+   ---	1.0	initial release
+   ---
+
 
    RANCID-CUSTOM-MIB DEFINITIONS ::= BEGIN
 
@@ -88,7 +97,7 @@
        ACCESS      read-only
        STATUS      current
        DESCRIPTION "A string describing a failure condition for which
-                   is not defined any specific trap."
+                   is not defined a more specific trap."
        ::= { rancidObjects 4 }
 
 
@@ -101,8 +110,9 @@
    rancidTrapGenericFailure TRAP-TYPE
        ENTERPRISE  rancidTraps
        VARIABLES   { rancidFailureMessage }
-       DESCRIPTION "This trap is sent each time rancid successfully downloads
-                   the configuration from a device."
+       DESCRIPTION "This trap is sent each time rancid needs to notify a
+                   failure condition for which is not defined a more
+                   specific trap."
    ::= 1
 
 
@@ -125,8 +135,9 @@
    rancidTrapGroupLocked TRAP-TYPE
        ENTERPRISE  rancidTraps
        VARIABLES   { rancidGroupName }
-       DESCRIPTION "This trap is sent each time rancid is not able to process a group
-                   of devices due to the existence of a group's lock file."
+       DESCRIPTION "This trap is sent each time rancid is not able to process
+                   a group of devices due to the existence of a group's lock
+                   file."
    ::= 4
 
 
