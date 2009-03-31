@@ -1,0 +1,4118 @@
+#============================================================================
+# RANCID-API * RWS Service Module
+#
+# Copyright (c) 2009+ Rocco Rionero
+# Copyright (c) 2009+ The OpenNMS Group, Inc.
+# All rights reserved everywhere.
+#
+# This program was developed and is maintained by Rocco RIONERO
+# ("the author") and is subject to dual-copyright according to
+# the terms set in "The OpenNMS Project Contributor Agreement".
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307,
+# USA.
+#
+# The author can be contacted at the following email address:
+#
+#	Rocco RIONERO
+#	rock(at)rionero.com
+#
+# (please, specify "rws-rancid-api" in the subject of your message)
+#
+#-----------------------------------------------------------------------------
+# OpenNMS Network Management System is Copyright by The OpenNMS Group, Inc.
+#
+# RANCID application is Copyright by Terrapin Communications, Inc.
+#============================================================================
+
+
+#-----------------------------------------------------------------------------
+#                 UNSUPPORTED BETA-RELEASE SOFTWARE VERSION
+#-----------------------------------------------------------------------------
+
+
+
+#============================================================================
+namespace eval ::RANCID {
+
+  set SRV_NAME	"RANCID-API"
+  set SRV_VER	"0.9.2009033101"
+  set SRV_INFO	"RWS service API for \"rancid\" with the addition of hardware inventory extensions"
+
+
+  # name of the RANCID-API configuration file
+
+  set FILE_API_CONF [file join $::RWS::RWS_MODULE_PATH "rancid.rws.rc"]
+
+
+  # variables expected into RANCID-API configuration file
+
+  # API configuration variables to be assigned in the configuration file;
+  # such variables will be created into the ::RANCID::CONF namespace and
+  # will be accessed (via the API itself) as a property of the "rancid"
+  # node with the name Config.<varname>
+
+  set API_CONF_VARS {
+    fileRancidConf
+    pathRancidHome
+    pathBackup
+    pathTemp
+    commandCVS
+    urlViewVC
+  }
+
+  #--------------------------------------------------------------------------
+  # these are the I/O routines to rancid files;
+  # (originally in source file: "rancid-files-io.inc.tcl")
+  #--------------------------------------------------------------------------
+
+
+  # variables expected into rancid's configuration file (fileRancidConf)
+
+  set NEEDED_CONF_VARS {
+    BASEDIR
+    CVSROOT
+    LIST_OF_GROUPS
+    TMPDIR
+  }
+
+
+  # rancid's file names for device databases and login directives
+
+  set DB_NAME	"router.db"
+  set CL_NAME	".cloginrc"
+
+
+  # the mutex-prefix used for RANCID-API own lockfiles
+
+  set MUTEX_PREFIX	"RWS_RANCID-API_"
+
+
+  # the mutex-name used to generate a .cloginrc lock-file
+  # (generated lock-file will be: ".RWS_RANCID-API_cloginrc.run.lock")
+
+  set CL_MUTEX_NAME	"${MUTEX_PREFIX}cloginrc"
+
+
+  # directives supported in .cloginrc
+
+  variable CL_DIRECTIVES {
+    user
+    userpassword
+    enauser
+    password
+    autoenable
+    noenable
+    userprompt
+    passprompt
+    enableprompt
+    method
+    sshcmd
+    identity
+    passphrase
+    cyphertype
+  }
+
+
+  # rancid's device-types
+
+  array set DB_DEVICETYPES {
+    alteon	"Alteon WebOS switch"
+    baynet	"Bay Networks router"
+    cat5	"Cisco catalyst switch series 5000 and 4000 (CatOS-based)"
+    cisco	"Cisco router, PIX, or switch (IOS-based)"
+    css		"Cisco content services switch"
+    enterasys	"Enterasys NAS (same as \"riverstone\" device-type)"
+    erx		"Juniper E-series edge router"
+    extreme	"Extreme switch"
+    ezt3	"ADC-Kentrox EZ-T3 mux"
+    force10	"Force10 router"
+    foundry	"Foundry router, switch, or router-switch (including switches re-branded as \"HP Procurve\", e.g. HP9304M)"
+    hitachi	"Hitachi routers"
+    hp		"HP Procurve switch such as the 2524 or 4108"
+    juniper	"Juniper router"
+    mrtd	"Device running the (merit) MRTd daemon"
+    netscalar	"Netscalar load balancer"
+    netscreen   "Netscreen firewall"
+    redback	"Redback router, NAS, etc."
+    riverstone  "Riverstone NAS or Cabletron router (starting with version 9.0.3)" 
+    tnt         "Lucent TNT"
+    zebra	"Device running Zebra routing software"
+  }
+
+
+
+  #--------------------------------------------------------------------------
+  # ReadRancidConf
+  #
+  # Process rancid's configuration file (rancid.conf) and retrieves the
+  # needed configuration variables. Since the configuration file is sourced
+  # by rancid's startup shell-scripts (and might include any sort of shell
+  # commands in addition to plain variable assignments) to ensure max
+  # compatibility we do exactly the same here: a process instance of /bin/sh
+  # is launched just to process the configuration file and to dump all
+  # resulting shell variables; the output is then filtered and the needed
+  # variables are loaded into the array RancidConf()
+  
+  proc ReadRancidConf {} {
+    set ltag "RANCID::ReadRancidConf"
+
+    # check that the file exists and is readable
+    if {![file readable "$::RANCID::CONF::fileRancidConf"]} {
+      ::LOG::Msg error "$ltag: cannot read rancid's configuration file \"$::RANCID::CONF::fileRancidConf\""
+      return "Cannot read rancid's configuration file \"$::RANCID::CONF::fileRancidConf\""
+    }
+
+    # launch the shell to source the file and display the variables
+    if {[catch {exec -- /bin/sh -c ". '$::RANCID::CONF::fileRancidConf' ; set" 2>/dev/null} resp]} {
+      ::LOG::Msg error "$ltag: error processing rancid's configuration file \"$::RANCID::CONF::fileRancidConf\" ($resp)"
+      return "Error processing rancid's configuration file \"$::RANCID::CONF::fileRancidConf\" ($resp)"
+    }
+    
+    # process output to load needed variables
+    foreach line [split $resp "\n"] {
+      set assignment [split $line "="]
+      set name  [lindex $assignment 0]
+      if {[lsearch -exact $::RANCID::NEEDED_CONF_VARS $name] >= 0} {
+        if {"[set value [lindex $assignment 1]]" != ""} {
+          set ::RANCID::RancidConf($name) "$value"
+        }
+      }
+    }
+    
+    # check that all needed variables were assigned
+    set vbad ""
+    foreach name $::RANCID::NEEDED_CONF_VARS {
+      if {![info exists ::RANCID::RancidConf($name)]} {append vbad ", $name"}
+    }
+
+    if {"$vbad" == ""} {return ""}
+    set vbad [string trimleft $vbad {, }]
+    ::LOG::Msg error "$ltag: the variable(s) \"$vbad\" are missing or invalid in rancid's configuration file \"$::RANCID::CONF::fileRancidConf\""
+    return "Missing or invalid rancid's configuration variable(s): $vbad]"
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  # GetFilePermissions name
+  #
+  # Returns the file permissions of a file.
+  #
+  #
+  # Argument(s):
+  #
+  #	name		pathname of the file
+  #
+  #
+  # Return Code:
+  #
+  #	<integer>	permissions value in octal representation
+  #	-1		failure
+  #
+
+  proc GetFilePermissions { name } {
+    if {[catch {file attributes $name -permissions} retval]} {
+      ::LOG::Msg error "RANCID::GetFilePermissions: failed ($retval)"
+      return -1
+    }
+    return $retval
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  # CreateUniqueFile path perms __fname __fch
+  #
+  # Generates an unique file name (based on PID, an high-resolution value
+  # for current time and a random number) and opens it for write-only in
+  # create/exclusive mode (that is: the file MUST NOT already exist).
+  # The operation is retried up to 3 times in case of name collision.
+  #
+  #
+  # Argument(s):
+  #
+  #	path		path of directory where the file will be created
+  #
+  #	perms		permission mask -- integer (if -1 defaults to 0666)
+  #
+  #	__fname		name of variable where the generated file name will
+  #			be returned
+  #
+  #	__fch		name of variable where the file's i/o channel (open
+  #			for write-only) will be returned
+  #
+  #
+  # Return Code:
+  #
+  #	 0	success (file created and open)
+  #	-1	failure (repeated name collision or i/o problem)
+  #
+
+  proc CreateUniqueFile { path perms __fname __fch} {
+    set ltag "RANCID::CreateUniqueFile"
+
+    upvar $__fname  fname
+    upvar $__fch    fch
+
+    if {$perms == -1} {set perms 0666}
+
+    set try 0
+    while { [incr try] <= 3 } {
+      set fname "[file join $path [format "%04X-%08X-%04X.tmp"\
+                                  [pid] [clock clicks] [expr {int(rand()*65536)}]]]"
+
+      if {![catch {open $fname {WRONLY CREAT EXCL} $perms} fch]} {
+        ::LOG::Msg debug "$ltag: created file \"$fname\", permissions=$perms"
+        return 0
+      }
+      ::LOG::Msg warning "$ltag: temporary output file creation attempt($try) failed ($fch)"
+    }
+
+    ::LOG::Msg error "$ltag: failed to create temporary output file ($fch)"
+    set fname ""
+    set fch   ""
+    return -1
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  # CreateUniqueDir path __dirname
+  #
+  # Generates an unique directory name (based on PID, an high-resolution
+  # value for current time and a random number) and creates it having "path"
+  # as parent directory.
+  # The operation is retried up to 3 times in case of name collision.
+  #
+  #
+  # Argument(s):
+  #
+  #	path		path of the parent directory where the new one will
+  #			be created
+  #
+  #	__dirname	name of variable where the complete path of the
+  #			created directory will be returned
+  #
+  # Return Code:
+  #
+  #	 0	success (directory created)
+  #	-1	failure (repeated name collision or i/o problem)
+  #
+
+  proc CreateUniqueDir { path __dirname } {
+    set ltag "RANCID::CreateUniqueDir"
+
+    upvar $__dirname  dirname
+
+    set try 0
+    set retval "repeated name collision"
+
+    while { [incr try] <= 3 } {
+      
+      set dirname "[file join "$path" [format "TMPDIR-%04X-%08X-%04X" [pid]\
+                   [clock clicks] [expr {int(rand()*65536)}]]]"
+
+      if {![file exists $dirname]} {
+        # name is ok: create directory
+        if {![catch {file mkdir $dirname} retval]} { return 0 }
+        # creation failed
+        break
+      }
+      ::LOG::Msg warning "$ltag: temporary directory creation attempt($try) failed (name collision)"
+    }
+
+    ::LOG::Msg error "$ltag: failed to create temporary directory ($retval)"
+
+    set dirname ""
+    return -1
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  # CreateMUTEX mutex_name {max_attempts 1} {ms_wait 200}
+  #
+  # Locks access to a given resource by creating (in exclusive mode) a MUTEX
+  # flag file. A rancid-compatible group lockfile may be created by passing
+  # as <mutex_name> the name of a rancid's valid group, thus preventing
+  # rancid from processing the given group of devices while a MODIFICATION
+  # is being performed on that group by the RANCID-API (and viceversa).
+  # This function is also used to create API's own lockfiles, preventing
+  # corrptions of the corresponding protected resource due to concurrent
+  # executions of different running instances of the RANCID-API itself.
+  #
+  # When only the <mutex_name> is passed as argument, the function does NOT
+  # perform any retry in case of collision.
+  #
+  #
+  # Argument(s)
+  #
+  #	mutex_name	the name of a valid rancid's group (or also one of
+  #			the "special" names for the API own MUTEXes)
+  #
+  #	max_attempts	number of attempts to perform (default = 1)
+  #
+  #	ms_wait		time to wait between two consecutive attempts
+  #			(default = 200 ms)
+  #
+  #
+  # Return Code
+  #
+  #	 0	success (file created, lock engaged)
+  #	-1	failure (resource already locked)
+  #
+
+  proc CreateMUTEX { mutex_name {max_attempts 1} {ms_wait 500} } {
+    set ltag "RANCID::CreateMUTEX"
+
+    set fn [file join "$::RANCID::RancidConf(TMPDIR)" ".${mutex_name}.run.lock"]
+
+
+    set try 1
+
+    while {1} {
+      if {![catch {open "$fn" {WRONLY CREAT EXCL}} fch]} { break }
+
+      # failed to acquire MUTEX
+
+      ::LOG::Msg warning "$ltag: \"$mutex_name\" creation attempt($try) failed ($fch)"
+
+      if {[incr try] > $max_attempts} {
+        ::LOG::Msg error "$ltag: \"$mutex_name\" creation failed (no more attempts left)"
+        return -1
+      }
+
+      # wait and retry
+
+      after $ms_wait
+    }
+
+    # MUTEX file created successfully
+
+    set result 0
+
+    if {[catch {puts $fch "[pid] RWS RANCID-API"} retval]} {
+      ::LOG::Msg error "$ltag: failed to write process data into \"$mutex_name\" ($retval)"
+      set result -1
+    }
+
+    if {[catch {close $fch} retval]} {
+      ::LOG::Msg error "$ltag: failed to close MUTEX file, possible deferred-write error ($retval)"
+      set result -1
+    }
+
+    if {$result == 0} { ::LOG::Msg debug "$ltag: \"$mutex_name\" acquired on attempt $try" }
+
+    return $result
+
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  # ReleaseMUTEX
+  #
+  # Delete a previously created MUTEX-file thus releasing an acquired lock.
+  # Note: this function always return success, as such any error is reported
+  #       as "warning" into the logfile.
+  #
+  # Argument(s)
+  #
+  #	mutex_name	name of a valid rancid's group previously locked by
+  #			the RANCID-API
+  #
+  #
+  # Return Code
+  #
+  #	 0	success (always)
+  #
+
+  proc ReleaseMUTEX { mutex_name } {
+    set ltag "RANCID::ReleaseMUTEX"
+    if {[catch {file delete [file join $::RANCID::RancidConf(TMPDIR) ".${mutex_name}.run.lock"]} retval]} {
+      ::LOG::Msg warning "$ltag: unable to release \"$mutex_name\" ($retval)"
+    } else {
+      ::LOG::Msg debug "$ltag: \"$mutex_name\" released"
+    }
+    return 0
+  }
+  #--------------------------------------------------------------------------
+
+
+  #--------------------------------------------------------------------------
+  # IsValidIPv4
+  #
+  # Returns 1 (TRUE) if the passed string is a valid IPv4 address in the usual
+  # "dotted-decimal-notation", 0 (FALSE) otherwise.
+
+  proc IsValidIPv4 { ipv4 } {
+    if { [regexp {^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$} $ipv4 \
+                 dummy b1 b2 b3 b4] != 0 } {
+      if {($b1<256)&&($b2<256)&&($b3<256)&&($b4<256)} {return 1}
+    }
+    return 0
+  }
+  #--------------------------------------------------------------------------
+
+
+  #--------------------------------------------------------------------------
+  # IsValidDomainHostName
+  #
+  # Returns 1 (TRUE) if the passed string is a valid host name, 0 (FALSE)
+  # otherwise. Note that the allowed format is somewhat "relaxed" if compared
+  # to official DNS specifications (according to what is actually accepted by
+  # current resolver's implementations)
+
+  proc IsValidDomainHostName { name } {
+    if {![regexp {^(?:[[:alnum:]-]*[[:alpha:]-][[:alnum:]-]*\.?)+$} $name]} { return 0 }
+    return [regexp {^(?:[[:alnum:]]+(?:\-[[:alnum:]]+)*\.?)+$} $name]
+  }
+  #--------------------------------------------------------------------------
+
+
+  #--------------------------------------------------------------------------
+  # IsValidDeviceName
+
+  proc IsValidDeviceName {device_name} {
+
+    if { [IsValidIPv4 $device_name] } { return 1 }
+
+    return [IsValidDomainHostName $device_name]
+  }
+  #--------------------------------------------------------------------------
+
+
+
+
+  ### ACCESS TO router.db ###
+
+
+  # NEW INTERNAL ERROR CODES (DB_ACCESS_ERRORS) FROM: version 0.9.2009032401
+  #
+  #	CODE	DESCR				GetList	GetDev	TouchDev
+  #	----	-------------------------------	-------	------	--------
+  #	  4	DELETE OK			NO	NO	YES
+  #	  3	UPDATE OK			NO	NO	YES
+  #	  2	ADD OK				NO	NO	YES
+  #	  1	UPDATE NOT NEEDED (OK)		NO	NO	YES
+  #	  0	SUCCESS/DEVICE FOUND		YES	YES	NO
+  #	 -1	GROUP LOCKED			YES	YES	YES
+  #	 -2	FAILED DB OPEN FOR READING	YES	YES	YES
+  #	 -3	FAILED DB READ			YES	YES	YES
+  #	 -4	MALFORMED DB INPUT LINE		YES	YES	YES
+  #	 -5	DEVICE NOT FOUND (ACCESS OK)	NO	YES	YES
+  #	 -6	ADD FAILED (ALREADY EXISTS)	NO	NO	YES
+  #	 -7	ADD/UPDATE FAILED: MISSING DATA	NO	NO	YES
+  #	 -8	ADD/UPDATE FAILED: INVALID DATA	NO	NO	YES
+  #	 -9	FAILED DB OPEN FOR APPENDING	NO	NO	YES
+  #	-10	FAILED DB WRITE			NO	NO	YES
+  #	-11	FAILED DB CLOSE			NO	NO	YES
+  #	-12	FAILED TEMP DB CREATION		NO	NO	YES
+  #	-13	FAILED TEMP DB WRITE		NO	NO	YES
+  #	-14	FAILED TEMP DB CLOSE		NO	NO	YES
+  #	-15	FAILED TEMP DB RENAME		NO	NO	YES
+
+
+  #--------------------------------------------------------------------------
+  # DB_GetListOfDevices group __device_list
+  #
+  # Reads the device's database file for the given group and returns a list
+  # with the names of all the devices present in that group.
+  #
+  # NOTE: will return 0 (meaning "no errors occurred") also if no devices
+  #       were found (device_list empty)
+  #
+  # NOTE: returned devicenames are converted to LOWERCASE
+  #
+  #
+  # Argument(s)
+  #
+  #	group		name of a valid rancid's group of devices
+  #
+  #	__device_list	name of variable for the returned list of devices
+  #
+  #
+  # Return Code
+  #
+  #	 0	success (device_list contain devicenames: it may be empty)
+  #	-1	group is locked, cannot access database
+  #	-2	open failed (database does not exist or i/o problem)
+  #	-3	read failed
+  #	-4	invalid line in database
+  #
+
+  proc DB_GetListOfDevices { group __device_list } {
+    set ltag "RANCID::DB_GetListOfDevices"
+
+    upvar $__device_list  devlist
+
+    set devlist {}
+
+    if {[::RANCID::CreateMUTEX "${::RANCID::MUTEX_PREFIX}$group" 5]} {return -1}
+
+    set db_name [file join $::RANCID::RancidConf(BASEDIR) $group $::RANCID::DB_NAME]
+
+    if {[catch {open $db_name "r"} fch]} {
+
+      ::LOG::Msg error "$ltag: failed to open group file for reading ($fch)"
+      set res -2
+
+    } else {
+
+      set res 0
+
+      while { 1 } {
+
+        if {[catch {gets $fch fline} x]} {
+          set res -3
+          ::LOG::Msg error "$ltag: error reading from group file ($x)"
+          break
+        }
+
+        # check for end-of-file
+        if {$x < 0} { break }
+
+        # trim input line and ignore if empty
+        if {[set fline [string trim $fline]] == ""} {continue}
+
+        # ignore comments
+        if {[string index $fline 0] == "#"} {continue}
+
+        # line is not blank and not a comment
+
+        if {![regexp {^([[:alnum:]]+[^: ]*)[[:blank:]]*:[[:blank:]]*[[:alnum:]]+[[:blank:]]*:[^:]+(?::.*)?$} \
+                     $fline mall mname]} {
+          # unexpected/invalid input line
+          ::LOG::Msg error "$ltag: malformed line in group file \"$db_name\": \"$fline\""
+          set res -4
+          break
+        }
+
+        # restored conversion to lower-case 0.9.2009022501
+        lappend devlist [string tolower $mname]
+
+      }
+
+      if {[catch {close $fch} retval]} {
+        ::LOG::Msg warning "$ltag: error closing group file: ignored ($retval)"
+      }
+
+    }
+
+    ::RANCID::ReleaseMUTEX "${::RANCID::MUTEX_PREFIX}$group"
+
+    return $res
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  # DB_GetDevice group name __type __state __comment [1|0]
+  #
+  # Access the rancid's group database and returns the data for a given
+  # device.
+  #
+  # NOTE: devicename matching is case-INSENSITIVE
+  #
+  # Argument(s)
+  #
+  #	group		name of a valid rancid's group of devices
+  #
+  #	name		name of device from the given group
+  #
+  #	__type		name of variable where the value of the device-type
+  #			field (read from the DB) will be returned
+  #
+  #	__state		name of variable where the value of the device-state
+  #			field (read from the DB) will be returned
+  #
+  #	__comment	name of variable where the value of the device-comment
+  #			field (read from the DB) will be returned
+  #
+  #
+  # Return Code
+  #
+  #	 0	success (device found and data returned)
+  #	-1	group is locked, cannot access database
+  #	-2	open failed (database does not exist or i/o problem)
+  #	-3	read failed
+  #	-4	malformed line from database
+  #	-5	device not found in database (access was ok)
+  #
+
+  proc DB_GetDevice { group name __type __state __comment {lock 1}} {
+    set ltag "RANCID::DB_GetDevice"
+
+    upvar $__type	type
+    upvar $__state	state
+    upvar $__comment	comment
+
+    set type    ""
+    set state   ""
+    set comment ""
+
+    if { $lock } { if {[::RANCID::CreateMUTEX "${::RANCID::MUTEX_PREFIX}$group" 5]} {return -1} }
+
+    set db_name [file join $::RANCID::RancidConf(BASEDIR) $group $::RANCID::DB_NAME]
+
+    if {[catch {open $db_name "r"} fch]} {
+
+      ::LOG::Msg error "$ltag: failed to open group file for reading ($fch)"
+      set res -2
+
+    } else {
+
+      set res -5
+
+      while { 1 } {
+
+        # read line from file
+        if {[catch {gets $fch fline} x]} {
+          ::LOG::Msg error "$ltag: error reading from group file ($x)"
+          set res -3
+          break
+        }
+
+        # check for end-of-file
+        if {$x < 0} { break }
+
+        # trim input line and ignore if empty
+        if {[set fline [string trim $fline]] == ""} {continue}
+
+        # ignore comments
+        if {[string index $fline 0] == "#"} {continue}
+
+        # line is not blank and not a comment
+
+        if {![regexp {^([[:alnum:]]+[^: ]*)[[:blank:]]*:[[:blank:]]*([[:alnum:]]+)[[:blank:]]*:([^:]+)(?::(.*))?$} \
+                     $fline mall mdevname type state comment]} {
+          # unexpected/invalid input line
+          ::LOG::Msg error "$ltag: malformed line in group file \"$db_name\": \"$fline\""
+          set res -4
+          break
+        }
+
+        # line is valid: if devicename is the required one we're done
+
+        # restored case-insensitive matching 0.9.2009022501
+        if {[string compare -nocase $name $mdevname] == 0} {
+          set res 0
+          break
+        }
+
+      }
+
+      if {[catch {close $fch} retval]} {
+        ::LOG::Msg warning "$ltag: error closing input group file: ignored ($retval)"
+      }
+    }
+
+    if { $lock } { ::RANCID::ReleaseMUTEX "${::RANCID::MUTEX_PREFIX}$group" }
+
+    return $res
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  # Valori per argomento "mode":
+  #
+  #	  1	= CREATE
+  #	  0	= UPDATE (default mode)
+  #	 -1	= DELETE
+  #
+  # Return Code
+  #
+  #	  4	success (device DELETED)
+  #	  3	success (device UPDATED)
+  #	  2	success (device ADDED)
+  #	  1	success (update NOT NEEDED)
+  #
+  #	 -1	group is locked, cannot access database
+  #	 -2	open failed (database does not exist or i/o problem)
+  #	 -3	database read failed
+  #	 -4	invalid line in database
+  #	 -5	device not found in database (access was ok)
+  #	 -6	cannot add device: already exists
+  #	 -7	cannot add or update device: some mandatory data is missing
+  #	 -8	cannot add or update device: some mandatory data is blank/invalid
+  #	 -9	failed to open database for writing
+  #	-10	database write failed
+  #	-11	database close failed
+  #	-12	failed to create temporary file with unique name
+  #	-13	temporary database write failed
+  #	-14	temporary database close failed
+  #	-15	failed to rename updated database
+
+  proc DB_TouchDevice { group name __type __state __comment {mode 0}} {
+    set ltag "RANCID::DB_TouchDevice"
+
+    upvar $__type	type
+    upvar $__state	state
+    upvar $__comment	comment
+
+
+    # acquires rancid's group MUTEX first
+    if {[::RANCID::CreateMUTEX $group]} {return -1}
+
+    # then acquires API group MUTEX
+    if {[::RANCID::CreateMUTEX "${::RANCID::MUTEX_PREFIX}$group" 5]} {set res -1} else {
+
+      # NOTE: starting from 0.9.2009021501 this routine DOES NOT modify the
+      #       devicename's case. It is expected to be properly adjusted by
+      #       the caller
+
+      ###set name [string tolower $name]
+
+      set db_path [file join $::RANCID::RancidConf(BASEDIR)  $group]
+      set db_name [file join $db_path  $::RANCID::DB_NAME]
+      set db_bkup [file join $::RANCID::CONF::pathBackup  "${group}.${::RANCID::DB_NAME}.backup"]
+
+      if { $mode < 0 } {
+        # DELETE
+        if {[set res [DB_GetDevice $group $name type state comment 0]] >= 0} { set res 4 }
+      } else {
+        # ADD or UPDATE
+        if { ($type != ":" && ![info exists ::RANCID::DB_DEVICETYPES($type)]) || $state == ""} {
+          # invalid data
+          ::LOG::Msg error "$ltag: deviceType or deviceState submitted values are invalid: writing into group file refused"
+          set res -8
+        } else {
+
+          if {[set res [DB_GetDevice $group $name otype ostate ocomment 0]] != 0} {
+            if { $res == -5 && $mode == 1} {
+              # ADD (database access ok, device not found)
+              if {$type == ":" || $state == ":"} {
+                # missing mandatory data
+                ::LOG::Msg error "$ltag: deviceType or deviceState values were not submitted: writing into group file refused"
+                set res -7
+              } else {
+                if {$comment == ":"} {set comment ""}
+                if {[catch {file copy -force "$db_name" "$db_bkup"} retval]} {
+                  ::LOG::Msg warning "$ltag: failed to create a backup copy of group file: ignored ($retval)"
+                }
+                if {[catch {open $db_name "a"} ofch]} {
+                  ::LOG::Msg error "$ltag: failed to open group file for writing ($ofch)"
+                  set res -9
+                } else {
+                  if { [catch {puts $ofch "$name:$type:$state:$comment"} retval] } {
+                    ::LOG::Msg error "$ltag: failed to write into group file ($retval)"
+                    set res -10
+                  } else {
+                    # device added successfully
+                    set res 2
+                  }
+                  if {[catch {close $ofch} retval]} {
+                    ::LOG::Msg error "$ltag: failed to close written group file: deferred write-error? ($retval)"
+                    set res -11
+                  }
+                }
+              }
+            }
+          } else {
+            # device found in database
+            if { $mode != 0 } {
+              # cannot add: device already exists
+              ::LOG::Msg error "$ltag: devicename \"$name\" already exists in group file: cannot create"
+              set res -6
+            } else {
+              # UPDATE
+              if { $type    == ":" } { set type    $otype    }
+              if { $state   == ":" } { set state   $ostate   }
+              if { $comment == ":" } { set comment $ocomment }
+              if {$type == $otype && $state == $ostate && $comment == $ocomment} {set res 1} else {set res 3}
+            }
+          }
+        }
+      }
+
+      # $res == 4 : DELETE request
+      # $res == 3 : UPDATE request
+      # $res == 2 : DONE (device added)
+      # $res == 1 : DONE (no update needed)
+      # $res <  0 : ERROR
+
+      if { $res > 2 } {
+
+        if { [set fperms [GetFilePermissions $db_name]] == -1 } {
+          set fperms 0666
+          ::LOG::Msg warning "$ltag: temporary group file will be created with default $fperms permissions"
+        }
+
+        if { [::RANCID::CreateUniqueFile $db_path $fperms ofname ofch] } {set res -12} else {
+
+          if {[catch {open $db_name "r"} ifch]} {
+
+            ::LOG::Msg error "$ltag: failed to open group file for reading ($ifch)"
+            set res -2
+
+          } else {
+
+            # copy all lines EXCEPT the record of the given devicename from "old" database into the new one
+
+            while { $res > 2 } {
+
+              if {[catch {gets $ifch fline} x]} {
+
+                ::LOG::Msg error "$ltag: error reading from group file ($x)"
+                set res -3
+
+              } else {
+
+                # check for end-of-file
+                if {$x < 0} { break }
+
+                if {[regexp {^([[:alnum:]]+[^: ]*)[[:blank:]]*:[[:blank:]]*[[:alnum:]]+[[:blank:]]*:[^:]+(?::.*)?$}\
+                            $fline mall mname]} {
+                  # match is case-INSENSITIVE
+                  if {[string compare -nocase $mname $name] == 0} {continue}
+                }
+
+                if { [catch {puts $ofch $fline} retval] } {
+                  ::LOG::Msg error "$ltag: error writing to temporary group file ($retval)"
+                  set res -13
+                }
+
+              }
+
+            }
+
+            # done with "old" database
+
+            if {[catch {close $ifch} retval]} {
+              ::LOG::Msg warning "$ltag: error closing input group file: ignored ($retval)"
+            }
+
+            # now if an update was requested, append the record for the new device
+
+            if { $res == 3 } {
+              if {[catch {puts $ofch "$name:$type:$state:$comment"} retval]} {
+                ::LOG::Msg error "$ltag: error writing to temporary group file ($retval)"
+                set res -13
+              }
+            }
+
+          }
+
+          # done with the temporary database
+          if {[catch {close $ofch} retval]} {
+            ::LOG::Msg error "$ltag: failed to close written temporary group file: deferred write-error? ($retval)"
+            set res -14
+          }
+
+          if { $res > 2 } {
+            # if update/delete was ok, backup/rename old file and rename temporary
+
+            if {[catch {file rename -force $db_name $db_bkup} retval]} {
+              ::LOG::Msg warning "$ltag: failed to create a backup copy of group file: ignored ($retval)"
+            }
+
+            if {[catch {file rename -force $ofname $db_name} retval]} {
+              ::LOG::Msg error "$ltag: failed to rename temporary group file ($retval)"
+              set res -15
+            }
+
+          } else {
+
+            # if something went wrong, delete the temporary file
+
+            if {[catch {file delete "$ofname"} retval]} {
+              ::LOG::Msg warning "$ltag: failed to delete temporary group file: ignored ($retval)"
+            }
+
+          }
+
+        }
+
+      }
+
+      # release API group MUTEX
+      ::RANCID::ReleaseMUTEX "${::RANCID::MUTEX_PREFIX}$group"
+    }
+
+    # release rancid's group MUTEX
+    ::RANCID::ReleaseMUTEX $group
+
+    return $res
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  ### ACCESS TO .cloginrc ###
+
+
+  # NEW INTERNAL ERROR CODES (CL_ACCESS_ERRORS) FROM: version 0.9.2009032401
+  #
+  #	CODE	DESCR					GetDevAccess	TouchDevAccess
+  #	----	-------------------------------		------------	--------
+  #	  3	RESET OK				NO		YES
+  #	  2	UPDATE OK				NO		YES
+  #	  1	UPDATE NOT NEEDED (OK)			NO		YES
+  #	  0	FOUND DEVICE PATTERN MATCHING		YES		NO
+  #	 -1	CL LOCKED				YES		YES
+  #	 -2	FAILED CL OPEN FOR READING		YES		YES
+  #	 -3	FAILED CL READ				YES		YES
+  #	 -4	MALFORMED CL INPUT LINE			YES		YES
+  #	 -5	NO DEVICE PATTERN MATCHING		YES		NO
+  #	 -6	POST FAILED: NO DATA			NO		YES
+  #	 -7	FAILED TEMP CL CREATION			NO		YES
+  #	 -8	FAILED TEMP CL WRITE			NO		YES
+  #	 -9	FAILED TEMP CL CLOSE			NO		YES
+  #	-10	FAILED TEMP CL RENAME			NO		YES
+
+
+  #--------------------------------------------------------------------------
+  # This routine scans the .cloginrc file for directives matching the given
+  # device name. An algorithm similar to rancid's one is employed (that is:
+  # device name is matched according to Tcl's case-INSENSITIVE "glob" matching
+  # and the first match is returned). The "include" directive is fully
+  # supported with an additional include-loop detection.
+  #
+  # Matched directives are turned into RANCID-API's resource properties: most
+  # of the directives are mapped directly into the corresponding resource
+  # properties without modifications, the exceptions are the following two:
+  #
+  # - "password" directive, used to specify both the "vty-password" and the
+  #   "enable-password", is translated into TWO different resource properties
+  #   "password" and "enablepassword";
+  #
+  # - "method" directive, which specifies an orderer list of connection
+  #   protocols (ssh, telnet, etc.) in TCL-list style, is translated in
+  #   a "method" resource property having as value the same list of
+  #   protocols but expressed as comma-separated string of values
+  #
+  #
+  # A .cloginrc lock is acquired by default unless the function is called
+  # with an (optional) last argument of 0 (= don't lock): this is done when
+  # the function is called as part of an overall transaction on the cloginrc
+  # file and a lock was already acquired by the caller.
+  #
+  # NOTE: rancid does not support/check a lock over the .cloginrc file: it
+  #       should be patched to support it, if you think this is required...
+  #	  The lock is anyway needed also to prevent concurrent access by
+  #       different instances of the API itself.
+  #
+  #
+  # returned value:
+  #
+  #	  0	file processed ok
+  #	 -1	file locked
+  #	 -2	open failed (either top file or included one)
+  #	 -3	read failed (either top file or included one)
+  #      -4	malformed line
+  #	 -5	not found (no device matched the pattern)
+
+  proc CL_GetDeviceLoginProperties { device_name __properties {lock 1} } {
+
+    set ltag "RANCID::CL_GetDeviceLoginProperties"
+
+    upvar $__properties p
+
+    array unset p  *
+
+    if { $lock } { if {[::RANCID::CreateMUTEX $::RANCID::CL_MUTEX_NAME]} {return -1} }
+
+    set unmatched $::RANCID::CL_DIRECTIVES
+
+    set fn_list {}
+
+    set fname	[file join $::RANCID::CONF::pathRancidHome $::RANCID::CL_NAME]
+    set ilev	0
+
+    # note: here the value "1" is just a flag: it will never be returned
+    set resp 1
+
+    while { $resp > 0 } {
+
+      # open the input file (either top-level or included)
+      # loop-detector: fn_list is a list of currently open file names
+      if {[lsearch -exact $fn_list $fname] < 0} {
+        # file not open yet: go ahead
+        incr ilev
+        if {[catch {open $fname "r"} fch($ilev)]} {
+          # file open failed: ignore if this is an included one
+          if {$ilev == 1} {
+            ::LOG::Msg error "$ltag: failed to open top-level access file for reading ($fch($ilev))"
+            incr ilev -1
+            set  resp -2
+          } else {
+            ::LOG::Msg warning "$ltag: failed to open included access file for reading: ignored ($fch($ilev))"
+            incr ilev -1
+          }
+        } else {
+          lappend fn_list $fname
+        }
+      } else {
+        # inclusion-loop detected: directive ignored
+        ::LOG::Msg warning "$ltag: loop detected in access file include chain, second instance of file \"$fname\" will be ignored"
+      }
+
+      # process the current file
+      while { $resp > 0 } {
+
+        # read line from file (note: the file channel may change in the inner loop due to a closed include file)
+        if {[catch {gets $fch($ilev) fline} x]} {
+          ::LOG::Msg error "$ltag: error reading from access file ($x)"
+          set resp -3
+          break
+        }
+
+        # check for end-of-file
+        if {$x < 0} {
+          if {[catch {close $fch($ilev)} retval]} {
+            ::LOG::Msg warning "$ltag: error closing input access file: ignored ($retval)"
+          }
+          if {[incr ilev -1] == 0} { set resp 0 }
+          continue
+        }
+
+        # processing input line
+
+        # trim input line and ignore if empty
+        if {[set fline [string trim $fline]] == ""} {continue}
+
+        # ignore comments
+        if {[string index $fline 0] == "#"} {continue}
+
+        # non-comments line must start with a valid directive
+        if {![regexp {^((?:add)|(?:include))[[:blank:]]} $fline mall field]} {
+          ::LOG::Msg error "$ltag: invalid line in access file \"$fname\": \"$fline\""
+          set resp -4
+          break
+        }
+
+        # now field can only be one of the tokens "add" or "include"
+
+        if {$field == "include"} {
+          # including file "fname"
+          if {[catch {lindex $fline 1} field]} {
+            ::LOG::Msg error "$ltag: malformed line in access file \"$fname\": \"$fline\" ($field)"
+            set resp -4
+          } else {
+            if {[file pathtype $field] == "absolute"} {
+              set fname $field
+            } else {
+              set fname [file join $::RANCID::CONF::pathRancidHome $field]
+            }
+          }
+          break
+        }
+
+        # line is "add <directive> <device-pattern> <value> [<value> [..]]
+
+        if {[catch {lindex $fline 2} field]} {
+          ::LOG::Msg error "$ltag: malformed line in access file \"$fname\": \"$fline\" ($field)"
+          set resp -4
+          break
+        }
+
+        # note that from now on we can assume fline as containing a well-formed list
+
+        # device pattern matching is case-INSENSITIVE
+        if {![string match -nocase $field $device_name]} {continue}
+
+        # pattern matches devicename: process the directive
+        set field [lindex $fline 1]
+
+        # skip the line if it contains an already previously matched directive
+        if {[set lidx [lsearch -exact $unmatched $field]] < 0} {continue}
+
+        # translate .cloginrc directives into device properties
+        if {$field == "method"} {
+          set p(method) [join [subst -nocommands -novariables [lrange $fline 3 end]] ","]
+        } else {
+          if {$field == "password" && [llength $fline] > 4} {
+            set p(enablepassword) [subst -nocommands -novariables [lindex $fline 4]]
+          }
+          set p($field) [subst -nocommands -novariables [lindex $fline 3]]
+        }
+
+        # flag the directive as "processed"
+        if {[llength [set unmatched [lreplace $unmatched $lidx $lidx]]]} {continue}
+
+        # all possible directives have been matched: we're done with the device
+        set resp 0
+      }
+
+    }
+
+    # close all nested open files
+    while {$ilev} {
+      if {[catch {close $fch($ilev)} retval]} {
+        ::LOG::Msg warning "$ltag: error closing input access file: ignored ($retval)"
+      }
+      incr ilev -1
+    }
+
+    if { $lock } { ::RANCID::ReleaseMUTEX $::RANCID::CL_MUTEX_NAME }
+
+    # note: here resp==0 just means that the file(s) were processed correctly:
+    #       if p is empty no patterns were matched: change exit code to -5
+
+    if {$resp == 0} {if {[array size p] == 0} {return -5}}
+
+    return $resp
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  # Se $__new_properties è il nome di un array, effettua Add/Modify
+  # altrimenti RESETTA le properties ai soli valori glob-matched
+  #
+  # return:
+  #
+  #	   3	success (DELETE)
+  #	   2	success (ADD/UPDATE)
+  #	   1	success (UPDATE NOT NEEDED)
+  #
+  #	  -1	file locked
+  #	  -2	failed to open file for reading
+  #	  -3	read failed
+  #	  -4	malformed input line
+  #
+  #	  -6	no properties to add
+  #	  -7	failed to create temporary file with unique name
+  #	  -8	write failed to temporary update file
+  #	  -9	failed to close temporary update file (deferred write-error?)
+  #	 -10	failed to rename updated file
+  # 
+  # NOTE: this version ALWAYS rewrite all device entries at the beginning
+  #       of the file and also turns glob matching patterns into specific
+  #       patterns. This makes easier to manage manually the .cloginrc file
+  #
+
+  proc CL_TouchDeviceLoginProperties { device_name __new_properties } {
+
+    set ltag "RANCID::CL_TouchDeviceLoginProperties"
+
+    upvar $__new_properties np
+
+    if {[set is_post_request [array exists np]]} {
+      if { [array size np] == 0 } {
+        ::LOG::Msg error "$ltag: input properties array is empty: nothing to write to access file"
+        return -6
+      }
+    }
+
+    if {[::RANCID::CreateMUTEX $::RANCID::CL_MUTEX_NAME]} {return -1}
+
+    # NOTE: starting from 0.9.2009021501 this routine DOES NOT modify the
+    #       devicename's case. It is expected to be properly adjusted by
+    #       the caller
+
+    ###set device_name [string tolower $device_name]
+
+
+    if {[set res [::RANCID::CL_GetDeviceLoginProperties $device_name cp 0]] == -5 } {
+
+      # no match (cp is empty): all properties in np will be written if POST,
+      # nothing to do if DELETE (note: set to 0 ... see next checks)
+
+      if { $is_post_request } {
+        # setup cp with values to be written
+        array set cp [array get np]
+        set res 2
+      } else {
+        set res 0
+      }
+
+    } elseif {$res == 0} {
+    
+      # np = new properties
+      # cp = current properties
+
+      # calculate added/changed properties
+
+      if { $is_post_request } {
+
+        # assume no changes required (state is UNCHANGED)
+
+        set res 1
+        foreach {pname pval} [array get np] {
+          if {[info exists cp($pname)]} {
+            if {[string compare $pval $cp($pname)] == 0} {continue}
+          }
+          # either the property does not exist or has different value:
+          # set the new value and change state to UPDATED
+          set cp($pname) $pval
+          set res 2
+        }
+
+        # always set np==cp (needed to return to caller)
+
+        array set np [array get cp]
+
+      } else {
+
+        # delete request (state is DELETED)
+
+        set res 3
+
+      }
+
+    }
+
+    # status:
+    #
+    # res  < 0 : error returned by CL_GetDeviceLoginProperties
+    # res == 0 : DELETE request, nothing to do, np==undefined, cp==empty
+    # res == 1 : POST request, nothing to do, np==cp==current/final_properties (np is from caller and ready to be returned)
+    # res == 2 : POST request, np==cp==final_properties (np is from caller and ready to be returned)
+    # res == 3 : DELETE request, np==undefined cp==current properties
+
+
+    if {$res == 0} {
+
+      # DELETE with nothing to delete: change status to 3 (RESET/SUCCESS), will not operate on files
+
+      set res 3
+
+    } elseif { $res > 1 } {
+
+      # POST(2) or DELETE(3)
+
+      set cl_name [file join $::RANCID::CONF::pathRancidHome $::RANCID::CL_NAME]
+      set cl_bkup [file join $::RANCID::CONF::pathBackup "${::RANCID::CL_NAME}.backup"]
+
+      if { [set fperms [GetFilePermissions $cl_name]] == -1 } {
+        set fperms 0666
+        ::LOG::Msg warning "$ltag: temporary access file will be created with default $fperms permissions"
+      }
+
+      if { [::RANCID::CreateUniqueFile $::RANCID::CONF::pathRancidHome $fperms ofname ofch] } {set res -7} else {
+
+        # write the new set of directives for our device at the beginning of the file
+
+        if { $res == 2 } {
+
+          # translate device's access properties values
+          # into list of values for .cloginrc directives
+
+          foreach {pname pval} [array get cp] {
+            if {$pname == "method"} {
+              set cp(method) [split $pval ","]
+            } else {
+              set cp($pname) [list $pval]
+            }
+          }
+
+          if {[info exists cp(enablepassword)]} {
+            if {![info exists cp(password)]} {set cp(password) [list ""]}
+            lappend cp(password) $cp(enablepassword)
+            unset cp(enablepassword)
+          }
+
+          foreach pname $::RANCID::CL_DIRECTIVES {
+            if {[info exists cp($pname)]} {
+              if { [catch {puts $ofch [format "add %-14s %s %s" $pname $device_name $cp($pname)]} retval] } {
+                ::LOG::Msg error "$ltag: error writing to temporary access file ($retval)"
+                set res -8
+                break
+              }
+            }
+          }
+
+        }
+
+        # append the previous file deleting all entries specific to this device
+
+        if { $res > 0 } {
+          if {[catch {open "$cl_name" "r"} ifch]} {
+            ::LOG::Msg error "$ltag: failed to open access file for reading ($ifch)"
+            set res -2
+          } else {
+            # selective copy loop
+            while { $res > 0 } {
+              if {[catch {gets $ifch fline} x]} {
+                ::LOG::Msg error "$ltag: error reading from access file ($x)"
+                set res -3
+              } else {
+                # check for end-of-file
+                if {$x < 0} { break }
+                # note: if we are here it means that the input file was correctly parsed
+                #       by the initial call to CL_GetDeviceLoginProperties, so we can
+                #       safely skip any check on input's line content and go straight to
+                #       the point because everything is shurely as it should be
+
+                if {[regexp {^[[:blank:]]*add[[:blank:]]} $fline]} {
+                  # we only work with case-INSENSITIVE EXACT matches (no "globs"): if the
+                  # current line from the "old" file exactly matches our devicename it
+                  # will be skipped
+                  if {[string compare -nocase [lindex $fline 2] $device_name] == 0} { continue }
+                }
+
+                # the line from the "old" file must be kept: store it into temporary file
+                if { [catch {puts $ofch "$fline"} retval] } {
+                  ::LOG::Msg error "$ltag: error writing to temporary access file ($retval)"
+                  set res -8
+                }
+              }
+            }
+            # done with input file
+            if {[catch {close $ifch} retval]} {
+              ::LOG::Msg warning "$ltag: error closing input access file: ignored ($retval)"
+            }
+          }
+        }
+
+        # done with output file
+        if {[catch {close $ofch} retval]} {
+          ::LOG::Msg error "$ltag: error closing written temporary access file: deferred write-error? ($retval)"
+          set res -9
+        }
+
+        # final manipulations
+        if { $res > 0 } {
+          # keep a backup copy of previous input file
+          if {[catch {file rename -force "$cl_name" "$cl_bkup"} retval]} {
+            ::LOG::Msg warning "$ltag: failed to create a backup copy of access file: ignored ($retval)"
+          }
+          # rename temporary file (will become the new input file)
+          if {[catch {file rename -force "$ofname" "$cl_name"} retval]} {
+            ::LOG::Msg error "$ltag: failed to rename temporary access file ($retval)"
+            set res -10
+          }
+        } else {
+          # an error occurred: temporary file must be deleted
+          if {[catch {file delete "$ofname"} retval]} {
+            ::LOG::Msg warning "$ltag: failed to delete temporary access file: ignored ($retval)"
+          }
+        }
+
+      }
+
+    }
+
+    ::RANCID::ReleaseMUTEX $::RANCID::CL_MUTEX_NAME
+
+    return $res
+  }
+  #--------------------------------------------------------------------------
+
+  # end of rancid interface routines
+  #==========================================================================
+
+
+
+  #==========================================================================
+  # RCS interface routines (only CVS currently supported)
+
+
+  #--------------------------------------------------------------------------
+  proc CVS_GetRevisionsInfo { groupname devicename __revinfo } {
+
+
+    # NOTE: starting from 0.9.2009021501 this routine DOES NOT modify the
+    #       devicename's case. It is expected to be properly adjusted by
+    #       the caller
+
+    set fname [file join $::RANCID::RancidConf(BASEDIR)\
+                         "$groupname/configs/$devicename"]
+
+    if {[catch {exec -- $::RANCID::CONF::commandCVS -d $::RANCID::RancidConf(CVSROOT)\
+                                               log $fname 2>/dev/null} resp]} {
+
+      if {[lindex $::errorCode 0] == "CHILDSTATUS"} {
+        set cvs_pid   [lindex $::errorCode 1]
+        set cvs_ecode [lindex $::errorCode 2]
+        ::LOG::Msg error "RANCID::CVS_GetRevisionsInfo: error executing \"$::RANCID::CONF::commandCVS\" (pid=$cvs_pid): exitcode=$cvs_ecode"
+        return "error executing \"$::RANCID::CONF::commandCVS\" (pid=$cvs_pid): exitcode=$cvs_ecode"
+      }
+      return "$resp"
+    }
+
+    upvar $__revinfo revinfo
+
+    foreach line [split $resp "\n"] {
+      if {[regexp -- {^head:[[:blank:]]+(\d+(?:\.\d+)*)} $line mall mvalue]} {
+        set revinfo(headrev) $mvalue
+      }
+      if {[regexp -- {^total revisions:[[:blank:]]+(\d+);} $line mall mvalue]} {
+        set revinfo(totalrevs) $mvalue
+      }
+      if {[regexp -- {^\-+$} $line]} {break}
+    }
+    return ""
+  }
+  #--------------------------------------------------------------------------
+
+
+  #--------------------------------------------------------------------------
+  proc CVS_GetRevisions { groupname devicename __revisions } {
+
+    # NOTE: starting from 0.9.2009021501 this routine DOES NOT modify the
+    #       devicename's case. It is expected to be properly adjusted by
+    #       the caller
+
+    set fname [file join $::RANCID::RancidConf(BASEDIR)\
+                         "$groupname/configs/$devicename"]
+
+    if {[catch {exec -- $::RANCID::CONF::commandCVS -d $::RANCID::RancidConf(CVSROOT)\
+                        log $fname 2>/dev/null} resp]} {
+
+      if {[lindex $::errorCode 0] == "CHILDSTATUS"} {
+        set cvs_pid   [lindex $::errorCode 1]
+        set cvs_ecode [lindex $::errorCode 2]
+        ::LOG::Msg error "RANCID::CVS_GetRevisions: error executing \"$::RANCID::CONF::commandCVS\" (pid=$cvs_pid): exitcode=$cvs_ecode"
+        return "error executing \"$::RANCID::CONF::commandCVS\" (pid=$cvs_pid): exitcode=$cvs_ecode"
+      }
+      return "$resp"
+    }
+
+    upvar $__revisions revisions
+    set revstr ""
+    foreach line [split $resp "\n"] {
+      if {"$revstr" != ""} {
+        if {[regexp -- {^date:[[:blank:]]+(\d{4}/\d{2}/\d{2}[[:blank:]]+\d{2}:\d{2}:\d{2})} $line mall revdate]} {
+          set revisions($revstr) "$revdate"
+          set revstr ""
+          continue
+        }
+      }
+      regexp -- {^revision[[:blank:]]+([^[:blank:]]+)} $line mall revstr
+    }
+    return ""
+  }
+  #--------------------------------------------------------------------------
+
+
+  #--------------------------------------------------------------------------
+  proc CVS_ExportRevision { groupname devicename revision_date targetdir } {
+
+    if {[catch {exec -- $::RANCID::CONF::commandCVS -d $::RANCID::RancidConf(CVSROOT)\
+                        export -d "$targetdir" -D "$revision_date"\
+                        "$groupname/configs/$devicename" 2>/dev/null} resp]} {
+
+      if {[lindex $::errorCode 0] == "CHILDSTATUS"} {
+        set cvs_pid   [lindex $::errorCode 1]
+        set cvs_ecode [lindex $::errorCode 2]
+        ::LOG::Msg error "RANCID::CVS_ExportRevision: error executing \"$::RANCID::CONF::commandCVS\" (pid=$cvs_pid): exitcode=$cvs_ecode"
+        return "error executing \"$::RANCID::CONF::commandCVS\" (pid=$cvs_pid): exitcode=$cvs_ecode"
+      }
+
+      return "$resp"
+    }
+
+    return ""
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  # end of CVS interface routines
+  #==========================================================================
+
+
+
+
+  #==========================================================================
+  # Inventory Routines - Versione 2009032001 (UNIFORM/Cisco+Juniper)
+
+
+  #---[CORRELATOR SUPPORT FUNCTIONS]-----------------------------------------
+
+
+  proc CorrelatorClearMatrix { MatrixName } {
+    upvar $MatrixName MX
+    catch {unset MX}
+  }
+
+
+
+  proc CorrelatorDeleteItem { MatrixName Id } {
+    upvar $MatrixName MX
+    if {[info exists MX(ID|$Id)]} {
+      set oK [lindex $MX(ID|$Id) 0]
+      set oP [lsearch -exact $MX(K1|$oK) $Id]
+      if {[set MX(K1|$oK) [lreplace $MX(K1|$oK) $oP $oP]]=={}} {unset MX(K1|$oK)}
+      set oK [lindex $MX(ID|$Id) 1]
+      set oP [lsearch -exact $MX(K2|$oK) $Id]
+      if {[set MX(K2|$oK) [lreplace $MX(K2|$oK) $oP $oP]]=={}} {unset MX(K2|$oK)}
+      unset MX(ID|$Id)
+    }
+  }
+
+
+  proc CorrelatorSetItemKeys { MatrixName Id Key1 Key2 } {
+    upvar $MatrixName MX
+    if {[info exists MX(ID|$Id)]} {
+      if {[set oK [lindex $MX(ID|$Id) 0]]!=$Key1} {
+        set oP [lsearch -exact $MX(K1|$oK) $Id]
+        set MX(K1|$oK) [lreplace $MX(K1|$oK) $oP $oP]
+        lappend MX(K1|$Key1) $Id
+      }
+      if {[set oK [lindex $MX(ID|$Id) 1]]!=$Key2} {
+        set oP [lsearch -exact $MX(K2|$oK) $Id]
+        set MX(K2|$oK) [lreplace $MX(K2|$oK) $oP $oP]
+        lappend MX(K2|$Key2) $Id
+      }
+    } else {
+      lappend MX(K1|$Key1) $Id
+      lappend MX(K2|$Key2) $Id
+    }
+    set MX(ID|$Id) [list $Key1 $Key2]
+  }
+
+
+  proc CorrelatorGetItemKeys { MatrixName Id } {
+    upvar $MatrixName MX
+    if {[info exists MX(ID|$Id)]} {return $MX(ID|$Id)}
+    return {}
+  }
+
+
+  proc CorrelatorMatchKeys { MatrixName Key1 Key2 } {
+    upvar $MatrixName MX
+    if {[catch {set ik1 $MX(K1|$Key1)}]} {set ik1 {}}
+    if {[catch {set ik2 $MX(K2|$Key2)}]} {set ik2 {}}
+    return [list $ik1 $ik2]
+  }
+
+
+  proc CorrelatorMatchKey1 { MatrixName Key1 } {
+    upvar $MatrixName MX
+    if {[catch {set res $MX(K1|$Key1)}]} {return {}}
+    return $res
+  }
+
+
+  proc CorrelatorMatchKey2 { MatrixName Key2 } {
+    upvar $MatrixName MX
+    if {[catch {set res $MX(K2|$Key2)}]} {return {}}
+    return $res
+  }
+
+
+  proc CorrelatorGetValuesKey1 { MatrixName } {
+    upvar $MatrixName MX
+    return [array names MX "K1|*"]
+  }
+
+
+  proc CorrelatorGetValuesKey2 { MatrixName } {
+    upvar $MatrixName MX
+    return [array names MX "K2|*"]
+  }
+
+
+  proc ListAND { L1 L2 } {
+    set r {}
+    if { $L2 != {} } {
+      foreach i $L1 {
+        if {[lsearch -exact $L2 $i] >= 0} { lappend r $i }
+      }
+    }
+    return $r
+  }
+
+
+  proc ListOR { L1 L2 } {
+    set r $L1
+    foreach i $L2 {
+      if {[lsearch -exact $L1 $i] < 0} { lappend r $i }
+    }
+    return $r
+  }
+
+
+  proc ListXOR { L1 L2 } {
+    set r {}
+    foreach i $L1 {
+      if {[lsearch -exact $L2 $i] < 0} { lappend r $i }
+    }
+    foreach i $L2 {
+      if {[lsearch -exact $L1 $i] < 0} { lappend r $i }
+    }
+    return $r
+  }
+
+
+  #---[end of correlator support functions]----------------------------------
+
+
+
+
+
+  
+  # XML Inventory Property Names
+
+  set ipName		"Name"
+  set ipNameAlias	"NameAlias"
+  set ipDescr		"Description"
+  set ipType		"Type"
+  set ipModel		"Model"
+  set ipInfo		"Info"
+  set ipSize		"Size"
+  set ipPid		"ProductIdentifier"
+  set ipVersion		"Version"
+  set ipPartNo		"PartNumber"
+  set ipAssembly	"Assembly"
+  set ipDev		"Dev"
+  set ipSerialNo	"SerialNumber"
+  set ipHWver		"HardwareVersion"
+  set ipFWver		"FirmwareVersion"
+  set ipSWver		"SoftwareVersion"
+  set ipLocation	"Location"
+  set ipBusId		"DeviceBusID"
+  set ipMode		"DeviceMode"
+  set ipMemory		"Memory"
+  set ipSoftware	"Software"
+
+
+  # Sorted order of XML Inventory Properties
+
+  set InventoryPropertiesSorted "$ipName $ipNameAlias $ipDescr $ipType $ipModel $ipInfo $ipSize\
+                                 $ipPid $ipVersion $ipPartNo $ipAssembly $ipDev\
+                                 $ipSerialNo $ipHWver $ipFWver $ipSWver $ipLocation\
+                                 $ipBusId $ipMode $ipMemory $ipSoftware"
+
+
+  set InventoryValuesIgnored   { "" "empty" "blank" "unknown" "n/a" "n.a." }
+
+
+
+  #--------------------------------------------------------------------------
+  proc InventoryValueIsValid { value } {
+
+    if {[lsearch -exact $::RANCID::InventoryValuesIgnored [string tolower $value]] < 0} { return 1 }
+    return 0
+
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  proc KbMemorySize { sizestr } {
+
+    set m2 ""
+    if {[regexp -nocase {^([[:digit:]]+)[[:blank:]]*([bkm][[:alpha:]]*)?$} $sizestr mall m1 m2]} {
+      switch -regexp $m2 {
+        {^(:?[Bb].*)?$} { return [expr {$m1 / 1024}] }
+        {^[Kk].*} { return $m1 }
+        {^[Mm].*} { return [expr {$m1 * 1024}] }
+      }
+    }
+    return 0
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  proc XML_AddInventoryItems { parent entry } {
+
+    foreach prop $::RANCID::InventoryPropertiesSorted {
+
+      while {[set tag_idx [lsearch -exact $entry $prop]] >= 0 } {
+        set val_idx [expr {$tag_idx + 1}]
+        set tag [lindex $entry $tag_idx]
+        set val [lindex $entry $val_idx]
+        if {[::RANCID::InventoryValueIsValid $val]} {
+          if { $tag == $::RANCID::ipMemory || $tag == $::RANCID::ipSoftware } {
+            set sub_handle [::XTREE::add_Child $parent $tag]
+            foreach {subtag subval} $val {
+              ::XTREE::set_Item $sub_handle $subtag $subval
+            }
+          } else {
+            ::XTREE::set_Item $parent $tag $val
+          }
+        }
+        # remove tag/val from entry
+        set entry [lreplace $entry $tag_idx $val_idx]
+      }
+    }
+  }
+  #--------------------------------------------------------------------------
+
+
+
+
+  #--------------------------------------------------------------------------
+  # Inventory_AddEntry
+  #
+  # Aggiunge una inventory-entry con auto-correlazione name-based
+  #
+  #	array_name	nome dell'array in cui memorizzare la entry
+  #	name_key	valore del campo "Name"
+  #	serial_key	valore del campo "Serial"
+  #	tagged_data	lista degli altri campi (tagged)
+  #
+  # La correlazione avviene sul valore del campo "Name" (in name_key); se il
+  # nome coincide ed entrambe la entry presente nell'array e quella in fase di
+  # scrittura hanno un seriale, anche questo deve coincidere altrimenti NON
+  # c'è correlazione. Questo determina la possibilità che esistano entry
+  # diverse con lo stesso nome (ma seriali diversi): pertanto il nome NON è
+  # una chiave unica e gli elementi dell'array di correlazione sono una lista
+  # indici.
+  #
+  # Di conseguenza quando viene tentata la correlazione la nuova entry viene
+  # verificata con tutte quelle preesistenti con lo stesso nome. La regola di
+  # correlazione per la singola coppia (old,new) è la seguente:
+  #
+  #	NEW_SERIAL	OLD_SERIAL
+  #	(none) 		(none)		CORRELATION OK, SERIAL=(none)
+  #	(none) 		Y		CORRELATION OK, SERIAL=Y
+  #	X		(none)		CORRELATION OK, SERIAL=X
+  #	X		X		CORRELATION OK, SERIAL=X
+  #	X		Y		with X!=Y CORRELATION FAILED
+  #
+  # Se durante la population dell'array una correlazione fallisce, come detto,
+  # sono create diverse entries con lo stesso nome. Questo determina la possibilità
+  # di diverse possibili correlazioni tra una terza entry e quelle preesistenti.
+  #
+  # La correlazione avviene SE e SOLO SE alla fine dell'esame vi è una sola
+  # possibilità.
+
+  proc Inventory_AddEntry { array_name name_key serial_key tagged_data } {
+    upvar $array_name		DataArray
+    upvar ${array_name}_COUNT	DataCount
+    upvar ${array_name}_MATRIX	KeyMatrix
+
+
+    # step 1 : verifico se il nome è presente nell'array di correlazione
+
+    set index -1
+
+    if { [set same_name [CorrelatorMatchKey1 KeyMatrix $name_key]] != {} } {
+      if {$serial_key == ""} {
+        # new serial is blank, possible correlatations are only
+        # by name (if the match is unique)
+        set result $same_name
+      } else {
+        # new serial is not blank, check match on serial
+        if {[set result [ListAND $same_name [CorrelatorMatchKey2 KeyMatrix $serial_key]]] == {} } {
+          # full correlation failed, search for entry with matching
+          # name and blank serial within the set of matching names
+          set result [ListAND $same_name [CorrelatorMatchKey2 KeyMatrix ""]]
+        }
+      }
+      if {[llength $result] == 1} { set index [lindex $result 0] }
+    }
+
+    # se index < 0, crea nuova entry
+
+    if { $index < 0 } {
+      # creo o aggiorno la lista degli indici associati al nome con quello della nuova entry
+      CorrelatorSetItemKeys KeyMatrix $DataCount $name_key $serial_key
+      set DataArray($DataCount) [concat [list $::RANCID::ipName $name_key $::RANCID::ipSerialNo $serial_key] $tagged_data]
+      incr DataCount
+      return
+    }
+
+    # update to previous entry
+    #
+    # gestione del seriale: se la nuova entry non ha seriale, viene ignorato (e si lascia
+    # invariato quello preesistente)
+    #
+    # se la nuova entry HA un seriale, poichè si è avuta correlazione la vecchia o NON lo ha
+    # ho lo ha identico: in questo caso, per semplificare, imposto sempre il nuovo
+
+    if { $serial_key == "" } {
+      set DataArray($index) [concat $DataArray($index) $tagged_data]
+      return
+    }
+
+    CorrelatorSetItemKeys KeyMatrix $index $name_key $serial_key
+    set DataArray($index) [concat [lreplace $DataArray($index) 3 3 $serial_key] $tagged_data]
+
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  proc InventoryParser_juniper {} {
+    set ltag "RANCID::InventoryParser_juniper"
+
+    upvar SourceBuffer	SourceBuffer
+
+
+    set IDB_DATA_COUNT	0
+
+    set brn	"(Routing Engine)/"
+
+    set p_state    ""
+
+    set source_idx 0
+
+
+    while { 1 } {
+      set iline $SourceBuffer($source_idx)
+      incr source_idx
+
+      # stateful parsing here
+
+      # =====================
+      # BOOT MESSAGES SECTION
+      # =====================
+
+      if { $p_state == "boot" } {
+
+        # generic devices and busses
+
+        if {[regexp {^[[:blank:]]*(.*):[[:blank:]]+<(.*)>[[:blank:]]+(?:(.*)[[:blank:]]+)?on[[:blank:]]+(.*)[[:blank:]]*$} $iline mall m1 m2 m3 m4]} {
+          # submatch for device-id
+          if {![regexp {[[:blank:]]*at device[[:blank:]]+([^[:blank:]]+)} $m3 mall m3]} { set m3 "" }
+
+          ::RANCID::Inventory_AddEntry IDB_DATA $brn$m1 "" [list $::RANCID::ipDescr    $m2\
+                                                                 $::RANCID::ipLocation $brn$m4\
+                                                                 $::RANCID::ipBusId    $m3]
+          continue
+        }
+
+        # storage devices
+
+        if {[regexp -nocase {^[[:blank:]]*(.*):[[:blank:]]+([[:digit:]]+[[:blank:]]*.b)[[:blank:]]+<(.*)>[[:blank:]]+at[[:blank:]]+([^-]+)-([^[:blank:]]+)[[:blank:]]+(.*)[[:blank:]]*$} $iline mall m1 m2 m3 m4 m5 m6]} {
+          set m2 "[KbMemorySize $m2] KB"
+
+          ::RANCID::Inventory_AddEntry IDB_DATA $brn$m1 "" [list $::RANCID::ipSize     $m2\
+                                                                 $::RANCID::ipModel    $m3\
+                                                                 $::RANCID::ipLocation $brn$m4\
+                                                                 $::RANCID::ipBusId    $m5\
+                                                                 $::RANCID::ipMode     $m6]
+
+          continue
+        }
+
+        if {[regexp {^[[:blank:]]*CPU:[[:blank:]]+(.*)$} $iline mall m1]} {
+          ::RANCID::Inventory_AddEntry IDB_DATA "${brn}cpu$host_cpu" "" [list $::RANCID::ipDescr $m1]
+          incr host_cpu
+          continue
+        }
+
+        # special cases
+
+        if {[regexp {^[[:blank:]]*([^[:blank:]]+)(?:.*[[:blank:]]+)?on[[:blank:]]+(.*)[[:blank:]]*$} $iline mall m1 m2]} {
+          ::RANCID::Inventory_AddEntry IDB_DATA $brn$m1 "" [list $::RANCID::ipLocation $brn$m2]
+          continue
+        }
+
+        if {[regexp {^[[:blank:]]*([^[:blank:]]+):[[:blank:]]+type[[:blank:]]+([^,]+)(?:,[[:blank:]]+(.*))?[[:blank:]]*$} $iline mall m1 m2 m3]} {
+          ::RANCID::Inventory_AddEntry IDB_DATA $brn$m1 "" [list $::RANCID::ipModel $m2 $::RANCID::ipInfo $m3]
+          continue
+        }
+
+        if {[regexp -nocase {trying to mount root from } $iline]} { set p_state "" }
+
+        # line is ignored in boot-mode
+
+        continue
+      }
+
+
+      # =================
+      # INVENTORY SECTION
+      # =================
+
+      if {"$p_state" == "idb1"} {
+        if {![regexp {^.* show chassis .*$} $iline]} {
+
+          # processing idb level-1
+
+          # check the infamous storage case
+
+          if {[regexp -nocase {^(.*[^[:blank:]])[[:blank:]]+(.* .b)[[:blank:]]+(.*[^[:blank:]])[[:blank:]]+([^[:blank:]]+)[[:blank:]]+((?:compact flash)|(?:hard disk))[[:blank:]]*$} $iline mall f1 f2 f3 f4 f5]} {
+            set f2 "[KbMemorySize $f2] KB"
+            set f2_tag $::RANCID::ipSize
+            set f3_tag $::RANCID::ipModel
+          } else {
+            # standard fixed-length field extraction
+            set f1 [string trimright [string range $iline $f1_ofs $f1_end]]
+            set f2 [string trimright [string range $iline $f2_ofs $f2_end]]
+            set f3 [string trimright [string range $iline $f3_ofs $f3_end]]
+            set f4 [string trimright [string range $iline $f4_ofs $f4_end]]
+            set f5 [string trimright [string range $iline $f5_ofs end]]
+            set f2_tag $::RANCID::ipVersion
+            set f3_tag $::RANCID::ipPartNo
+          }
+
+          # calculate indentation level for item/subitem relationships
+          regexp {^([[:blank:]]*)(.*)$} $f1 mall ibl label
+          set ibl [expr {[string length $ibl] >> 1}]
+
+          # create a structured global name
+          set idb_node($ibl) $label
+          set name $idb_node(0)
+          set cl 0
+          while {[incr cl] <= $ibl} { append name "/$idb_node($cl)" }
+
+          # check that serial is valid
+          if {![InventoryValueIsValid $f4]} {set f4 ""}
+
+          ::RANCID::Inventory_AddEntry IDB_DATA $name $f4 [list $::RANCID::ipDescr $f5 $f2_tag $f2 $f3_tag $f3]
+
+          continue
+        }
+
+        set p_state ""
+      }
+
+
+      if {"$p_state" == "idb0"} {
+
+        if {[regexp -nocase {^([[:blank:]]*)(item[[:blank:]]*)(version[[:blank:]]*)(part number[[:blank:]]*)(serial number[[:blank:]]*)description[[:blank:]]*$} $iline mall ibl f1 f2 f3 f4]} {
+
+          # initialize tabulation variables
+
+          set f1_ofs [string length $ibl]
+
+          set len    [string length $f1]
+          set f2_ofs [expr {$f1_ofs + $len}]
+          set f1_end [expr {$f2_ofs - 1}]
+
+          set len    [string length $f2]
+          set f3_ofs [expr {$f2_ofs + $len}]
+          set f2_end [expr {$f3_ofs - 1}]
+
+          set len    [string length $f3]
+          set f4_ofs [expr {$f3_ofs + $len}]
+          set f3_end [expr {$f4_ofs - 1}]
+
+          set len    [string length $f4]
+          set f5_ofs [expr {$f4_ofs + $len}]
+          set f4_end [expr {$f5_ofs - 1}]
+
+          unset len
+
+          set p_state "idb1"
+          continue
+        }
+
+        set p_state ""
+      }
+
+
+
+
+      # ================
+      # FIRMWARE SECTION
+      # ================
+
+      if { $p_state == "fw1" || $p_state == "fw2" } {
+
+        if {[regexp {^.* show chassis .*$} $iline]} {
+          # flush firmware data
+          ::RANCID::Inventory_AddEntry IDB_DATA $curr_name $curr_serial $curr_data
+          set p_state ""
+        }
+
+        if {"$p_state" == "fw2"} {
+          # field extraction
+          set f1 [string trimright [string range $iline $f1_ofs $f1_end]]
+          if { $f1 == "" } {
+            set f2 [string trimright [string range $iline $f2_ofs $f2_end]]
+            set f3 [string trimright [string range $iline $f3_ofs end]]
+            lappend curr_data $::RANCID::ipSoftware [list $::RANCID::ipType $f2 $::RANCID::ipVersion $f3]
+            continue
+          }
+
+          # flush firmware data
+
+          ::RANCID::Inventory_AddEntry IDB_DATA $curr_name $curr_serial $curr_data
+
+          set p_state "fw1"
+        }
+
+        if {"$p_state" == "fw1"} {
+          # field extraction
+          set f1 [string trimright [string range $iline $f1_ofs $f1_end]]
+          set f2 [string trimright [string range $iline $f2_ofs $f2_end]]
+          set f3 [string trimright [string range $iline $f3_ofs end]]
+
+          set curr_name   $f1
+          set curr_serial ""
+          set curr_data   [list $::RANCID::ipSoftware [list $::RANCID::ipType $f2 $::RANCID::ipVersion $f3]]
+
+          set p_state "fw2"
+          continue
+        }
+
+      }
+
+      if {"$p_state" == "fw0"} {
+        if {[regexp -nocase {^([[:blank:]]*)(part[[:blank:]]*)(type[[:blank:]]*)version[[:blank:]]*$} $iline mall ibl f1 f2]} {
+          # initialize tabulation variables
+          set f1_ofs [string length $ibl]
+          set len    [string length $f1]
+          set f2_ofs [expr {$f1_ofs + $len}]
+          set f1_end [expr {$f2_ofs - 1}]
+          set len    [string length $f2]
+          set f3_ofs [expr {$f2_ofs + $len}]
+          set f2_end [expr {$f3_ofs - 1}]
+          unset len
+
+          set p_state "fw1"
+          continue
+        }
+
+        set p_state ""
+      }
+
+
+      # ===========
+      # FPC SECTION
+      # ===========
+
+      if {"$p_state" == "fpc2"} {
+
+        # processing fpc level-2
+
+        if {[regexp -nocase {^[[:blank:]]*total cpu dram[[:blank:]]+(.* .b)[[:blank:]]*$} $iline mall m1]} {
+          set m1 "[KbMemorySize $m1] KB"
+          lappend curr_data $::RANCID::ipMemory [list $::RANCID::ipType "CPU DRAM" $::RANCID::ipSize $m1]
+          continue
+        }
+
+        if {[regexp -nocase {^[[:blank:]]*total sram[[:blank:]]+(.* .b)[[:blank:]]*$} $iline mall m1]} {
+          set m1 "[KbMemorySize $m1] KB"
+          lappend curr_data $::RANCID::ipMemory [list $::RANCID::ipType "SRAM" $::RANCID::ipSize $m1]
+          continue
+        }
+
+        if {[regexp -nocase {^[[:blank:]]*total sdram[[:blank:]]+(.* .b)[[:blank:]]*$} $iline mall m1]} {
+          set m1 "[KbMemorySize $m1] KB"
+          lappend curr_data $::RANCID::ipMemory [list $::RANCID::ipType "SDRAM" $::RANCID::ipSize $m1]
+          continue
+        }
+
+        if {[regexp -nocase {^[[:blank:]]*state[[:blank:]]+.*$} $iline]} { continue }
+
+        # flush FPC data
+
+        ::RANCID::Inventory_AddEntry IDB_DATA $curr_name $curr_serial $curr_data
+
+        set p_state "fpc1"
+      }
+
+
+      if {"$p_state" == "fpc1"} {
+
+        # processing fpc level-1
+
+        if {[regexp -nocase {^[[:blank:]]*slot[[:blank:]]+(.*)[[:blank:]]information:[[:blank:]]*$} $iline mall m1]} {
+          set curr_name   "FPC $m1"
+          set curr_serial ""
+          set curr_data   ""
+
+          set p_state "fpc2"
+          continue
+        }
+
+        set p_state ""
+      }
+
+
+
+      # ======================
+      # ROUTING ENGINE SECTION
+      # ======================
+
+      if {"$p_state" == "reng2"} {
+
+        # processing reng level-2
+
+        if {[regexp -nocase {^[[:blank:]]*dram[[:blank:]]+(.* .b)[[:blank:]]*$} $iline mall m1]} {
+          set m1 "[KbMemorySize $m1] KB"
+          lappend curr_data $::RANCID::ipMemory [list $::RANCID::ipType "DRAM" $::RANCID::ipSize $m1]
+          continue
+        }
+
+        if {[regexp -nocase {^[[:blank:]]*model[[:blank:]]+(.*)[[:blank:]]*$} $iline mall m1]} {
+          lappend curr_data $::RANCID::ipModel $m1
+          continue
+        }
+
+        if {[regexp -nocase {^[[:blank:]]*serial id[[:blank:]]+(.*)[[:blank:]]*$} $iline mall m1]} {
+          if {[InventoryValueIsValid $m1]} {set curr_serial $m1}
+          continue
+        }
+
+        if {[regexp -nocase {^[[:blank:]]*current state[[:blank:]]+.*$} $iline]} { continue }
+
+        if {[regexp -nocase {^[[:blank:]]*election priority[[:blank:]]+.*$} $iline]} { continue }
+
+        # flush FPC data
+
+        ::RANCID::Inventory_AddEntry IDB_DATA $curr_name $curr_serial $curr_data
+
+        set p_state "reng1"
+      }
+
+
+      if {"$p_state" == "reng1"} {
+
+        # processing reng level-1
+
+        if {[regexp {^[[:blank:]]*Slot[[:blank:]]+(.*):[[:blank:]]*$} $iline mall m1]} {
+          set curr_name   "Routing Engine $m1"
+          set curr_serial ""
+          set curr_data   ""
+
+          set p_state "reng2"
+          continue
+        }
+
+        set p_state ""
+      }
+
+
+      # ========================
+      # SOFTWARE VERSION SECTION
+      # ========================
+
+      if { $p_state == "vers" } {
+
+        if {[regexp {^[[:blank:]]*JUNOS[[:blank:]]+(.*)[[:blank:]]+\[([^\]]+)\][[:blank:]]*$} $iline mall m1 m2]} {
+          lappend curr_data $::RANCID::ipSoftware [list $::RANCID::ipType "JUNOS $m1" $::RANCID::ipVersion $m2]
+          continue
+        }
+
+        if {[regexp {^[[:blank:]]*KERNEL[[:blank:]]+(.*)[[:blank:]]*$} $iline mall m1]} {
+          lappend curr_data $::RANCID::ipSoftware [list $::RANCID::ipType "KERNEL" $::RANCID::ipVersion $m1]
+          continue
+        }
+
+        if {[regexp -nocase {[[:blank:]]+show configuration[[:blank:]]*$} $iline]} {
+          ::RANCID::Inventory_AddEntry IDB_DATA $curr_name $curr_serial $curr_data
+          set p_state ""
+        }
+
+      }
+
+
+
+      # ===============================================
+      # parser is in "default" (single-line-entry) mode
+      # ===============================================
+
+      # if we are here it means that none of the previous regexp matched,
+      # so all active multi-line entries (if any) were flushed and we are
+      # in default (single-line) parsing state; this shurely happens at
+      # the end of the source-buffer as it is indicated by an empty input
+      # line that does not match any regexp: this is the right place to
+      # check for this case and break the loop
+
+      if { "$iline" == "" } { break }
+
+      # stateless parsing here
+
+      if {[regexp {^.* show chassis firmware$} $iline]} {
+        set p_state "fw0"
+        continue
+      }
+
+      if {[regexp {^.* show chassis fpc detail$} $iline]} {
+        set p_state "fpc1"
+        continue
+      }
+
+      if {[regexp {^.* Hardware inventory:$} $iline]} {
+        set p_state "idb0"
+        continue
+      }
+
+      if {[regexp {^.* Routing Engine status:$} $iline]} {
+        set p_state "reng1"
+        continue
+      }
+
+      if {[regexp {^.* show system boot-messages$} $iline]} {
+        set host_cpu 0
+        set p_state "boot"
+        continue
+      }
+
+      if {[regexp {^.* show version detail$} $iline]} {
+        set p_state "vers"
+        set curr_name   [string trimright ${brn} "/"]
+        set curr_serial ""
+        set curr_data   {}
+        ::RANCID::Inventory_AddEntry IDB_DATA $curr_name "" [list $::RANCID::ipDescr "Meta-item corresponding to the Routing Engine active at boot-time"]
+        continue
+      }
+
+      # ignored line in single-mode
+    }
+
+    # done with SourceBuffer: free memory
+
+    catch { unset SourceBuffer }
+
+    ::LOG::Msg debug "$ltag: total entries into internal structures: $IDB_DATA_COUNT"
+
+    upvar EntityHandle h_entity
+
+
+    # ready to generate XML output
+
+    # note: given the structured names implemented, output is sorted by name
+
+    set output_counter 0
+
+    foreach name [lsort -dictionary [CorrelatorGetValuesKey1 IDB_DATA_MATRIX]] {
+
+      # remove the internal flags from the name index used
+      # by the associative hash of the correlation matrix
+
+      set name [string range $name 3 end]
+
+      foreach idx [CorrelatorMatchKey1 IDB_DATA_MATRIX $name] {
+        set h_item [::XTREE::add_Child $h_entity "Item"]
+        ::RANCID::XML_AddInventoryItems $h_item $IDB_DATA($idx)
+        incr output_counter
+      }
+
+    }
+
+    ::LOG::Msg debug "$ltag: total entries generated on output: $output_counter"
+
+    return 0
+  }
+  #--------------------------------------------------------------------------
+
+
+  ###########################
+  ### CISCO SPECIFIC CODE ###
+  ###########################
+
+
+  #--------------------------------------------------------------------------
+  # This routine implements the slot-coalescing heuristics. It operates on
+  # the SLOT array filled-in by the L1-parser coalescing on-place different
+  # slot-entries corresponding to the same unique device (provided that such
+  # entries meet the proper conditions).
+  #
+  # This is the V3 version operating in on-place/one-pass mode and converting
+  # the array entries into the same format as the IDB and the GLOB arrays
+  # (that is, removing the FLAG field used by the coalescing heuristics)
+  #
+  # SLOT entry format:
+  #
+  #     0    1    2      3            4        5 ->
+  #	FLAG Name <name> SerialNumber <serial> [tagged list of data]
+
+  proc Inventory_cisco_CoalesceSlots {} {
+    upvar SLOT_DATA		SLOT
+    upvar SLOT_DATA_COUNT	dst_idx
+
+    set curr_slot_name	"__NOT_A_SLOT_NAME__"
+
+    set src_idx 0
+    set dst_idx 0
+
+    while { 1 } {
+
+      # get slot name from current entry (element with listindex==2)
+
+      if { [catch {set value [lindex $SLOT($src_idx) 2]}] } { set value "" }
+
+      if { "$value" != "$curr_slot_name" } {
+
+        # new slot name or end-of-slots: if this is not the first entry must
+        # process previous "open range" of entries
+
+        if { $src_idx != 0 } {
+          set idx $curr_slot_range_idx
+
+          # coalescing heuristics applied here
+
+          if {[expr {$curr_slot_range_cnt>1 && $fcnt(O_FLAG)==0 && $fcnt(P_FLAG)==1 && $fcnt(T_FLAG)<2 && $fcnt(V_FLAG)<2}]} {
+
+            # slot data from the previous "open range" of slot entries with the same
+            # slot-name will be coalesced into a single entry, the FLAG field will
+            # be removed and the serial-number collected from "P_FLAG" source
+            # entries will be used
+
+            set SLOT($dst_idx) [lrange [lreplace $SLOT($idx) 4 4 $curr_slot_serial] 1 end]
+
+            while { [incr curr_slot_range_cnt -1] } {
+              incr idx
+              set SLOT($dst_idx) [concat $SLOT($dst_idx) [lrange $SLOT($idx) 5 end]]
+            }
+
+            incr dst_idx
+
+          } else {
+
+            # slot entries from the previous "open range" with the same slot-name
+            # will not be coalesced and will be only adjusted by removing the FLAG
+
+            while { 1 } {
+              set SLOT($dst_idx) [lrange $SLOT($idx) 1 end]
+              incr idx
+              incr dst_idx
+              if {[incr curr_slot_range_cnt -1] == 0} { break }
+            }
+
+          }
+
+        }
+
+        # if we are at the end of array, we're done
+
+        if { "$value" == "" } { break }
+
+        # start of a new slot name: initialize variables and counters
+
+        set curr_slot_name	$value
+        set curr_slot_serial    ""
+        set curr_slot_range_idx	$src_idx
+        set curr_slot_range_cnt 0
+
+        set fcnt(P_FLAG)	0
+        set fcnt(T_FLAG)	0
+        set fcnt(V_FLAG)	0
+        set fcnt(O_FLAG)	0
+      }
+
+      # update the number of entries in the range of slots with the same name
+
+      incr curr_slot_range_cnt
+
+      # get the entry-flag
+
+      set entry_flag [lindex $SLOT($src_idx) 0]
+
+      # increment the corresponding flag-counter used by the coalescing heuristics
+
+      incr fcnt($entry_flag)
+
+      # serial number may be non blank only on P_FLAG lines
+
+      if { $entry_flag == "P_FLAG" } { set curr_slot_serial [lindex $SLOT($src_idx) 4] }
+
+      incr src_idx
+    }
+
+  }
+  #--------------------------------------------------------------------------
+
+
+
+
+
+
+  #--------------------------------------------------------------------------
+  # formato di glob_entry:
+  #
+  # Il formato è uniformato a IDB database: tutti i campi sono taggati con
+  # Name e SerialNo nelle prime due posizioni, quindi:
+  #
+  #	INDEX	VALUE
+  #	0	"Name"
+  #	1	<name>
+  #	2	"SerialNo"
+  #	3	<serial>
+  #	4..	<sequenza tag-value tag-value ...>
+
+  proc Inventory_cisco_Correlate_Glob_to_IDB { glob_entry } {
+    upvar IDB_DATA		IDB
+    upvar IDB_DATA_COUNT	IDB_COUNT
+    upvar IDB_DATA_MATRIX	IDB_MATRIX
+
+
+    # correlation by serial number has higher priority here
+
+    set index -1
+
+    set glob_name [lindex $glob_entry 1]
+
+    if {[set glob_serial [lindex $glob_entry 3]] == ""} {
+
+      # global entry without serial number: correlation will be
+      # possible ONLY if there is match with a unique name
+
+      set same_name [CorrelatorMatchKey1 IDB_MATRIX $glob_name]
+      if {[llength $same_name] == 1} { set index [lindex $same_name 0] }
+
+    } else {
+
+      # global entry has a serial number: check match
+
+      set same_serial [CorrelatorMatchKey2 IDB_MATRIX $glob_serial]
+
+      switch -exact [llength $same_serial] {
+
+        0 {
+          # no serial match: correlation is possible only if there
+          # is a name match with an unique entry without s/n
+          set res [ListAND [CorrelatorMatchKey1 IDB_MATRIX $glob_name] [CorrelatorMatchKey2 IDB_MATRIX ""]]
+          if { [llength $res] == 1 } { set index [lindex $res 0] }
+        }
+
+        1 {
+          # match is unique, correlation OK
+          set index [lindex $same_serial 0]
+        }
+
+        default {
+          # multiple serial match: correlation is possible only if there
+          # is a name match with a unique entry 
+          set res [ListAND [CorrelatorMatchKey1 IDB_MATRIX $glob_name] $same_serial]
+          if { [llength $res] == 1 } { set index [lindex $res 0] }
+        }
+
+      }
+
+    }
+
+    if { $index >= 0 } {
+      # found a correlation: append slot data to correlated IDB entry, starting from
+      # unstructured tagged-data
+
+      set IDB($index) [concat $IDB($index) [lrange $glob_entry 4 end]]
+
+      # some tricks for the name field here; first, most Catalyst devices set a blank
+      # name field into the corresponding inventory-database entry: if this is the case
+      # use the name from the global entry; second, if the IDB entry has a valid name
+      # compare it with the global one: if a match occurs the name from the global
+      # entry is not used, if the names are different the global one is tagged as "alias"
+      # into the correlated output entry
+
+      if {[set idb_name [lindex $IDB($index) 1]] == ""} {
+        set IDB($index) [lreplace $IDB($index) 1 1 [set idb_name $glob_name]]
+      } else {
+        if {$idb_name != $glob_name} {lappend IDB($index) $::RANCID::ipNameAlias $glob_name}
+      }
+
+      # if the global entry has a serial number while the correlated IDB entry has it blank,
+      # (meaning that correlation was name-based) set the serial number from the global one
+
+      set idb_serial [lindex $IDB($index) 3]
+      if {$glob_serial != "" &&  $idb_serial == ""} {set IDB($index) [lreplace $IDB($index) 3 3 [set idb_serial $glob_serial]]}
+
+      # update correlation matrix
+
+      CorrelatorSetItemKeys IDB_MATRIX $index $idb_name $idb_serial
+    }
+
+    # return with IDB index if correlation OK or with -1 if no correlation
+
+    return $index
+  }
+  #--------------------------------------------------------------------------
+
+
+
+
+
+
+  #--------------------------------------------------------------------------
+  # formato di slot_entry (coalesced)
+  #
+  #	Name <name> SerialNumber <serial> [tagged list]
+
+  proc Inventory_cisco_Correlate_Slot_to_IDB { slot_entry } {
+    upvar IDB_DATA		IDB
+    upvar IDB_DATA_COUNT	IDB_COUNT
+    upvar IDB_DATA_MATRIX	IDB_MATRIX
+
+
+    # if the slot has no serial, no correlation is possible
+
+    if {[set slot_serial [lindex $slot_entry 3]] == ""} { return -1 }
+
+    set same_serial [CorrelatorMatchKey2 IDB_MATRIX $slot_serial]
+
+    if {[llength $same_serial] != 1} { return -1 }
+
+    # il s/n è presente ed univoco: correlazione possibile
+
+    set index [lindex $same_serial 0]
+
+    # append slot-entry to IDB entry:
+    # serial-number always skipped to avoid duplication
+    # slot-name always tagged as "Location"
+
+    set IDB($index) [concat $IDB($index) [lrange $slot_entry 4 end]]
+    lappend IDB($index) $::RANCID::ipLocation [lindex $slot_entry 1]
+
+    # siccome ho correlato per seriale e il nome in IDB non è stato modificato
+    # non devo operare sul correlatore
+
+    return $index
+  }
+  #--------------------------------------------------------------------------
+
+
+
+
+  #--------------------------------------------------------------------------
+  # formato di slot_entry (coalesced)
+  #
+  #	Name <name> SerialNumber <serial> [tagged list]
+
+  proc Inventory_cisco_Correlate_Slot_to_GLOB { slot_entry } {
+    upvar GLOB_DATA		GLOB
+    upvar GLOB_DATA_COUNT	GLOB_COUNT
+    upvar GLOB_DATA_MATRIX	GLOB_MATRIX
+
+
+    # if the slot has no serial, no correlation is possible
+
+    if {[set slot_serial [lindex $slot_entry 3]] == ""} { return -1 }
+
+    set same_serial [CorrelatorMatchKey2 GLOB_MATRIX $slot_serial]
+
+    if {[llength $same_serial] != 1} { return -1 }
+
+    # serial number match (unique): correlation possible
+
+    set index [lindex $same_serial 0]
+
+    # append slot-entry to GLOB entry:
+    # serial-number always skipped to avoid duplication
+    # slot-name always tagged as "Location"
+
+    set GLOB($index) [concat $GLOB($index) [lrange $slot_entry 4 end]]
+    lappend GLOB($index) $::RANCID::ipLocation [lindex $slot_entry 1]
+
+    return $index
+  }
+  #--------------------------------------------------------------------------
+
+
+
+
+
+  #--------------------------------------------------------------------------
+  # This routines process the remarks line extracted from the device
+  # configuration returned by rancid and stored into the RemarksBuffer by
+  # the common Level0 pre-parser
+
+  proc InventoryParser_cisco {} {
+    set ltag "RANCID::InventoryParser_cisco"
+
+    upvar SourceBuffer		SourceBuffer
+
+    set IDB_DATA_COUNT		0
+    array set IDB_DATA		{}
+    array set IDB_DATA_MATRIX	{}
+
+
+    set GLOB_DATA_COUNT		0
+    array set GLOB_DATA		{}
+    array set GLOB_DATA_MATRIX	{}
+
+
+    set SLOT_DATA_COUNT		0
+    array set SLOT_DATA		{}
+    array set SLOT_DATA_MATRIX	{}
+
+
+    set catalyst_type     ""
+    set catalyst_serial   ""
+    set catalyst_assembly ""
+
+
+    # ==========================================
+    # PHASE 1 - Populates GLOB, SLOT, IDB arrays
+    # ==========================================
+
+
+    set p_state	""
+
+    set source_idx   0
+
+    while { 1 } {
+      set iline $SourceBuffer($source_idx)
+      incr source_idx
+
+      # start with multi-line status conditions
+
+
+      if { "$p_state" == "idb" } {
+
+        # -----------------------------------------------------------------
+        # parser is in "inventory-database" mode; collected data are stored
+        # temporarily into the "idb_field_XXXXX" variables and flushed into
+        # the final IDB_DATA array as soon as the start of a new inventory
+        # entry is encountered or the mode is left (due to a non-inventory
+        # line). Data are flushed into the IDB_DATA array as a TAGGED list
+        # of values, according to the following order:
+        #
+        #     NAME SN DESCR PID VID
+        #
+        # -----------------------------------------------------------------
+
+
+        if {[regexp {^[[:blank:]]*PID:[[:blank:]]+(.*)$} $iline mall idb_field_PID]} { continue }
+
+        if {[regexp {^[[:blank:]]*VID:[[:blank:]]+(.*)$} $iline mall idb_field_VID]} { continue }
+
+        if {[regexp {^[[:blank:]]*SN:[[:blank:]]+(.*)$}  $iline mall idb_field_SN]}  { continue }
+
+
+        # not an IDB "secondary" line: flush current entry, switch state and continue parsing
+
+        # if the serial number is not valid the value is set to blank
+
+        if {![InventoryValueIsValid $idb_field_SN]} { set idb_field_SN "" }
+
+        # store into array
+        #
+        # note: data from inventory-database are forced into IDB without trying any auto-correlation
+        #	so the Inventory_AddEntry is NOT used and both the IDB_DATA and the IDB_DATA_MATRIX
+        #	arrays are fed directly
+
+        set IDB_DATA($IDB_DATA_COUNT) [list $::RANCID::ipName     $idb_field_NAME\
+                                            $::RANCID::ipSerialNo $idb_field_SN\
+                                            $::RANCID::ipDescr    $idb_field_DESCR\
+                                            $::RANCID::ipPid      $idb_field_PID\
+                                            $::RANCID::ipVersion  $idb_field_VID]
+
+
+        # feed keys to correlation matrix
+
+        CorrelatorSetItemKeys IDB_DATA_MATRIX $IDB_DATA_COUNT $idb_field_NAME $idb_field_SN
+
+        incr IDB_DATA_COUNT
+        set p_state ""
+      }
+
+
+      # some tricks here in order to match catalyst entries in an order-independent way
+
+      if {[regexp {^[[:blank:]]*Catalyst Chassis type:[[:blank:]]*(.*)$} $iline mall catalyst_type]} {
+        set p_state "catalyst_chassis"
+        continue
+      }
+
+      if {[regexp {^[[:blank:]]*Catalyst Chassis S/N:[[:blank:]]*(.*)$} $iline mall catalyst_serial]} {
+        set p_state "catalyst_chassis"
+        continue
+      }
+
+      if {[regexp {^[[:blank:]]*Catalyst Chassis assembly:[[:blank:]]*(.*)$} $iline mall catalyst_assembly]} {
+        set p_state "catalyst_chassis"
+        continue
+      }
+
+
+      if { "$p_state" == "catalyst_chassis" } {
+
+        # flush catalyst entries
+
+        if {![InventoryValueIsValid $catalyst_serial]} { set catalyst_serial "" }
+
+        ::RANCID::Inventory_AddEntry GLOB_DATA "(global)" $catalyst_serial\
+                                     [list $::RANCID::ipModel $catalyst_type $::RANCID::ipAssembly $catalyst_assembly]
+
+        set p_state ""
+      }
+
+
+
+      # ===============================================
+      # parser is in "default" (single-line-entry) mode
+      # ===============================================
+
+      # if we are here it means that none of the previous regexp matched,
+      # so all active multi-line entries (if any) were flushed and we are
+      # in default (single-line) parsing state; this shurely happens at
+      # the end of the source-buffer as it is indicated by an empty input
+      # line that does not match any regexp: this is the right place to
+      # check for this case and break the loop
+
+      if { "$iline" == "" } { break }
+      
+
+
+      # ----------------------------------------------------
+      # scan for a new inventory object (IDB "primary" line)
+      # ----------------------------------------------------
+      
+      if {[regexp {^[[:blank:]]*NAME:[[:blank:]]*"([^"]*)"[[:blank:]]*,[[:blank:]]*DESCR:[[:blank:]]*"([^"]*)"}\
+                  $iline mall idb_field_NAME idb_field_DESCR]} {
+
+        # found start of new inventory object: setup temporary variables and switch state to idb-mode
+
+        set idb_field_PID ""
+        set idb_field_VID ""
+        set idb_field_SN  ""
+
+        set p_state "idb"
+
+        continue
+      }
+
+
+
+      # -----------------------------------------------------
+      # process "slot" lines and populate the SLOT_DATA array
+      # -----------------------------------------------------
+
+      # SLOT_DATA entry line: FLAG Name <name> SerialNumber <serialnum> <tagged list of values>
+
+      # "part" lines
+
+      if {[regexp {^[[:blank:]]*(Slot[[:blank:]]+[^:]+):[[:blank:]]+part[[:blank:]]+([^,]+)(?:,[[:blank:]]+dev[[:blank:]]+([^,]+))?(?:,[[:blank:]]+serial[[:blank:]]+([^,]+))?}\
+                  $iline mall m1 m2 m3 m4]} {
+
+        if {![InventoryValueIsValid $m4]} { set m4 "" }
+
+        set SLOT_DATA($SLOT_DATA_COUNT) [list "P_FLAG" $::RANCID::ipName     $m1\
+                                                       $::RANCID::ipSerialNo $m4\
+                                                       $::RANCID::ipPartNo   $m2\
+                                                       $::RANCID::ipDev      $m3]
+
+        incr SLOT_DATA_COUNT
+
+        continue
+      }
+
+
+      # "type" lines
+
+      if {[regexp {^[[:blank:]]*(Slot[[:blank:]]+[^:]+):[[:blank:]]+type[[:blank:]]+(.*)} $iline mall m1 m2]} {
+
+        set SLOT_DATA($SLOT_DATA_COUNT) [list "T_FLAG" $::RANCID::ipName     $m1\
+                                                       $::RANCID::ipSerialNo ""\
+                                                       $::RANCID::ipType     $m2]
+
+        incr SLOT_DATA_COUNT
+
+        continue
+      }
+
+
+      # "hvers" lines
+
+      if {[regexp {^[[:blank:]]*(Slot[[:blank:]]+[^:]+):[[:blank:]]+hvers[[:blank:]]+([^,]+)(?:,[[:blank:]]+firmware[[:blank:]]+([^,]+))?(?:,[[:blank:]]+sw[[:blank:]]+([^,]+))?}\
+                  $iline mall m1 m2 m3 m4]} {
+
+        set SLOT_DATA($SLOT_DATA_COUNT) [list "V_FLAG" $::RANCID::ipName     $m1\
+                                                       $::RANCID::ipSerialNo ""\
+                                                       $::RANCID::ipHWver    $m2\
+                                                       $::RANCID::ipFWver    $m3\
+                                                       $::RANCID::ipSWver    $m4]
+
+        incr SLOT_DATA_COUNT
+
+        continue
+      }
+
+
+      # "freetext/unstructured" lines
+      
+      if {[regexp {^[[:blank:]]*(Slot[[:blank:]]+[^:]+):[[:blank:]]+(.*)} $iline mall m1 m2]} {
+
+        set SLOT_DATA($SLOT_DATA_COUNT) [list "O_FLAG" $::RANCID::ipName     $m1\
+                                                       $::RANCID::ipSerialNo ""\
+                                                       $::RANCID::ipInfo     $m2]
+
+        incr SLOT_DATA_COUNT
+
+        continue
+      }
+
+
+
+      # ----------------------------------------------
+      # process "global" lines and populate GLOB array
+      # ----------------------------------------------
+
+
+      if {[regexp {^[[:blank:]]*Chassis type:[[:blank:]]*(.*) -.*$} $iline mall m1]} {
+
+        ::RANCID::Inventory_AddEntry GLOB_DATA "(global)" "" [list $::RANCID::ipType $m1]
+
+        continue
+      }
+
+
+      if {[regexp {^[[:blank:]]*Memory:[[:blank:]]+main[[:blank:]]+([^/]+)(?:/(.*))?$} $iline mall m1 m2]} {
+        set m1 [::RANCID::KbMemorySize $m1]
+        set m2 [::RANCID::KbMemorySize $m2]
+        set m1 "[expr {$m1 + $m2}] KB"
+
+        ::RANCID::Inventory_AddEntry GLOB_DATA "(global)" ""\
+                                     [list $::RANCID::ipMemory [list $::RANCID::ipType "DRAM" $::RANCID::ipSize $m1]]
+
+        continue
+      }
+
+      
+      if {[regexp {^[[:blank:]]*Memory:[[:blank:]]+nvram[[:blank:]]+(.*)$} $iline mall m1]} {
+        set m1 "[::RANCID::KbMemorySize $m1] KB"
+
+        ::RANCID::Inventory_AddEntry GLOB_DATA "(global)" ""\
+                                     [list $::RANCID::ipMemory [list $::RANCID::ipType "NVRAM" $::RANCID::ipSize $m1]]
+
+        continue
+      }
+
+      
+      if {[regexp {^[[:blank:]]*Memory:[[:blank:]]+bootflash[[:blank:]]+(.*)$} $iline mall m1]} {
+        set m1 "[::RANCID::KbMemorySize $m1] KB"
+
+        ::RANCID::Inventory_AddEntry GLOB_DATA "(global)" ""\
+                                     [list $::RANCID::ipMemory [list $::RANCID::ipType "BOOT FLASH" $::RANCID::ipSize $m1]]
+
+        continue
+      }
+
+
+      if {[regexp {^[[:blank:]]*Image:[[:blank:]]+Software:[[:blank:]]+(.*)} "$iline" mall m1]} {
+
+        ::RANCID::Inventory_AddEntry GLOB_DATA "(global)" ""\
+                                     [list $::RANCID::ipSoftware [list $::RANCID::ipType "O/S" $::RANCID::ipVersion $m1]]
+
+        continue
+      }
+      
+
+      if {[regexp {^[[:blank:]]*ROM Bootstrap:[[:blank:]]+(.*)} "$iline" mall m1]} {
+
+        ::RANCID::Inventory_AddEntry GLOB_DATA "(global)" ""\
+                                     [list $::RANCID::ipSoftware [list $::RANCID::ipType "ROM BOOTSTRAP" $::RANCID::ipVersion $m1]]
+
+        continue
+      }
+      
+
+      if {[regexp {^[[:blank:]]*BOOTLDR:[[:blank:]]+(.*)} "$iline" mall m1]} {
+
+        ::RANCID::Inventory_AddEntry GLOB_DATA "(global)" ""\
+                                     [list $::RANCID::ipSoftware [list $::RANCID::ipType "BOOT LOADER" $::RANCID::ipVersion $m1]]
+
+        continue
+      }
+
+
+      if {[regexp {^[[:blank:]]*Memory:[[:blank:]]+pcmcia[[:blank:]]+ATA+[[:blank:]]+(.*)[[:blank:]]+(.*)$} $iline mall m1 m2]} {
+        set m2 "[::RANCID::KbMemorySize $m2] KB"
+
+        ::RANCID::Inventory_AddEntry GLOB_DATA "$m1" "" [list $::RANCID::ipType "PCMCIA ATA (storage device)" $::RANCID::ipSize $m2]
+
+        continue
+      }
+      
+
+      if {[regexp {^[[:blank:]]*CPU:[[:blank:]]*(.*)$} $iline mall m1]} {
+
+        ::RANCID::Inventory_AddEntry GLOB_DATA "CPU" "" [list $::RANCID::ipModel $m1]
+
+        continue
+      }
+
+
+      if {[regexp {^[[:blank:]]*Processor ID:[[:blank:]]+(.*)$} $iline mall m1]} {
+
+        if {[InventoryValueIsValid $m1]} { ::RANCID::Inventory_AddEntry GLOB_DATA "(global)" $m1 {} }
+
+        continue
+      }
+      
+
+      if {[regexp {^[[:blank:]]*Power:[[:blank:]]+Power Supply[[:blank:]]+([^[:blank:]]+)[[:blank:]]is[[:blank:]]+([^.]*)}\
+                  $iline mall m1 m2]} {
+
+        if {[InventoryValueIsValid $m2]} {
+          # note: Power Supply devices might show both in the "global" section and into the inventory-database;
+          #       names seem to be compatible apart from the fact that the global indexing is 1-based while
+          #       inventory indexing is 0-based: try to adjust numbering here in order to have a chance of
+          #       proper correlation (verified as working correctly on all available cisco devices which
+          #       show the "global" power section)
+
+          catch {incr m1 -1}
+
+          ::RANCID::Inventory_AddEntry GLOB_DATA "Power Supply $m1" "" [list $::RANCID::ipModel $m2]
+        }
+
+        continue
+      }
+      
+
+      if {[regexp {^[[:blank:]]*Interface:[[:blank:]]+([^,]+),[[:blank:]]*(.*)} "$iline" mall m1 m2]} {
+
+        ::RANCID::Inventory_AddEntry GLOB_DATA "$m1" "" [list $::RANCID::ipDescr "Interface" $::RANCID::ipInfo $m2]
+
+        continue
+      }
+
+
+      # -----------------------------
+      # unsupported/unrecognized line
+      # -----------------------------
+
+    }
+
+
+    # done with SourceBuffer: free memory
+
+    catch { unset SourceBuffer }
+
+
+    ::LOG::Msg debug "$ltag: end of L1-parsing: GLOB=$GLOB_DATA_COUNT, SLOT=$SLOT_DATA_COUNT, IDB=$IDB_DATA_COUNT"
+
+    #-----------------
+    # slots coalescing
+    #-----------------
+
+    Inventory_cisco_CoalesceSlots
+
+
+    ::LOG::Msg debug "$ltag: end of slot-coalescing: GLOB=$GLOB_DATA_COUNT, SLOT=$SLOT_DATA_COUNT, IDB=$IDB_DATA_COUNT"
+
+    # -------------------------------
+    # Correlation Step 1: GLOB -> IDB
+    # -------------------------------
+
+    # note: the initial one-pass "swap-and-truncate" algorithm did NOT
+    #       keep the array sorted, so it is now implemented as a one-pass
+    #       2-sliding-pointers loop (still operating on-place)
+    #
+    #       The sorting is mostly a "cosmethic" requirements but it gives
+    #       a more human-readable final output with the same performances
+
+
+    # reset GLOB correlation matrix as the array will be modified
+
+    CorrelatorClearMatrix GLOB_DATA_MATRIX
+
+    set src_idx 0
+    set dst_idx 0
+    while {$src_idx < $GLOB_DATA_COUNT} {
+      if { [Inventory_cisco_Correlate_Glob_to_IDB $GLOB_DATA($src_idx)] < 0 } {
+        # correlation failed, entry must be kept
+        # first, relocate it if needed
+        if {$dst_idx != $src_idx} {set GLOB_DATA($dst_idx) $GLOB_DATA($src_idx)}
+        # second, refeed correlator with new position
+        # NOTE: final glob->slot residuals correlation (if any) will be by serial
+        #       numbers only so the name key does not matter here (use blank)
+        CorrelatorSetItemKeys GLOB_DATA_MATRIX $dst_idx "" [lindex $GLOB_DATA($dst_idx) 3]
+        incr dst_idx
+      }
+      incr src_idx
+    }
+    set GLOB_DATA_COUNT $dst_idx
+
+    ::LOG::Msg debug "$ltag: end of GLOB->IDB correlation: GLOB=$GLOB_DATA_COUNT, SLOT=$SLOT_DATA_COUNT, IDB=$IDB_DATA_COUNT"
+
+
+    # -------------------------------
+    # Correlation Step 2: SLOT -> IDB
+    # -------------------------------
+
+    # same algorithm as already described for GLOB
+
+    set src_idx 0
+    set dst_idx 0
+    while {$src_idx < $SLOT_DATA_COUNT} {
+      if { [Inventory_cisco_Correlate_Slot_to_IDB $SLOT_DATA($src_idx)] < 0 } {
+        # correlation failed, entry must be kept
+        # first, relocate it if needed
+        if {$dst_idx != $src_idx} {set SLOT_DATA($dst_idx) $SLOT_DATA($src_idx)}
+        # second, feed correlator with new position
+        # NOTE: final glob->slot residuals correlation (if any) will be by serial
+        #       numbers only so the name key does not matter here (use blank)
+        CorrelatorSetItemKeys SLOT_DATA_MATRIX $dst_idx "" [lindex $SLOT_DATA($dst_idx) 3]
+        incr dst_idx
+      }
+      incr src_idx
+    }
+    set SLOT_DATA_COUNT $dst_idx
+
+    ::LOG::Msg debug "$ltag: end of SLOT->IDB correlation: GLOB=$GLOB_DATA_COUNT, SLOT=$SLOT_DATA_COUNT, IDB=$IDB_DATA_COUNT"
+
+
+    # ----------------------------------------------------------------------
+    # Correlation Step 3: SLOT -> GLOB (residuals, almost always not needed)
+    # ----------------------------------------------------------------------
+
+    set src_idx 0
+    set dst_idx 0
+    while {$src_idx < $SLOT_DATA_COUNT} {
+      if { [Inventory_cisco_Correlate_Slot_to_GLOB $SLOT_DATA($src_idx)] < 0 } {
+        # correlation failed, entry must be kept
+        # relocate it if needed
+        if {$dst_idx != $src_idx} {set SLOT_DATA($dst_idx) $SLOT_DATA($src_idx)}
+        incr dst_idx
+      }
+      incr src_idx
+    }
+    set SLOT_DATA_COUNT $dst_idx
+
+    ::LOG::Msg debug "$ltag: end of SLOT->GLOB correlation: GLOB=$GLOB_DATA_COUNT, SLOT=$SLOT_DATA_COUNT, IDB=$IDB_DATA_COUNT"
+
+
+    ::LOG::Msg debug "$ltag: total entries into internal structures: [expr {$GLOB_DATA_COUNT + $SLOT_DATA_COUNT + $IDB_DATA_COUNT}]"
+
+    # ready to generate XML output
+
+
+    upvar EntityHandle h_entity
+
+
+    # first, output GLOB residuals (usually less than 5 items)
+
+    for {set index 0} {$index < $GLOB_DATA_COUNT} {incr index} {
+      set h_item [::XTREE::add_Child $h_entity "Item"]
+      set gname [lindex $GLOB_DATA($index) 1]
+      if {$gname == "(global)"} {
+        ::RANCID::XML_AddInventoryItems $h_item [concat $GLOB_DATA($index)\
+                                        [list $::RANCID::ipDescr "Uncorrelated system's global informations"]]
+      } else {
+        if {[string first "(global)" $gname] != 0} {
+          ::RANCID::XML_AddInventoryItems $h_item [lreplace $GLOB_DATA($index) 1 1 "(global)/$gname"]
+        } else {
+          ::RANCID::XML_AddInventoryItems $h_item $GLOB_DATA($index)
+        }
+      }
+    }
+
+    set output_counter $GLOB_DATA_COUNT
+
+    # second, output IDB (this is the main fully-correlated part)
+
+    for {set idx 0} {$idx < $IDB_DATA_COUNT} {incr idx} {
+      set h_item [::XTREE::add_Child $h_entity "Item"]
+      ::RANCID::XML_AddInventoryItems $h_item $IDB_DATA($idx)
+    }
+
+    incr output_counter $IDB_DATA_COUNT
+
+    # third, output SLOT residuals (usually only software-related items for multi-chassis devices)
+
+    for {set index 0} {$index < $SLOT_DATA_COUNT} {incr index} {
+      set h_item [::XTREE::add_Child $h_entity "Item"]
+      ::RANCID::XML_AddInventoryItems $h_item [concat [list $::RANCID::ipName] $SLOT_DATA($index)]
+    }
+
+    incr output_counter $SLOT_DATA_COUNT
+
+    ::LOG::Msg debug "$ltag: total entries generated on output: $output_counter"
+
+    return 0
+  }
+
+  #--------------------------------------------------------------------------
+
+
+
+
+
+
+
+  # dispatch table for deviceType-specific L1 inventory parsing routines
+
+  array set TABLE_INVENTORY_PARSER {
+    "cisco"	"::RANCID::InventoryParser_cisco"
+    "juniper"	"::RANCID::InventoryParser_juniper"
+  }
+
+
+
+  #--------------------------------------------------------------------------
+  # exit-codes:
+  #
+  #	 0	success
+  #	-1	error opening input file
+  #	-2	input file read error
+  #	-3	invalid file (unable to identify rancid's content type)
+  #     -4	unsupported device type
+  #	-5	config file apparently does not include inventory data
+  #
+  # other exit-codes might be returned by the level-2 parsing routines
+
+  proc ProcessInventoryData { fname_config } {
+    set ltag "RANCID::ProcessInventoryData"
+
+    upvar EntityHandle EntityHandle
+
+
+    # preliminary parsing stage (level-0):
+    #
+    # - open the configuration file extracted from the repository
+    # - identify the start-of-remark sequence and the deviceType
+    # - extract all non-empty remarks and add to the buffer
+    # - stop at the first non-remark line
+    # - close the file (it will be delete by the caller)
+
+    set idx 0
+    set devtype ""
+
+    if {[catch {open "$fname_config" "r"} fch]} {
+      ::LOG::Msg error "$ltag: failed to open CVS exported file ($fch)"
+      set res -1
+    } else {
+      set res 0
+      while { $res == 0 } {
+        if {[catch {gets $fch fline} x]} {
+          ::LOG::Msg error "$ltag: error reading from CVS exported ($x)"
+          set res -2
+          break
+        }
+        if {$x < 0} { break }
+        if { "$devtype" != "" } {
+          # first non-remark line stops scanning
+          if {![regexp -- "^${remseq}(.*)$" $fline mall line_content]} { break }
+          # empty/blank remarks lines are not added to buffer
+          if {"[set line_content [string trimright $line_content]]" != ""} {
+            set SourceBuffer($idx) $line_content
+            incr idx
+          }
+          continue
+        }
+        # the config-file format was not yet identified
+        if {[regexp {^([[:blank:]]*[^[:blank:]]+)[[:blank:]]*RANCID-CONTENT-TYPE:[[:blank:]]+([^[:blank:]]+)[[:blank:]]*$}\
+                    "$fline" mall remseq devtype]} {
+          # got id-line: check that devtype is supported
+          ::LOG::Msg debug "$ltag: detected input file format: deviceType=\"$devtype\", remarkPrefix=\"$remseq\""
+          if {![info exists ::RANCID::TABLE_INVENTORY_PARSER($devtype)]} {
+            ::LOG::Msg error "$ltag: inventory functions not supported (yet) for \"$devtype\" deviceType"
+            set res -4
+            break
+          }
+        }
+      }
+      if {[catch {close $fch} retval]} {
+        ::LOG::Msg warning "$ltag: error closing input file: ignored ($retval)"
+      }
+    }
+
+    ::LOG::Msg debug "$ltag: a total of $idx lines were submitted to the L1-parser buffer"
+
+    # check that everything was ok so far:
+    #
+    # - no errors occurred while accessing the file
+    # - the deviceType was identified and found supported
+    # - some data were actually added to the buffer
+
+    if { $res < 0 } { return $res }
+
+    if { "$devtype" == "" } {
+      ::LOG::Msg error "$ltag: failed to identify input file format"
+      return -3
+    }
+
+    if { $idx == 0 } {
+      ::LOG::Msg error "$ltag: nothing to submit to the L1-parser"
+      return -5
+    }
+
+    # add a blank line at the end of the SourceBuffer
+
+    set SourceBuffer($idx) ""
+
+
+    # calls devtype-specific parsing routine and returns the status
+
+    return [eval $::RANCID::TABLE_INVENTORY_PARSER($devtype)]
+  }
+  #--------------------------------------------------------------------------
+
+
+  # end of Inventory routines
+  #==========================================================================
+
+
+  array set Device_RespStatusTable {
+
+      4	{ "Deleted"         "Device successfully deleted from group's router.db" }
+      3	{ "Updated"         "Device properties successfully updated to group's router.db" }
+      2	{ "Created"         "Device successfully added to group's router.db" }
+      1	{ "NotChanged"      "No changes in device's properties, group's router.db was not modified" }
+      0	{ "Found"           "Device properties" }
+     -1	{ "ErrBusy"         "Group's router.db is currently locked" }
+     -2	{ "ErrFileSystemIO" "Failed to open group's router.db for reading" }
+     -3	{ "ErrFileSystemIO" "I/O error while reading group's router.db" }
+     -4	{ "ErrCorrupted"    "Invalid or malformed line in group's router.db" }
+     -5	{ "ErrNotFound"     "Device was not found in group's router.db" }
+     -6 { "ErrExists"       "Device already exists in group's router.db" }
+     -7	{ "ErrMissingData"  "Request does not contain \"deviceType\" or \"state\" property" }
+     -8	{ "ErrInvalidData"  "Request contains an invalid \"deviceType\" or \"state\" property" }
+     -9	{ "ErrFileSystemIO" "Failed to open group's router.db for writing" }
+    -10	{ "ErrFileSystemIO" "I/O error while writing group's router.db" }
+    -11	{ "ErrFileSystemIO" "I/O error while closing group's router.db (deferred write-error?)" }
+    -12	{ "ErrFileSystemIO" "Temporary group's router.db creation failed" }
+    -13	{ "ErrFileSystemIO" "I/O error while writing temporary group's router.db" }
+    -14	{ "ErrFileSystemIO" "I/O error while closing temporary group's router.db (deferred write-error?)" }
+    -15	{ "ErrFileSystemIO" "Unable to rename temporary group's router.db" }
+  }
+
+
+  array set DeviceAccess_RespStatusTable {
+
+      3	{ "Reset"           "Access properties for the specific deviceName were deleted from \".cloginrc\"" }
+      2	{ "Updated"         "Access properties for the specific deviceName were successfully updated to \".cloginrc\"" }
+      1	{ "NotChanged"      "No changes in access properties, file \".cloginrc\" was not modified" }
+      0	{ "Found"           "Access properties matching the given deviceName" }
+     -1	{ "ErrBusy"         "File \".cloginrc\" is currently locked" }
+     -2	{ "ErrFileSystemIO" "Failed to open \".cloginrc\" for reading" }
+     -3	{ "ErrFileSystemIO" "I/O error while reading file \".cloginrc\"" }
+     -4	{ "ErrCorrupted"    "Invalid or malformed line in file \".cloginrc\"" }
+     -5	{ "ErrNotFound"     "No pattern matched the given deviceName" }
+     -6	{ "ErrMissingData"  "Request does not contain any access property" }
+     -7	{ "ErrFileSystemIO" "Temporary file creation failed" }
+     -8	{ "ErrFileSystemIO" "I/O error while writing temporary file" }
+     -9	{ "ErrFileSystemIO" "I/O error while closing temporary file (deferred write error?)" }
+    -10	{ "ErrFileSystemIO" "Failed to rename temporary file as \".cloginrc\"" }
+  }
+
+
+
+  #--------------------------------------------------------------------------
+  proc SetDeviceResponseStatus {result} {
+    upvar ServiceStatus		ServiceStatus
+    upvar ServiceStatusMsg	ServiceStatusMsg
+
+    if {[info exists ::RANCID::Device_RespStatusTable($result)]} {
+      set ServiceStatus    "[lindex $::RANCID::Device_RespStatusTable($result) 0]"
+      set ServiceStatusMsg "[lindex $::RANCID::Device_RespStatusTable($result) 1]"
+    } else {
+      set ServiceStatus    "ErrInternal"
+      set ServiceStatusMsg "Unexpected return code from rancid group's database routines"
+    }
+  }
+  #--------------------------------------------------------------------------
+
+
+
+
+  # resource-tables
+
+  array set TABLE_MAIN {
+    ":self:"		"::RANCID::RES_Handler_rancid"
+    ":any:"		"::RANCID::URI_Handler_rancid"
+  }
+
+
+  array set TABLE_groups {
+    ":any:"		"::RANCID::URI_Handler_groups"
+  }
+
+
+  array set TABLE_clogin {
+    ":any:"		"::RANCID::URI_Handler_clogin"
+  }
+
+
+  array set TABLE_groupname {
+    ":any:"		"::RANCID::URI_Handler_groupname"
+  }
+
+
+  array set TABLE_devicename {
+    ":self:"		"::RANCID::RES_Handler_devicename"
+    "/configs"		"::RANCID::TABLE_configs"
+  }
+
+
+  array set TABLE_devicepattern {
+    ":self:"		"::RANCID::RES_Handler_devicepattern"
+  }
+
+  array set TABLE_devicetypes {
+    ":any:"		"::RANCID::URI_Handler_devicetypes"
+  }
+
+  array set TABLE_devicetype_name {
+    ":self:"		"::RANCID::RES_Handler_devicetype_name"
+  }
+
+  array set TABLE_configs {
+    ":self:"		"::RANCID::RES_Handler_configs"
+    ":any:"		"::RANCID::URI_Handler_configs"
+  }
+
+  array set TABLE_configs_revision {
+    ":self:"		"::RANCID::RES_Handler_configs_revision"
+    "/config.txt"	"::RANCID::TABLE_config_file"
+    "/inventory"	"::RANCID::TABLE_inventory"
+  }
+
+
+  array set TABLE_config_file {
+    ":self:"		"::RANCID::RES_Handler_config_file"
+  }
+
+  array set TABLE_inventory {
+    ":self:"		"::RANCID::RES_Handler_inventory"
+  }
+
+
+
+  #--------------------------------------------------------------------------
+  proc CheckApiConf {} {
+    set vbad ""
+    foreach vname $::RANCID::API_CONF_VARS {
+      if {![info exists ::RANCID::CONF::$vname]} { append vbad ", $vname" }
+    }
+    return [string trimleft $vbad {, }]
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  proc GetViewVCBaseURL { handle } {
+
+    if {"$::RANCID::CONF::urlViewVC" == ""} { return "" }
+
+    # if the base URL assigned is an absolute one return it as is
+    if {[regexp {^[Hh][Tt][Tt][Pp]://} $::RANCID::CONF::urlViewVC]} {
+      return $::RANCID::CONF::urlViewVC
+    }
+  
+    # else (it is a relative one) prepend SHP for request's target service
+
+    upvar ${handle}::CanonicalSHP SHP
+    return $SHP$::RANCID::CONF::urlViewVC
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  proc ConfigureAPI {} {
+    if {[::RANCID::CheckApiConf] != ""} {
+      # one or more configuration variables are missing: load and source
+      # the API configuration file
+      if {[catch {namespace eval ::RANCID::CONF { source $::RANCID::FILE_API_CONF }} resp]} {
+        return "Failed to load API configuration: $resp"
+      }
+      # API configuration file processed, re-check variables
+      if {[set resp [::RANCID::CheckApiConf]] != ""} {
+        return "API configuration variable(s) missing: $resp"
+      }
+    }
+    # API configuration variables OK
+    return ""
+  }
+  #--------------------------------------------------------------------------
+
+
+  #--------------------------------------------------------------------------
+  proc WriteToConfFile { line } {
+    upvar ServiceStatus		ServiceStatus
+    upvar ServiceStatusMsg	ServiceStatusMsg
+    upvar fch			fch
+
+    if {[catch {puts -nonewline $fch $line} resp]} {
+      set ServiceStatus    "ErrFileSystemIO"
+      set ServiceStatusMsg "Failed to write API configuration file: $resp"
+      catch {close $fch}
+      return 1
+    }
+    return 0
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  # internal-response: restituisce informazioni sul servizio
+
+  proc RES_Handler_rancid {} {
+    upvar RequestHandle			RequestHandle
+    upvar ServiceStatus			ServiceStatus
+    upvar ServiceStatusMsg		ServiceStatusMsg
+
+    if {[set id [::RWS::CheckMethod "GET POST"]]<0} { return 1 }
+
+    # process API configuration
+
+    if {[set resp [::RANCID::ConfigureAPI]] != ""} {
+      set ServiceStatusMsg $resp
+    } else {
+      set ServiceStatusMsg "RANCID-API Service Informations"
+    }
+
+    # process the request
+
+    if {$id == 1} {
+      # POST (need to read request-content)
+      array set a_fields {}
+      set u_fields {}
+      if {[::RWS::ReadRequestContent a_fields u_fields]} { return 1 }
+      set touch 0
+      foreach vname $::RANCID::API_CONF_VARS {
+        upvar ::RANCID::CONF::$vname confvar
+        set propname "Config.$vname"
+        if {[info exists a_fields($propname)]} {
+          if {[info exists confvar]} {
+            if {"$confvar" == "$a_fields($propname)"} { continue }
+          }
+          set confvar $a_fields($propname)
+          set touch 1
+        }
+      }
+      if {$touch} {
+        # must rewrite API config-file
+        if {[catch {open "$::RANCID::FILE_API_CONF" "w"} fch]} {
+          set ServiceStatus "ErrFileSystemIO"
+          set ServiceStatusMsg "Failed to open API configuration file for writing: $fch"
+          return 1
+        }
+        if {[WriteToConfFile "#\n# RANCID-API Configuration File\n#\n\n"]} { return 1 }
+        foreach vname $::RANCID::API_CONF_VARS {
+          upvar ::RANCID::CONF::$vname confvar
+          if {[info exists confvar]} {
+            if {[WriteToConfFile [format "set %-35s \"%s\"\n\n" $varname $confvar]]} { return 1 }
+          } else {
+            if {[WriteToConfFile [format "#set %-34s \"%s\"\n\n" $varname "value_needed_here"]]} { return 1 }
+          }
+        }
+        catch {close $fch}
+        set ServiceStatus "Updated"
+      } else {
+        set ServiceStatus "NotChanged"
+      }
+    } else {
+      set ServiceStatus "Found"
+    }
+
+
+
+    upvar ContentTreeRootHandle	ContentTreeRootHandle
+
+    set ContentHandle [::XTREE::add_Child $ContentTreeRootHandle "ResponseContent"]
+    set EntityHandle  [::XTREE::add_Child $ContentHandle         "ResourceEntity"]
+    set h_app         [::XTREE::add_Child $EntityHandle          "Application"]
+    set h_cnf         [::XTREE::add_Child $EntityHandle          "Config"]
+
+    ::XTREE::set_Item $h_app "Name"	$::RANCID::SRV_NAME
+    ::XTREE::set_Item $h_app "Version"	$::RANCID::SRV_VER
+
+    foreach vname $::RANCID::API_CONF_VARS {
+      upvar ::RANCID::CONF::$vname confvar
+      if {[info exists confvar]} {
+        ::XTREE::set_Item $h_cnf "$vname" $confvar
+      } else {
+        ::XTREE::set_Item $h_cnf "$vname" "undefined"
+      }
+    }
+
+    # generate internal response
+    return 1
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  # NOTE: this is NOT a standard RWS resource table, as the URI labels
+  #       (array indexes) MUST NOT include a leading slash
+
+  array set TABLE_rancid_sub {
+    "groups"		"::RANCID::TABLE_groups"
+    "clogin"		"::RANCID::TABLE_clogin"
+    "devicetypes"	"::RANCID::TABLE_devicetypes"
+  }
+
+
+  #--------------------------------------------------------------------------
+  proc URI_Handler_rancid {sub_label} {
+    upvar ServiceStatus			ServiceStatus
+    upvar ServiceStatusMsg		ServiceStatusMsg
+
+
+    if {[set resp [::RANCID::ConfigureAPI]] != ""} {
+      set ServiceStatus    "ErrConfig"
+      set ServiceStatusMsg $resp
+      return ""
+    }
+
+    # RANCID-API configuration is OK, loads rancid app. configuration
+
+    if {"[set resp [::RANCID::ReadRancidConf]]" != "" } {
+      set ServiceStatus    "ErrConfig"
+      set ServiceStatusMsg "$resp"
+      return ""
+    }
+
+    # OK, go ahead
+
+    if { "$sub_label" != "" } {
+      if {[info exists ::RANCID::TABLE_rancid_sub($sub_label)]} {
+        return $::RANCID::TABLE_rancid_sub($sub_label)
+      }
+      set ServiceStatus    "ErrNotFound"
+      set ServiceStatusMsg "Parsing stopped on URI-label \"$sub_label\""
+      return ""
+    }
+
+    # return list of rancid's sub-resources
+
+    return [lsort [array names ::RANCID::TABLE_rancid_sub]]
+  }
+  #--------------------------------------------------------------------------
+
+
+  #--------------------------------------------------------------------------
+  # NOTA: la gestione dei gruppi è case-sensitive (come in rancid).
+  #
+  # NOTA: Il test di esistenza deve essere rimosso da qui quando viene
+  #       aggiunto il provisioning dei gruppi...
+
+  proc URI_Handler_groups {groupname} {
+    upvar ServiceStatus			ServiceStatus
+    upvar ServiceStatusMsg		ServiceStatusMsg
+
+    if { "$groupname" != "" } {
+      if {[lsearch -exact "$::RANCID::RancidConf(LIST_OF_GROUPS)" "$groupname"] >= 0 } {
+        upvar Parameters Parameters
+        set Parameters(groupname) $groupname
+        return "::RANCID::TABLE_groupname"
+      }
+      set ServiceStatus    "ErrNotFound"
+      set ServiceStatusMsg "No such group"
+      return ""
+    }
+
+    # groupname == "" : returns the list of groups
+
+    return [lsort $::RANCID::RancidConf(LIST_OF_GROUPS)]
+  }
+  #--------------------------------------------------------------------------
+
+
+  #--------------------------------------------------------------------------
+  proc URI_Handler_groupname {devname} {
+    upvar ServiceStatus		ServiceStatus
+    upvar ServiceStatusMsg	ServiceStatusMsg
+    upvar ContentTreeRootHandle	ContentTreeRootHandle
+    upvar Parameters		Parameters
+
+    if { "$devname" != "" } {
+      if {[::RANCID::IsValidDeviceName $devname]} {
+        # version 0.9.2009022501:
+        #   devicename is forced to LOWERCASE before being passed-over
+        set Parameters(devicename) [string tolower $devname]
+        return "::RANCID::TABLE_devicename"
+      }
+      set ServiceStatus    "ErrForbidden"
+      set ServiceStatusMsg "The resource label \"$devname\" is not acceptable as deviceName"
+      return ""
+    }
+
+
+    # devname == "" : returns the list of devices in group
+
+    # get current groupname from Parameters array
+
+    set gname $Parameters(groupname)
+
+    if {[set result [::RANCID::DB_GetListOfDevices $gname devlist]]==0} {
+      return [lsort $devlist]
+    }
+
+    # errore nell'accesso al file router.db
+
+    ::RANCID::SetDeviceResponseStatus $result
+
+    return ""
+  }
+  #--------------------------------------------------------------------------
+
+
+  #--------------------------------------------------------------------------
+  proc RES_Handler_devicename {} {
+    upvar RequestHandle		RequestHandle
+    upvar ServiceStatus		ServiceStatus
+    upvar ServiceStatusMsg	ServiceStatusMsg
+    upvar ContentTreeRootHandle	ContentTreeRootHandle
+    upvar Parameters		Parameters
+
+    set gname $Parameters(groupname)
+    set dname $Parameters(devicename)
+
+    if {[set id [::RWS::CheckMethod "GET DELETE POST PUT"]] < 0} { return 1 }
+
+    if {[incr id -2] == -2} {
+      # GET request
+      set result [::RANCID::DB_GetDevice $gname $dname deviceType state comment]
+    } else {
+      # values for id: -1=DELETE, 0=POST, 1=PUT (as expected by DB_TouchDevice)
+      if {$id >= 0} {
+        # POST/PUT (need to read request-content)
+        array set a_fields {}
+        set u_fields {}
+        if {[::RWS::ReadRequestContent a_fields u_fields]} { return 1 }
+        foreach fname { deviceType state comment } {
+          if {[info exists a_fields($fname)]} {
+            set $fname $a_fields($fname)
+          } else {
+            set $fname ":"
+          }
+        }
+        # sanitize device state value (deviceType checked by DB_TouchDevice)
+        if {"$state"!=":" && "$state"!="up"} { set state "down" }
+      }
+      set result [::RANCID::DB_TouchDevice $gname $dname deviceType state comment $id]
+    }
+
+    if { $result >= 0 && $result != 4 } {
+      if { $state != "up" } {set state "down"}
+      set h_content [::XTREE::add_Child $ContentTreeRootHandle "ResponseContent"]
+      set h_entity  [::XTREE::add_Child $h_content             "ResourceEntity"]
+      ::XTREE::set_Item  $h_entity "deviceType" $deviceType
+      ::XTREE::set_Item  $h_entity "state"      $state
+      ::XTREE::set_Item  $h_entity "comment"    $comment
+    }
+
+    ::RANCID::SetDeviceResponseStatus $result
+
+    return 1
+  }
+  #--------------------------------------------------------------------------
+
+
+  #--------------------------------------------------------------------------
+  proc URI_Handler_clogin {devpattern} {
+
+    if { $devpattern != "" } {
+      upvar Parameters Parameters
+
+      if {[::RANCID::IsValidDeviceName $devpattern]} {
+
+        # version 0.9.2009022501-p1 (MILIS12S patch, on 15/03/2009)
+        # included officially from version 0.9.2009031501
+        #
+        #   devicepattern is forced to LOWERCASE before being passed-over
+
+        set Parameters(devicepattern) [string tolower $devpattern]
+
+        return "::RANCID::TABLE_devicepattern"
+
+      }
+      upvar ServiceStatus	ServiceStatus
+      upvar ServiceStatusMsg	ServiceStatusMsg
+
+      set ServiceStatus    "ErrForbidden"
+      set ServiceStatusMsg "The resource label \"$devpattern\" is not acceptable as deviceName"
+      return ""
+    }
+
+    # devpattern == "" : returns the (fake) list of device patterns
+    return "*"
+  }
+  #--------------------------------------------------------------------------
+
+
+  #--------------------------------------------------------------------------
+  proc RES_Handler_devicepattern {} {
+    upvar RequestHandle		RequestHandle
+    upvar ServiceStatus		ServiceStatus
+    upvar ServiceStatusMsg	ServiceStatusMsg
+    upvar ContentTreeRootHandle	ContentTreeRootHandle
+    upvar Parameters		Parameters
+
+    set devpattern $Parameters(devicepattern)
+
+    switch -exact -- [set id [::RWS::CheckMethod "GET POST DELETE"]] {
+      0	{
+        array set props {}
+        set result [::RANCID::CL_GetDeviceLoginProperties $devpattern props]
+      }
+
+      1	{
+        array set a_fields {}
+        set u_fields {}
+        if {[::RWS::ReadRequestContent a_fields u_fields]} { return 1 }
+        array set props {}
+        foreach pn [concat $::RANCID::CL_DIRECTIVES {enablepassword}] {
+          if {[info exists a_fields($pn)]} {set props($pn) $a_fields($pn)}
+        }
+        set result [::RANCID::CL_TouchDeviceLoginProperties $devpattern props]
+      }
+
+      2	{
+        set result [::RANCID::CL_TouchDeviceLoginProperties $devpattern ""]
+      }
+
+      default {
+        # bad method (error status already set)
+        return 1
+      }
+    }
+
+    if { $id != 2 && $result >= 0 } {
+      # GET/POST + SUCCESS
+      set h_con [::XTREE::add_Child $ContentTreeRootHandle "ResponseContent"]
+      set h_ent [::XTREE::add_Child $h_con                 "ResourceEntity"]
+      foreach {pn pv} [array get props] {::XTREE::set_Item $h_ent "$pn" "$pv"}
+    }
+
+    if {[info exists ::RANCID::DeviceAccess_RespStatusTable($result)]} {
+      set ServiceStatus    "[lindex $::RANCID::DeviceAccess_RespStatusTable($result) 0]"
+      set ServiceStatusMsg "[lindex $::RANCID::DeviceAccess_RespStatusTable($result) 1]"
+    } else {
+      set ServiceStatus    "ErrInternal"
+      set ServiceStatusMsg "Unexpected return code from rancid .cloginrc file routines"
+    }
+
+    return 1
+  }
+  #--------------------------------------------------------------------------
+
+
+  #--------------------------------------------------------------------------
+  proc URI_Handler_devicetypes {devtype_name} {
+    upvar ServiceStatus			ServiceStatus
+    upvar ServiceStatusMsg		ServiceStatusMsg
+
+    if { "$devtype_name" != "" } {
+      if {[info exists ::RANCID::DB_DEVICETYPES($devtype_name)] } {
+        upvar Parameters Parameters
+        set Parameters(devicetype) $devtype_name
+        return "::RANCID::TABLE_devicetype_name"
+      }
+      set ServiceStatus    "ErrNotFound"
+      set ServiceStatusMsg "No such device-type"
+      return ""
+    }
+    # devtype_name == "" : returns the list of supported devicetypes
+    return [lsort [array names ::RANCID::DB_DEVICETYPES]]
+  }
+  #--------------------------------------------------------------------------
+
+
+  #--------------------------------------------------------------------------
+  proc RES_Handler_devicetype_name {} {
+    upvar RequestHandle			RequestHandle
+    upvar ServiceStatus			ServiceStatus
+    upvar ServiceStatusMsg		ServiceStatusMsg
+
+    if {[::RWS::CheckMethod "GET"]<0} { return 1 }
+
+    upvar ContentTreeRootHandle	ContentTreeRootHandle
+    upvar Parameters Parameters
+    set dt $Parameters(devicetype)
+
+    set ContentHandle [::XTREE::add_Child $ContentTreeRootHandle "ResponseContent"]
+    set EntityHandle  [::XTREE::add_Child $ContentHandle         "ResourceEntity"]
+    ::XTREE::set_Item  $EntityHandle "Description" $::RANCID::DB_DEVICETYPES($dt)
+
+    set ServiceStatus    "Found"
+    set ServiceStatusMsg "DeviceType Informations"
+
+    return 1
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  proc RES_Handler_configs {} {
+    upvar RequestHandle			RequestHandle
+    upvar ServiceStatus			ServiceStatus
+    upvar ServiceStatusMsg		ServiceStatusMsg
+
+    if {[::RWS::CheckMethod "GET"]<0} { return 1 }
+
+    upvar Parameters		Parameters
+
+    set gname $Parameters(groupname)
+    set dname $Parameters(devicename)
+
+    #=== starting from 0.9.2009022501 devicename is verified to exist
+
+    if {[set res [::RANCID::DB_GetDevice $gname $dname deviceType state comment]] != 0} {
+      ::RANCID::SetDeviceResponseStatus $res
+      return 1
+    }
+
+    #===
+
+    array set revinfo {}
+
+    if {[set resp [::RANCID::CVS_GetRevisionsInfo "$gname" "$dname" revinfo]] != ""} {
+      set ServiceStatus    "ErrInternal"
+      set ServiceStatusMsg "$resp"
+      return 1
+    }
+
+    upvar ContentTreeRootHandle	ContentTreeRootHandle
+
+    set ContentHandle [::XTREE::add_Child $ContentTreeRootHandle "ResponseContent"]
+    set EntityHandle  [::XTREE::add_Child $ContentHandle         "ResourceEntity"]
+
+    if {[info exists revinfo(totalrevs)]} {
+      ::XTREE::set_Item  $EntityHandle "TotalRevisions" $revinfo(totalrevs)
+    }
+
+    if {[info exists revinfo(headrev)]} {
+      ::XTREE::set_Item  $EntityHandle "HeadRevision" $revinfo(headrev)
+    }
+
+    if {[set bu [::RANCID::GetViewVCBaseURL $RequestHandle]] != ""} {
+      ::XTREE::set_Item  $EntityHandle "UrlViewVC" "$bu/$gname/configs/$dname?view=log"
+    }
+
+
+    set ServiceStatus    "Found"
+    set ServiceStatusMsg "Configuration Repository Informations"
+
+    return 1
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  proc URI_Handler_configs {revision} {
+    upvar RequestHandle		RequestHandle
+    upvar ServiceStatus		ServiceStatus
+    upvar ServiceStatusMsg	ServiceStatusMsg
+    upvar Parameters		Parameters
+
+
+    set gname $Parameters(groupname)
+    set dname $Parameters(devicename)
+
+    #=== starting from 0.9.2009022501 devicename is verified to exist
+
+    if {[set res [::RANCID::DB_GetDevice $gname $dname deviceType state comment]] != 0} {
+      ::RANCID::SetDeviceResponseStatus $res
+      return ""
+    }
+
+    #===
+
+
+    array set revs {}
+
+    if {[set resp [::RANCID::CVS_GetRevisions "$gname" "$dname" revs]] != ""} {
+      set ServiceStatus    "ErrInternal"
+      set ServiceStatusMsg "$resp"
+      return ""
+    }
+
+    if { "$revision" != "" } {
+      if {[info exists revs($revision)] } {
+        set Parameters(revnumber) "$revision"
+        set Parameters(revdate)   "$revs($revision) UTC"
+        return "::RANCID::TABLE_configs_revision"
+      }
+      set ServiceStatus    "ErrNotFound"
+      set ServiceStatusMsg "No such revision"
+      return ""
+    }
+
+    # revision == "" : returns the list of available revisions
+
+    return [lsort -dictionary -decreasing [array names revs]]
+  }
+  #--------------------------------------------------------------------------
+
+
+  #--------------------------------------------------------------------------
+  proc RES_Handler_configs_revision {} {
+    upvar RequestHandle			RequestHandle
+    upvar ServiceStatus			ServiceStatus
+    upvar ServiceStatusMsg		ServiceStatusMsg
+
+    if {[::RWS::CheckMethod "GET"]<0} { return 1 }
+
+    upvar ContentTreeRootHandle	ContentTreeRootHandle
+    upvar Parameters		P
+
+    set ContentHandle [::XTREE::add_Child $ContentTreeRootHandle "ResponseContent"]
+    set EntityHandle  [::XTREE::add_Child $ContentHandle         "ResourceEntity"]
+
+    ::XTREE::set_Item  $EntityHandle "Date" $P(revdate)
+
+    if {[set bu [::RANCID::GetViewVCBaseURL $RequestHandle]] != ""} {
+      ::XTREE::set_Item  $EntityHandle "UrlViewVC"\
+        "$bu/$P(groupname)/configs/$P(devicename)?revision=$P(revnumber)&amp;view=markup"
+    }
+
+    set ServiceStatus    "Found"
+    set ServiceStatusMsg "Revision Informations"
+
+    return 1
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  proc RES_Handler_config_file {} {
+    upvar RequestHandle			RequestHandle
+    upvar ServiceStatus			ServiceStatus
+    upvar ServiceStatusMsg		ServiceStatusMsg
+
+    if {[::RWS::CheckMethod "GET"]<0} { return 1 }
+
+    set temp_dir ""
+
+    if {[::RANCID::CreateUniqueDir $::RANCID::CONF::pathTemp temp_dir]} {
+      set ServiceStatus    "ErrInternal"
+      set ServiceStatusMsg "Failed to create unique temporary directory"
+      return 1
+    }
+
+    upvar Parameters P
+
+    if {[set resp [::RANCID::CVS_ExportRevision $P(groupname) $P(devicename) $P(revdate)\
+                     "$temp_dir"]] != ""} {
+
+      set ServiceStatus    "ErrInternal"
+      set ServiceStatusMsg "$resp"
+      return 1
+
+    }
+
+    ::HTTP::RegisterEndOfResponseHandler $RequestHandle file delete -force -- $temp_dir
+
+    if {[::HTTP::SetupFileResponseContent $RequestHandle\
+           "$temp_dir/$P(devicename)" "text/plain; charset=ISO-8859-1"]} {
+
+      set ServiceStatus    "ErrInternal"
+      set ServiceStatusMsg "Failed to open external file for reading"
+      return 1
+
+    }
+
+    # this will be used (as it is translated into the HTTP status code)
+    set ServiceStatus    "Found"
+
+    # this will not be used in response, but will be logged anyway
+    set ServiceStatusMsg "Configuration File"
+
+    # engine return 0 to indicate an external response
+
+    return 0
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  proc RES_Handler_inventory {} {
+    upvar RequestHandle			RequestHandle
+    upvar ServiceStatus			ServiceStatus
+    upvar ServiceStatusMsg		ServiceStatusMsg
+
+    if {[::RWS::CheckMethod "GET"]<0} { return 1 }
+
+    set temp_dir ""
+
+    if {[::RANCID::CreateUniqueDir $::RANCID::CONF::pathTemp temp_dir]} {
+      set ServiceStatus    "ErrInternal"
+      set ServiceStatusMsg "Failed to create unique temporary directory"
+      return 1
+    }
+
+    upvar Parameters P
+
+    if {[set resp [::RANCID::CVS_ExportRevision $P(groupname) $P(devicename) $P(revdate)\
+                     "$temp_dir"]] != ""} {
+
+      set ServiceStatus    "ErrInternal"
+      set ServiceStatusMsg "$resp"
+      return 1
+
+    }
+
+    # a questo punto "$temp_dir/$P(devicename)" è il file da processare
+
+    upvar ContentTreeRootHandle	ContentTreeRootHandle
+
+    set ContentHandle [::XTREE::add_Child $ContentTreeRootHandle "ResponseContent"]
+    set EntityHandle  [::XTREE::add_Child $ContentHandle         "ResourceEntity"]
+
+    set ecode [::RANCID::ProcessInventoryData "$temp_dir/$P(devicename)"]
+
+    catch { file delete -force -- $temp_dir }
+
+    switch -exact -- $ecode {
+      0 {
+        set ServiceStatus    "Found"
+        set ServiceStatusMsg "Inventory Data"
+      }
+
+      -1 {
+        set ServiceStatus    "ErrFileSystemIO"
+        set ServiceStatusMsg "Failed to open external file for reading"
+      }
+
+      -2 {
+        set ServiceStatus    "ErrFileSystemIO"
+        set ServiceStatusMsg "I/O error while reading external file"
+      }
+
+      -3 {
+        set ServiceStatus    "ErrInternal"
+        set ServiceStatusMsg "External file is invalid (unable to identify rancid's content type)"
+      }
+
+      -4 {
+        set ServiceStatus    "ErrInternal"
+        set ServiceStatusMsg "Inventory functions are not (yet) supported on this deviceType"
+      }
+
+      -5 {
+        set ServiceStatus    "ErrInternal"
+        set ServiceStatusMsg "External file apparently does not contain inventory data"
+      }
+
+      default {
+        set ServiceStatus    "ErrInternal"
+        set ServiceStatusMsg "Unexpected return code from inventory parsing routines"
+      }
+
+    }
+
+    return 1
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  # This is the init-handler for the rancid service: it gets called as soon
+  # as the RequestEngine parser enters the "rancid" sub-tree: it performs
+  # the service init and returns the name of the service main table
+
+  proc URI_Handler_rancid_init {label} {
+    upvar RequestHandle			RequestHandle
+    upvar RespondingService		RespondingService
+
+    ::HTTP::SetServletName $RequestHandle "${::RANCID::SRV_NAME}/${::RANCID::SRV_VER}"
+
+    set RespondingService $::RANCID::SRV_NAME
+
+    # returns rancid's main table to RequestEngine to let the show going on
+
+    return "::RANCID::TABLE_MAIN"
+
+  }
+  #--------------------------------------------------------------------------
+
+
+  # returns the name of the init function to the dynamic loader for
+  # service registration
+
+  return "::RANCID::URI_Handler_rancid_init"
+}
+#============================================================================
+
+### end of "rancid" RWS service module
+
