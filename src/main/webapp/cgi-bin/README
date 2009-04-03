@@ -149,9 +149,9 @@ If all of the above is satisfied, then go ahead with the installation.
   directory of your system;
 
 
-- the untar process created in /tmp the directory "rws-rancid-api-X.Y"
+- the untar process created in /tmp the directory "rancid-api-X.Y"
   (the trailing string "X.Y" being the version of the package); from now
-  on I will refer to the /tmp/rws-rancid-api-X.Y directory as "the package
+  on I will refer to the /tmp/rancid-api-X.Y directory as "the package
   directory"
 
 
