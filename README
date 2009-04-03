@@ -1,0 +1,35 @@
+RANCID Web Service (RWS)
+
+This is the RWS distribution, which is made up of 3 major parts:
+
+1) RANCID patches
+
+For the RANCID web service to fully work, it was necessary to patch the
+control_rancid script that comes as part of RANCID to be able to send
+notifications as things are performed within RANCID.  Additionally, an
+SNMP MIB was created for the SNMP traps it sends.
+
+These files are available in the contrib/ directory of the binary
+distribution, or src/main/filtered/contrib/ in the source distribution.
+
+2) RANCID Web Service CGI
+
+The server-side of the RANCID Web Service integration uses standard
+CGI files, along with a simple configuration file.
+
+These files are in the cgi-bin/ directory of the binary distribution,
+or src/main/webapp/cgi-bin/ in the source distribution.
+
+3) RANCID Java Client
+
+The client-side of the RANCID Web Service has a reference
+implementation written in Java, although the web services themselves
+are implemented with a simple RESTful interface that can be accessed
+with any REST-capable client, even command-line tools like curl or
+wget.
+
+These files are in the src/main/java directory, and can be built
+from source using Maven ('mvn install'):
+
+	http://maven.apache.org/
+
