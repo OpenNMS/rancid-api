@@ -8,7 +8,9 @@ import java.text.ParseException;
 import java.util.Date;
 
 import java.io.IOException;
+import java.io.InputStream;
 
+import org.opennms.rancid.RWSBucket.BucketItem;
 import org.restlet.Client;
 
 import org.restlet.data.Form;
@@ -69,36 +71,7 @@ public class RWSClientApi {
 
     }
     
-    //Test encoding againts test server http://www.rionero.com/cgi-bin/cgites
-    /*
-    public static void encode_test() throws RancidApiException {
-        
-        if (!inited){
-            throw(new RancidApiException("Error: Api not initialized"));
-        }
-        
-        Form form = new Form();
-        form.add("deviceType", "test 123");
-        form.add("state", "rotto al 99%");
-        form.add("comment", "test commento");
-                
-        Representation rep = form.getWebRepresentation();
-
-        //rep.setMediaType(MediaType.APPLICATION_XHTML_XML);
-        // Launch the request
-        Reference rwsTest= new Reference("http://www.rionero.com/cgi-bin/cgitest");
-        Response response = client.post(rwsTest,rep);
-        try {
-            response.getEntity().write(System.out);
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-    }
-    */
-    //***************************************************************************
-    //***************************************************************************
-    // check if server is busy
+     // check if server is busy
     public static boolean isRWSAvailable(ConnectionProperties cp) throws RancidApiException {
 
         if (!inited){
@@ -241,10 +214,10 @@ public class RWSClientApi {
         
         try {
             Document doc = dmr.getDocument();
-            //dmr.write(System.out);
+
             for (int ii = 0; ii < doc.getElementsByTagName("Resource").getLength() ; ii++) {
                 String tmp = doc.getElementsByTagName("Resource").item(ii).getTextContent();
-                //System.out.println("Element " + tmp);
+
                 data.add(tmp);
             }
         }
@@ -336,40 +309,14 @@ public class RWSClientApi {
         return getRWSRancidNode(cp, group, devicename );
     }
     
-    
-    //***************************************************************************
-    //Rancid Group provisioning
-    // incomplete
-    //TODO
-    
-//    public static void createRWSGroup(String baseUri, String group) throws RancidApiException{
-//        
-//        if (!inited){
-//            throw(new RancidApiException("Error: Api not initialized"));
-//        }
-//        
-//        Form form = new Form();
-//        form.add("Resource", group );
-//                
-//        Representation rep = form.getWebRepresentation();
-//
-//        Response response = putMethodRWS(cp, baseUri+"/rws/rancid/groups/" + group,rep);
-//        try {
-//            response.getEntity().write(System.out);
-//        } catch (IOException e) {
-//            // TODO Auto-generated catch block
-//            e.printStackTrace();
-//        }
-//
-//    }
+
+    public static void createRWSGroup(ConnectionProperties cp, String group) throws RancidApiException {
+    	throw new RancidApiException("Create RWS Group: operation not supported");
+    }
     
     //***************************************************************************
     //***************************************************************************
     //Rancid Node Info provisioning
-    
-    public static void create_TEST_RWSRancidNode(String baseUri, RancidNode rnode) throws RancidApiException{
-        throw(new RancidApiException("Error: Server Busy", RancidApiException.RWS_BUSY));
-    }
     
     public static void createRWSRancidNode(ConnectionProperties cp, RancidNode rnode) throws RancidApiException{
         
@@ -393,9 +340,7 @@ public class RWSClientApi {
         ConnectionProperties cp = new ConnectionProperties("","",baseUri,"/rws",30);
         createRWSRancidNode(cp, rnode);
     }
-    
-    //***************************************************************************
-    
+        
     public static void updateRWSRancidNode(ConnectionProperties cp, RancidNode rnode) throws RancidApiException{
 
         if (!inited){
@@ -419,48 +364,34 @@ public class RWSClientApi {
         updateRWSRancidNode(cp, rnode);
     }
     
-    //***************************************************************************
     public static void createOrUpdateRWSRancidNode(ConnectionProperties cp, RancidNode rnode) throws RancidApiException{
      
         try {
-            //RancidNode rnx = getRWSRancidNodeTLO( cp, rnode.getGroup(), rnode.getDeviceName());
-            // no exception here so it exist so update it
             updateRWSRancidNode(cp, rnode);
         }
         catch (RancidApiException re){
             if (re.getRancidCode() == RancidApiException.RWS_RESOURCE_NOT_FOUND){
-                // does not exist create it
                 createRWSRancidNode(cp, rnode);
-            }
-            else {
-                //other kind of error must rethrow it
+            } else {
                 throw(re);
             }
         }
     }
 
-
-    //***************************************************************************
     public static void deleteRWSRancidNode(ConnectionProperties cp, RancidNode rnode) throws RancidApiException{
         if (!inited){
             throw(new RancidApiException("Error: Api not initialized"));
         }
-        
-        Form form = new Form();
-        form.add("deviceType", rnode.getDeviceType());
-        form.add("state", rnode.getState());
-        form.add("comment", rnode.getComment());
-                
+                        
         String url = cp.getUrl()+cp.getDirectory()+"/rancid/groups/"+rnode.getGroup()+"/"+rnode.getDeviceName();
         deleteMethodRWS(cp, url);
     }
+    
     public static void deleteRWSRancidNode(String baseUri, RancidNode rnode) throws RancidApiException{
         ConnectionProperties cp = new ConnectionProperties("","",baseUri,"/rws",30);
         deleteRWSRancidNode(cp, rnode);
     }
     
-    //***************************************************************************
-
 
 
     //***************************************************************************
@@ -484,7 +415,7 @@ public class RWSClientApi {
             Document doc = dmr.getDocument();
             // 2008/11/13 13:54:35 UTC
             SimpleDateFormat format = new SimpleDateFormat("yyyy/M/d H:m:s z");
-            //System.out.println("DATA "+doc.getElementsByTagName("Date").item(0).getTextContent());
+    
             Date date = format.parse(doc.getElementsByTagName("Date").item(0).getTextContent());
             in.setCreationDate(date);
             in.setConfigurationUrl(doc.getElementsByTagName("UrlViewVC").item(0).getTextContent());
@@ -525,7 +456,7 @@ public class RWSClientApi {
         
         while (iter1.hasNext()) {
             vstmp = iter1.next();
-            //System.out.println("Version " + tmpg1);
+
             InventoryNode in = getRWSInventoryNode(cp, rn, vstmp);
             rn.addInventoryNode(vstmp, in);
         }
@@ -566,9 +497,7 @@ public class RWSClientApi {
 
         try {
             Document doc = dmr.getDocument();
-            
-            System.out.println("1.2 " + doc.getElementsByTagName("Item").getLength());
-            
+                        
             int j;
             for (j = 0 ; j < doc.getElementsByTagName("Item").getLength() ; j++){
 
@@ -578,8 +507,6 @@ public class RWSClientApi {
                 for (i = 1 ; i < doc.getElementsByTagName("Item").item(j).getChildNodes().getLength() ; i++){
                                   
                     if(doc.getElementsByTagName("Item").item(j).getChildNodes().item(i).getNodeName().compareTo("Memory") == 0){
-//                        System.out.println("Memory type " + doc.getElementsByTagName("Item").item(j).getChildNodes().item(i).getChildNodes().item(1).getTextContent());
-//                        System.out.println("Memory size " + doc.getElementsByTagName("Item").item(j).getChildNodes().item(i).getChildNodes().item(3).getTextContent());
                         
                         InventoryMemory im = new InventoryMemory();
                         im.setType(doc.getElementsByTagName("Item").item(j).getChildNodes().item(i).getChildNodes().item(1).getTextContent());
@@ -589,8 +516,6 @@ public class RWSClientApi {
     
                     }
                     else if(doc.getElementsByTagName("Item").item(j).getChildNodes().item(i).getNodeName().compareTo("Software") == 0){
-//                        System.out.println("Software type " + doc.getElementsByTagName("Item").item(j).getChildNodes().item(i).getChildNodes().item(1).getTextContent());
-//                        System.out.println("Software version " + doc.getElementsByTagName("Item").item(j).getChildNodes().item(i).getChildNodes().item(3).getTextContent());
     
                         InventorySoftware im = new InventorySoftware();
                         im.setType(doc.getElementsByTagName("Item").item(j).getChildNodes().item(i).getChildNodes().item(1).getTextContent());
@@ -600,8 +525,6 @@ public class RWSClientApi {
 
                     }
                     else {
-//                        System.out.println(doc.getElementsByTagName("Item").item(j).getChildNodes().item(i).getNodeName());
-//                        System.out.println(doc.getElementsByTagName("Item").item(j).getChildNodes().item(i).getTextContent());
                         
                         Tuple im = new Tuple(doc.getElementsByTagName("Item").item(j).getChildNodes().item(i).getNodeName(), 
                                              doc.getElementsByTagName("Item").item(j).getChildNodes().item(i).getTextContent());
@@ -637,7 +560,7 @@ public class RWSClientApi {
                
         try {
             Document doc = dmr.getDocument();
-            // dmr.write(System.out);
+
             rna.setDeviceName(devicename);
             rna.setUser(doc.getElementsByTagName("user").item(0).getTextContent());
             rna.setPassword(doc.getElementsByTagName("password").item(0).getTextContent());
@@ -647,12 +570,8 @@ public class RWSClientApi {
                 rna.setAutoEnable(doc.getElementsByTagName("autoenable").item(0).getTextContent().compareTo("1") == 0);
             }
             catch (Exception e) {
-                System.out.println("optional auto enable field not found");
+            	rna.setAutoEnable(false);
             }
-            //rna.setAuthType(doc.getElementsByTagName("authType").item(0).getTextContent());
-            //System.out.println("nel metodo "+ doc.getElementsByTagName("method").item(0).getTextContent());
-
-
         }
         catch( IOException e){
             throw(new RancidApiException("Error: IOException Method GET: URL:" +url+ ":" + e.getMessage(), RancidApiException.OTHER_ERROR));
@@ -679,7 +598,6 @@ public class RWSClientApi {
             autoenable="1";
         }
         form.add("autoenable", autoenable);
-//        form.add("authType", rnodea.getAuthType());
         form.add("method", rnodea.getConnectionMethodString());
         
                 
@@ -702,7 +620,6 @@ public class RWSClientApi {
             autoenable="1";
         }
         form.add("autoenable", autoenable);
-//        form.add("authType", rnodea.getAuthType());
         form.add("method", rnodea.getConnectionMethodString());
         
                 
@@ -719,17 +636,13 @@ public class RWSClientApi {
     public static void createOrUpdateRWSAuthNode(ConnectionProperties cp, RancidNodeAuthentication rnodea) throws RancidApiException{
         
         try {
-            //RancidNode rnx = getRWSRancidNodeTLO( cp, rnode.getGroup(), rnode.getDeviceName());
-            // no exception here so it exist so update it
             updateRWSAuthNode(cp, rnodea);
         }
         catch (RancidApiException re){
             if (re.getRancidCode() == RancidApiException.RWS_RESOURCE_NOT_FOUND){
-                // does not exist create it
                 createRWSAuthNode(cp, rnodea);
             }
             else {
-                //other kind of error must rethrow it
                 throw(re);
             }
         }
@@ -745,19 +658,6 @@ public class RWSClientApi {
         if (!inited){
             throw(new RancidApiException("Error: Api not initialized"));
         }
-        Form form = new Form();
-        form.add("user", rnodea.getUser());
-        form.add("password", rnodea.getPassword());
-        form.add("enablepassword", rnodea.getEnablePass());
-//        form.add("autoEnable", rnodea.isAutoEnable());
-//        form.add("authType", rnodea.getAuthType());
-        form.add("method", rnodea.getConnectionMethodString());
-//        form.add("user", rnodea.getUser());
-        
-//        Representation rep = form.getWebRepresentation();
-
-        //rep.setMediaType(MediaType.APPLICATION_XHTML_XML);
-        // Launch the request
         String url = cp.getUrl() + cp.getDirectory() + "/rancid/clogin/" +rnodea.getDeviceName();
         deleteMethodRWS(cp, url);
     }
@@ -769,6 +669,114 @@ public class RWSClientApi {
         deleteRWSAuthNode(cp, rnodea);
     }
     
+    public static RWSResourceList getBuckets(ConnectionProperties cp) throws RancidApiException {
+        if (!inited){
+            throw(new RancidApiException("Error: Api not initialized"));
+        }
+        RWSResourceListImpl rwsImpl = new RWSResourceListImpl();
+        rwsImpl.ResourcesList = getInfo(cp,"/storage/buckets/");
+        return rwsImpl;
+    }
+    
+    public static RWSBucket getBucket(ConnectionProperties cp, String bucketName ) throws RancidApiException {
+        if (!inited){
+            throw(new RancidApiException("Error: Api not initialized"));
+        }
+        String url = cp.getUrl() + cp.getDirectory()+"/storage/buckets/" + bucketName;
+        Response response = getMethodRWS(cp, url);
+        DomRepresentation dmr = response.getEntityAsDom();
+        
+        RWSBucket bucket = new RWSBucket(bucketName);
+        try {
+            Document doc = dmr.getDocument();
+            
+            int fileNumber = doc.getElementsByTagName("File").getLength();
+        	
+            bucket.setBucketItem(new ArrayList<BucketItem>(fileNumber));
+            
+            for (int j = 0 ; j < fileNumber ; j++){
+
+            	String itemName  = doc.getElementsByTagName("File").item(j).getChildNodes().item(1).getTextContent();
+            	int itemSize  = Integer.parseInt(doc.getElementsByTagName("File").item(j).getChildNodes().item(2).getTextContent());
+            	//FIXME the date format is Wrong
+                SimpleDateFormat format = new SimpleDateFormat("yyyy/M/d H:m:s z");
+                Date itemDate = format.parse(doc.getElementsByTagName("File").item(j).getChildNodes().item(3).getTextContent());
+                
+                bucket.setBucket(j, itemName, itemSize, itemDate);               
+            }
+        
+        
+        } catch (IOException e) {
+            throw(new RancidApiException("Error: IOException Method GET: URL:" +url+ ":" + e.getMessage(), RancidApiException.OTHER_ERROR));
+		} catch (ParseException pe) {
+            throw(new RancidApiException("Error: ParseException Method GET: URL:" +url+ ":" + pe.getMessage(), RancidApiException.OTHER_ERROR));
+			
+		}
+        
+        
+        return bucket;
+
+    }
+    
+    public static byte[] getBucketItem(ConnectionProperties cp, String bucketName, String filename) throws RancidApiException {
+        if (!inited){
+            throw(new RancidApiException("Error: Api not initialized"));
+        }
+        
+        String url = cp.getUrl() + cp.getDirectory()+"/storage/buckets/" + bucketName + "?filename=" + filename;
+        Response response = getMethodRWS(cp, url);
+        response.getEntity();
+        throw new RancidApiException("getBucketItem: not implemented");
+//        response.getEntity().getMediaType().equals(MediaType.APPLICATION_OCTET_STREAM);
+//        FileRepresentation fr ;
+//        fr.
+//        response.getEntityAsObject()
+        //response.getRe
+        //InputStream is = null;
+//        try {
+//			is = response.getEntityAsForm().getWebRepresentation().getAvailableSize();
+//		} catch (IOException e) {
+//            throw(new RancidApiException("Error: IOException Method GET: URL:" +url+ ":" + e.getMessage(), RancidApiException.OTHER_ERROR));
+//		}
+//		return null;
+    }
+    
+    public static void createBucket(ConnectionProperties cp, String bucketName) throws RancidApiException {
+        if (!inited){
+            throw(new RancidApiException("Error: Api not initialized"));
+        }
+        String url = cp.getUrl() + cp.getDirectory()+"/storage/buckets/" + bucketName;
+        putMethodRWS(cp, url, new Form().getWebRepresentation());    	
+    }
+
+    public static void deleteBucket(ConnectionProperties cp, String bucketName) throws RancidApiException {
+        if (!inited){
+            throw(new RancidApiException("Error: Api not initialized"));
+        }
+        String url = cp.getUrl() + cp.getDirectory()+"/storage/buckets/" + bucketName;
+        deleteMethodRWS(cp, url);    	
+    }
+
+    public static void forceDeleteBucket(ConnectionProperties cp, String bucketName) throws RancidApiException {
+        if (!inited){
+            throw(new RancidApiException("Error: Api not initialized"));
+        }
+        String url = cp.getUrl() + cp.getDirectory()+"/storage/buckets/" + bucketName + "?mode=forced";
+        deleteMethodRWS(cp, url);    	
+    }
+    
+    public static void updateBucket(ConnectionProperties cp, String bucketName, String fileName, InputStream io) throws RancidApiException {
+    	throw new RancidApiException("updateBucket: Not implemented");
+    }
+
+    public static void deleteBucketItem(ConnectionProperties cp, String bucketName, String fileName) throws RancidApiException {
+        if (!inited){
+            throw(new RancidApiException("Error: Api not initialized"));
+        }
+        String url = cp.getUrl() + cp.getDirectory()+"/storage/buckets/" + bucketName + "?filename=" + fileName;
+        deleteMethodRWS(cp, url);    	
+    }
+
     //*********************************************************************************************
     // RWS METHODS
     static Response getMethodRWS(ConnectionProperties cp, String uriReference) throws RancidApiException {
