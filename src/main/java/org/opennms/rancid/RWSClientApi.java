@@ -10,6 +10,8 @@ import java.util.Date;
 import java.io.IOException;
 import java.io.InputStream;
 
+import org.apache.log4j.Category;
+import org.apache.log4j.Logger;
 import org.opennms.rancid.RWSBucket.BucketItem;
 import org.restlet.Client;
 
@@ -695,13 +697,22 @@ public class RWSClientApi {
             bucket.setBucketItem(new ArrayList<BucketItem>(fileNumber));
             
             for (int j = 0 ; j < fileNumber ; j++){
+                String itemName="";
+                int itemSize=0;
+                Date itemDate=null;
+                for (int i = 0; i < doc.getElementsByTagName("File").item(j).getChildNodes().getLength(); i++) {
+                    log().debug("Item:" + i +" NodeName: " + doc.getElementsByTagName("File").item(j).getChildNodes().item(i).getNodeName());
+                    log().debug("Item:" + i +" NodeTextContent: " + doc.getElementsByTagName("File").item(j).getChildNodes().item(i).getTextContent());
 
-            	String itemName  = doc.getElementsByTagName("File").item(j).getChildNodes().item(1).getTextContent();
-            	int itemSize  = Integer.parseInt(doc.getElementsByTagName("File").item(j).getChildNodes().item(2).getTextContent());
-            	//FIXME the date format is Wrong
-                SimpleDateFormat format = new SimpleDateFormat("yyyy/M/d H:m:s z");
-                Date itemDate = format.parse(doc.getElementsByTagName("File").item(j).getChildNodes().item(3).getTextContent());
-                
+                    if ("Name".equals(doc.getElementsByTagName("File").item(j).getChildNodes().item(i).getNodeName())) {
+                        itemName  = doc.getElementsByTagName("File").item(j).getChildNodes().item(i).getTextContent();                        
+                    } else if ("Size".equals(doc.getElementsByTagName("File").item(j).getChildNodes().item(i).getNodeName())) {
+                        itemSize  = Integer.parseInt(doc.getElementsByTagName("File").item(j).getChildNodes().item(i).getTextContent());                        
+                    } else if ("LastModified".equals(doc.getElementsByTagName("File").item(j).getChildNodes().item(i).getNodeName())) {
+                        SimpleDateFormat format = new SimpleDateFormat("yyyy/M/d H:m:s z");
+                        itemDate = format.parse(doc.getElementsByTagName("File").item(j).getChildNodes().item(i).getTextContent());
+                    }
+                }                
                 bucket.setBucket(j, itemName, itemSize, itemDate);               
             }
         
@@ -942,7 +953,10 @@ public class RWSClientApi {
     #             + response.getStatus());  
     # } 
     */ 
-  
+    private static Category log() {
+        return Logger.getLogger("Rancid");
+    }
+
  
 }
 
