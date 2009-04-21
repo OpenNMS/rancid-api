@@ -768,13 +768,13 @@ public class RWSClientApi {
         deleteMethodRWS(cp, url);    	
     }
 
-    public static void forceDeleteBucket(ConnectionProperties cp, String bucketName) throws RancidApiException {
-        if (!inited){
-            throw(new RancidApiException("Error: Api not initialized"));
-        }
-        String url = cp.getUrl() + cp.getDirectory()+"/storage/buckets/" + bucketName + "?mode=forced";
-        deleteMethodRWS(cp, url);    	
-    }
+//    public static void forceDeleteBucket(ConnectionProperties cp, String bucketName) throws RancidApiException {
+//        if (!inited){
+//            throw(new RancidApiException("Error: Api not initialized"));
+//        }
+//        String url = cp.getUrl() + cp.getDirectory()+"/storage/buckets/" + bucketName + "?mode=forced";
+//        deleteMethodRWS(cp, url);    	
+//    }
     
     public static void updateBucket(ConnectionProperties cp, String bucketName, String fileName, InputStream io) throws RancidApiException {
     	throw new RancidApiException("updateBucket: Not implemented");
