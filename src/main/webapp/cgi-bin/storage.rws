@@ -1,0 +1,1376 @@
+#============================================================================
+# STORAGE * RWS Service Module
+#
+# Copyright (c) 2009+ Rocco Rionero
+# Copyright (c) 2009+ The OpenNMS Group, Inc.
+# All rights reserved everywhere.
+#
+# This program was developed and is maintained by Rocco RIONERO
+# ("the author") and is subject to dual-copyright according to
+# the terms set in "The OpenNMS Project Contributor Agreement".
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307,
+# USA.
+#
+# The author can be contacted at the following email address:
+#
+#	Rocco RIONERO
+#	rock(at)rionero.com
+#
+# (please, specify "rws-storage-service" in the subject of your message)
+#
+#-----------------------------------------------------------------------------
+# OpenNMS Network Management System is Copyright by The OpenNMS Group, Inc.
+#============================================================================
+
+
+#-----------------------------------------------------------------------------
+#                 UNSUPPORTED BETA-RELEASE SOFTWARE VERSION
+#-----------------------------------------------------------------------------
+
+
+#============================================================================
+namespace eval ::STORAGE {
+
+  set SRV_NAME	"STORAGE"
+  set SRV_VER	"0.3.2009041803"
+  set SRV_INFO	"RWS STORAGE service"
+
+
+
+  #--------------------------------------------------------------------------
+  proc LockResource { disk_path {max_attempts 1} {ms_wait 500} } {
+
+    return [::UTILS::CreateMUTEX [file dirname $disk_path]\
+                                 "[file tail $disk_path].dir"\
+                                 $max_attempts $ms_wait]
+
+  }
+  #--------------------------------------------------------------------------
+
+
+  #--------------------------------------------------------------------------
+  proc UnlockResource { disk_path } {
+
+    return [::UTILS::ReleaseMUTEX [file dirname $disk_path]\
+                                  "[file tail $disk_path].dir"]
+
+  }
+  #--------------------------------------------------------------------------
+
+
+  #--------------------------------------------------------------------------
+  # Here I pose some safe restrictions on the allowed names for file and
+  # directories (namely, both MUST start with a letter or a number and some
+  # special characters are not allowed)
+
+  proc IsValidFileName { name } {
+    return [regexp {^[[:alnum:]][[:alnum:] \.,:\[\]\^\{\};_#\$\'()=@+-]*$} $name]
+  }
+  #--------------------------------------------------------------------------
+
+
+  #--------------------------------------------------------------------------
+  # SanitizeFileName
+  #
+  # Strips any absolute component from $fullfilename returning the filename
+  # part only. It is functionally equivalent to the "file tail" Tcl command
+  # or to the "basename" shell command, but was generalized to support also
+  # non unix-like pathnames. The returned filename is also blanks-trimmed.
+  # The goal of this function is to obtain a "safe" filename for local
+  # storage from what was received from the client as URI option or within
+  # the content-disposition of the POST multipart stream: since the client
+  # may use any sort of file-naming convention (tipically based on its
+  # Operating System and/or File System), this function tries to do its best,
+  # but sometime the result might be quite unexpected. Clients are encouraged
+  # to supply only well-formed filenames (according to the STORAGE naming
+  # rules) without any absolute and/or volume components. The actual name
+  # used is always returned into the STORAGE response.
+
+  proc SanitizeFileName { fullfilename } {
+
+    regexp -- {^(?:.*[\:\\/])*(.*)$} $fullfilename mall mfname
+
+    return [string trim $mfname]
+  }
+  #--------------------------------------------------------------------------
+
+
+
+
+  #--------------------------------------------------------------------------
+  # return code:
+  #
+  #	  0	success, channel open for writing
+  #	 -6	missing filename
+  #	 -7	filename is invalid (malformed)
+  #	 -8	invalid saveMode
+  #      -9	filename lock exists
+  #	-10	filename already used by another file
+  #	-11	filename already used by a directory
+  #	-12	autorename failed
+  #	-13	open failed (other error)
+  #	-14	failed to configure binary mode
+
+  proc OpenFileForStorage { saveMode targetDirectory __filename  __channel } {
+
+    set LTAG "STORAGE::OpenFileForStorage"
+
+    upvar $__filename	targetFilename
+    upvar $__channel	fChannel
+
+
+    if {[set targetFilename [::STORAGE::SanitizeFileName $targetFilename]] == ""} {
+      ::LOG::Msg error "$LTAG: filename is missing or was cleared by trimming absolute pathname components"
+      return -6
+    }
+
+    if {![::STORAGE::IsValidFileName $targetFilename]} {
+      ::LOG::Msg error "$LTAG: cannot use filename \"$targetFilename\": denied by storage naming rules"
+      return -7
+    }
+
+
+    if { $saveMode=="unique" || $saveMode=="rename" } {
+      set faccess "WRONLY CREAT EXCL"
+    } elseif {$saveMode=="overwrite"} {
+      set faccess "WRONLY CREAT TRUNC"
+    } elseif {$saveMode=="append"} {
+      set faccess "WRONLY CREAT APPEND"
+    } else {
+      ::LOG::Msg error "$LTAG: invalid saving mode: \"$saveMode\""
+      return -8
+    }
+
+
+    if {[::STORAGE::LockResource $targetDirectory 5]} {
+      ::LOG::Msg error "failed to acquire MUTEX: directory \"$targetDirectory\" is being accessed"
+      return -9
+    }
+
+
+    set base_filename  $targetFilename
+
+    set vnum   0
+    set result 0
+
+    while { 1 } {
+
+      set vers_fullname  [file join $targetDirectory $targetFilename]
+
+      if { ![catch {open $vers_fullname $faccess } fChannel] } { break }
+
+      if {[lindex $::errorCode 0] != "POSIX"} {
+        set result -13
+        break
+      }
+
+      if { $saveMode=="overwrite" || $saveMode=="append" } {
+        if {[lindex $::errorCode 1] == "EISDIR"} { set result -11 } else { set result -13 }
+        break
+      }
+
+      if {[lindex $::errorCode 1] != "EEXIST"} {
+        set result -13
+        break
+      }
+
+      if { $saveMode=="unique" } {
+        if {[file isdirectory $vers_fullname]} {
+          set fChannel "couldn't open \"$vers_fullname\": illegal operation on a directory"
+          set result -11
+          break
+        }
+        set result -10
+        break
+      }
+
+      # saveMode == "rename", open failed
+
+      if {[incr vnum] >= 100} {
+        # the full-path filename (with the original unversioned name) is logged here
+        set fChannel "couldn't open \"[file join $targetDirectory $base_filename]\": name conflict, auto-rename failed"
+        set result -12
+        break
+      }
+
+      # generate a new "versioned" name in the caller's variable and try again
+
+      set targetFilename [format "%s;%02d" $base_filename $vnum]
+    }
+
+    if {$result != 0} {
+
+      # failed to open file (must unlock the resource)
+
+      ::LOG::Msg error "$LTAG: $fChannel"
+      set fChannel ""
+
+    
+    } else {
+
+      # open ok, configure channel for binary output
+
+      if {[catch {fconfigure $fChannel -blocking 1 -buffering full\
+                                       -encoding binary -eofchar ""\
+                                       -translation lf } retval]} {
+
+        ::LOG::Msg error "$LTAG: $retval"
+
+        # cleanup action: close the file and delete it
+
+        if {[catch {close $fChannel} retval]} {
+          ::LOG::Msg warning "failed cleanup-close, $retval"
+        }
+
+        if {[catch {file delete -force -- $vers_fullname} retval]} {
+          ::LOG::Msg warning "failed cleanup-delete, $retval"
+        }
+
+        set fChannel ""
+
+        set result -14
+      }
+
+    }
+
+    if {$result != 0} { ::STORAGE::UnlockResource $targetDirectory }
+
+    return $result
+
+  }
+  #--------------------------------------------------------------------------
+
+
+
+
+  #--------------------------------------------------------------------------
+  # Read_MIME_Part_Chunk
+  #
+  # Arguments:
+  #	requested_size	max size for the chunk requested (or exact size of an
+  #			unbounded-chunk to be returned -- see below)
+  #
+  #	boundary_string	the complete boundary sequence terminating the current
+  #			part (or an empty string if an unbounded-chunk is
+  #			requested -- see below)
+  #
+  # Description:
+  #	extracts a "chunk" of bytes from the current part of a multipart data
+  #	stream; must be called from a proper multipart parsing procedure as
+  #	the working data structures must be persistent during the processing
+  #	of the entire multipart stream and as such are expected to exist into
+  #	the context of the caller.
+  #
+  # Returned Value:
+  #	 1	boundary FOUND (or unbounded data returned)
+  #	 0	boundary NOT found (or unbounded data NOT returned)
+  #	-2	i/o error
+  #	-3	EOF/connection closed by remote
+  #	-4	timeout
+  #
+
+  proc Read_MIME_Part_Chunk { requested_size boundary_string } {
+
+    upvar inputChannel	ioChannel
+    upvar inputTimeout	ioTimeout
+    upvar streamLength	ioCount
+
+    upvar ioState	ioState
+    upvar inputBuffer	inputBuffer
+    upvar inputCount	inputCount
+    upvar partBuffer	partBuffer
+    upvar partCount	partCount
+
+
+    set partBuffer	""
+    set partCount	0
+
+    
+    set boundary_string_len [string bytelength $boundary_string]
+
+    # note: do NOT attempt to read from $ioChannel if a previous i/o error
+    #       occurred (just use any content already in $inputBuffer); this
+    #       is the correct way to go. NOTE: $ioState MUST NEVER be altered
+    #	    by the calling procedure)
+
+    if { $ioState == 0 } {
+      set isize  [expr {$requested_size + $boundary_string_len}]
+      if {$inputCount < $isize && $ioCount > 0 } {
+        incr isize -$inputCount
+        if {$isize > $ioCount} { set isize $ioCount }
+        set ioState [::IO::ReadBlock $ioChannel $isize $ioTimeout chunk chunk_len]
+        if {$chunk_len > 0} {
+          append inputBuffer $chunk
+          incr inputCount    $chunk_len
+          incr ioCount      -$chunk_len
+        }
+      }
+    }
+
+
+    # if $boundary_string is empty, it was a request of $requested_size
+    # "unbounded" bytes: a "match" consists in just having enough bytes
+    # to return
+
+    if {$boundary_string_len == 0} {
+      if {$inputCount < $requested_size} { return 0 }
+      set partCount $requested_size
+      incr requested_size -1
+      set partBuffer [string range $inputBuffer 0 $requested_size]
+      set inputBuffer [string range $inputBuffer $partCount end]
+      incr inputCount -$partCount
+      return 1
+    }
+
+
+    # if $inputBuffer has less then $boundary_string_len bytes, no match
+    # is possible so we just return 0 and don't modify $inputBuffer
+
+    if {$inputCount < $boundary_string_len} { return 0 }
+
+
+    # scan $inputBuffer for matching $boundary_string
+
+    if {[set idx [string first $boundary_string $inputBuffer]] < 0} {
+
+      # $boundary_string not found: move into $partBuffer the "safe" part
+      # of $inputBuffer (i.e. the part which surely does not contain any
+      # portion potentially belonging to $boundary_string) and leave any
+      # residual into $inputBuffer for further processing
+
+      set idx [expr {$inputCount - $boundary_string_len}]      
+      set partBuffer  [string range $inputBuffer 0 $idx]
+      incr idx
+      set partCount $idx
+      set inputBuffer [string range $inputBuffer $idx end]
+      incr inputCount -$idx
+      return 0
+
+    }
+
+
+    # $boundary_string found in $inputBuffer starting at index $idx
+
+    if { $idx > 0 } {
+
+      # there is still some content from current part to be extracted
+
+      set partBuffer [string range $inputBuffer 0 [expr {$idx - 1}]]
+      set partCount  $idx
+
+    }
+
+
+    # remove BOTH part content AND $boundary_string from $inputBuffer
+
+    if { [incr idx $boundary_string_len] == $inputCount } {
+      # no residual: just clear $inputBuffer
+      set inputBuffer ""
+      set inputCount  0
+    } else {
+      # residual after boundary_string: adjust $inputBuffer
+      set inputBuffer [string range $inputBuffer $idx end]
+      incr inputCount -$idx
+    }
+
+    return 1
+  }
+  #--------------------------------------------------------------------------
+
+
+
+
+  #--------------------------------------------------------------------------
+  #
+  #	exit code:
+  #		  0	success
+  #
+  #		 -1	not used (reserved by IO library)
+  #		 -2	I/O error while reading
+  #		 -3	EOF/connection closed by remote
+  #		 -4	I/O timeout expired
+  #
+  #		 -5	malformed multipart stream (no file received)
+  #
+  #		 -6	missing filename
+  #		 -7	filename is invalid (malformed)
+  #		 -8	invalid saveMode
+  #		 -9	filename lock exists
+  #		-10	filename already used by another file
+  #		-11	filename already used by a directory
+  #		-12	autorename failed
+  #		-13	open failed (other error)
+  #		-14	failed to configure output channel in binary mode
+  #
+  #		-15	write file failed
+  #		-16	close file failed (deferred write-error?)
+  #		-17	multipart stream decoded ok but no file-upload part identified
+
+
+  proc DecodeMultipartUpload { inputChannel inputTimeout streamLength streamBoundary saveMode targetDirectory __filename } {
+
+    set LTAG "STORAGE::DecodeMultipartUpload"
+
+
+    upvar $__filename	targetFilename
+
+    set ioState		  0
+    set inputCount	  0
+    set inputBuffer	  ""
+
+
+    set decoder_state     "PREAMBLE"
+
+    # current_part_type:
+    #
+    #	-4 = ignored (content-disposition is other/unknown)
+    #	-3 = ignored (content-disposition is "form-data", content-type is "multipart/*")
+    #	-2 = ignored (content-disposition is "form-data", it is a file-upload but not the first one)
+    #	-1 = ignored (content-disposition is "form-data", but not a file-upload)
+    #	 0 = undefined (not yet identified)
+    #	 1 = file upload
+
+    set current_part_type 0
+    set current_part_len  0
+    set received_files    0
+    set outChannel        ""
+
+    set chunk_size        4095
+    set boundary_string   "--$streamBoundary\r\n"
+
+    set partCount	  0
+    set partBuffer	  ""
+
+
+    ::LOG::Msg info "decoding multipart-encapsulated request's content"
+
+    set result 0
+
+    while {1} {
+
+      if {![::STORAGE::Read_MIME_Part_Chunk $chunk_size $boundary_string]} {
+
+        # Read_MIME_Part_Chunk returned 0, possible cases:
+        #
+	#	request type	data returned	condition
+	#	--------------	-------------	-----------------------------
+        #	unbounded	0 bytes		\insufficient data in ioBuffer
+	#	bounded		0 bytes		/due to an I/O error (EOF?)
+	#	bounded		some bytes	regular condition
+
+        if {$partCount > 0} {
+
+          # extracted part data, no boundary found
+
+          incr current_part_len $partCount
+
+          if {$current_part_type == 1} {
+            # write data to disk
+            if {[catch {puts -nonewline $outChannel $partBuffer} retval]} {
+              ::LOG::Msg error "$LTAG: $retval"
+              set result -15
+              break
+            }
+            ::LOG::Msg debug "$LTAG: state is $decoder_state, no boundary found: part is file upload, writing to disk $partCount bytes"
+          } else {
+            ::LOG::Msg debug "$LTAG: state is $decoder_state, no boundary found: part is to be ignored, $partCount bytes discarded"
+          }
+
+          continue
+        }
+
+	# given the buffering layer due to boundary scanning, this is the
+	# only place where an I/O error becomes apparent (see above table):
+	# Read_MIME_Part_Chunk returned a 0 exit code meaning that not
+	# enough data are present in ioBuffer to be returned (in an unbounded
+	# read) or to be scanned against the boundary string (in a bounded
+	# request) and this was not supposed to happen (or the decoder state
+	# machine would not have requested more data), so it was not possible
+	# to get them from the $ioChannel: the error condition originally
+	# returned by IO::ReadBlock is in ioState and will be returned to the
+	# caller.
+
+        ::LOG::Msg error "$LTAG: state is $decoder_state, missing expected data due to I/O error: aborting"
+
+        set result $ioState
+        break
+      }
+
+
+      # -------------------
+      # part-boundary found
+      # -------------------
+
+      incr current_part_len $partCount
+
+      ::LOG::Msg debug "$LTAG: state is $decoder_state, found boundary (end of part): total part size is $current_part_len bytes"
+
+      switch -exact $decoder_state {
+
+
+        "PREAMBLE" {
+          # --------------------------------------------
+          # end of preamble, switch in part header state
+          # --------------------------------------------
+          set decoder_state   "PART-HEADER"
+          set chunk_size      1023
+          set boundary_string "\r\n"
+        }
+
+
+        "PART-HEADER" {
+          # --------------------------------
+          # got header line or end-of-header
+          # --------------------------------
+
+          if {$partCount} {
+
+            ::LOG::Msg debug "$LTAG: state is $decoder_state, header line: $partBuffer"
+
+            # ----------------------------------------------
+            # it is a part's header-field: process it unless
+            # part was already identified as to be ignored
+            # ----------------------------------------------
+
+            if {$current_part_type >= 0} {
+
+              # part-type not yet identified or identified as "file"
+
+              # any content-type is ignored, unless it indicates a sub-encapsulation
+              # (i.e. multiple file upload in a sub-encapsulated multipart/mixed part
+              # are currently not allowed)
+
+              if {[regexp -nocase {^content-type:[[:blank:]]+multipart/} $partBuffer]} {
+
+                ::LOG::Msg warning "detected part with sub-encapsulated multipart content: ignored"
+
+                set current_part_type -3
+
+              } else {
+
+                # check if it is a form-data content-disposition
+
+                if {[regexp -nocase {^content-disposition:[[:blank:]]+form-data;[[:blank:]]+(.*)$} $partBuffer mall mattr]} {
+
+                  # ok, is a valid content-disposition
+
+                  ::LOG::Msg debug "$LTAG: detected part with form-data content-disposition, attributes: \[$mattr\]"
+
+                  # check if it is a part-file (based on part's name)
+
+                  if {[regexp -nocase {(?:^|[[:blank:]])name="rws-storage-upload"} $mattr]} {
+
+                    # yes, it is a "file part", is the first one ?
+
+                    if {$received_files == 0} {
+
+                      ::LOG::Msg debug "$LTAG: form-data part identified as first file-upload"
+                      set current_part_type 1
+
+                      # if we need a filename, check if content-disposition includes a filename attribute
+                      if {$targetFilename == "" && [regexp -nocase {(?:^|[[:blank:]])filename="([^"]+)"} $mattr mall mfname]} {
+                        ::LOG::Msg info "will use the following filename from part's content-disposition field: \"$mfname\""
+                        set targetFilename $mfname
+                      }
+
+                    } else {
+
+                      ::LOG::Msg warning "form-data part identified as non-first file-upload: ignored"
+
+                      set current_part_type -2
+                    }
+
+                  } else {
+                    ::LOG::Msg warning "form-data part not identified as file upload: ignored"
+                    set current_part_type -1
+                  }
+
+                } else {
+
+                  # check if it is a different content-disposition
+
+                  if {[regexp -nocase {^content-disposition:[[:blank:]]+([^;]+)} $partBuffer mall mcdis] } {
+                    # invalid/unexpected content-disposition
+                    ::LOG::Msg warning "detected part with unexpected content-disposition \"$mcdis\": ignored"
+                    set current_part_type -4
+                  }
+
+                }
+              }
+            }
+
+          } else {
+
+            # ------------------------------------------------------------------
+            # it is the end of part header, switch in the proper part-body state
+            # ------------------------------------------------------------------
+
+            if {$current_part_type == 1} {
+
+              # current part was identified as a first file-upload
+
+              if {[set result [::STORAGE::OpenFileForStorage $saveMode $targetDirectory targetFilename outChannel]]} { break }
+              set full_stored_filename [file join $targetDirectory $targetFilename]
+              ::LOG::Msg info "receiving file \"$full_stored_filename\""
+
+            }
+
+            set chunk_size     16383
+            set decoder_state  "PART-BODY"
+            set boundary_string "\r\n--$streamBoundary"
+          }
+
+        }
+
+
+        "PART-BODY" {
+          # --------------------------------------------------------------------------------
+          # got end of a file part-body, if it was a file upload close file and switch state
+          # --------------------------------------------------------------------------------
+
+          if {$current_part_type == 1} {
+            # write data in last chunk to disk
+            if {[catch {puts -nonewline $outChannel $partBuffer} retval]} {
+              ::LOG::Msg error "$LTAG: $retval"
+              set result -15
+              break
+            }
+
+            if {[catch {close $outChannel} retval]} {
+              ::LOG::Msg error "$LTAG: $retval"
+              set result -16
+              break
+            }
+
+            ::STORAGE::UnlockResource $targetDirectory
+
+            ::LOG::Msg notice "successfully received file \"$full_stored_filename\" ($current_part_len bytes)"
+            incr received_files
+            set outChannel ""
+          }
+
+          set current_part_type 0
+
+          set decoder_state    "CHECK-NEXT"
+          set chunk_size       2
+          set boundary_string  ""
+        }
+
+
+        "CHECK-NEXT" {
+          # ----------------------------------------
+          # got boundary-trailer (unbounded request)
+          # ----------------------------------------
+
+          if {$partBuffer == "\r\n"} {
+
+            # start of a new part
+
+            set decoder_state    "PART-HEADER"
+            set chunk_size       1023
+            set boundary_string  "\r\n"
+
+          } else {
+
+            # not a continuation boundary: end of stream or stream error
+
+            if {$partBuffer != "--"} {
+              ::LOG::Msg error "$LTAG: malformed boundary sequence, multipart stream decoding aborted"
+              set result -5
+            }
+
+            # if end-of-stream just ignore epilogue (if any) and break loop
+            # if stream-error result was set, break loop
+
+            break
+
+          }
+
+        }
+
+      }
+
+      set current_part_len 0
+
+    }
+
+    # check result
+
+    if { $result != 0 } {
+
+      if { $outChannel != "" } {
+
+        if {[catch {close $outChannel} retval]} {
+          ::LOG::Msg warning "failed cleanup-close, $retval"
+        }
+
+        if {[catch {file delete -force -- $full_stored_filename} retval]} {
+          ::LOG::Msg warning "failed cleanup-delete, $retval"
+        }
+
+        ::STORAGE::UnlockResource $targetDirectory
+
+      }
+
+      if {$received_files != 0} {
+
+        # file was received and saved correctly, subsequent
+        # error NOT returned and reported as warning
+
+        ::LOG::Msg warning "multipart decoder aborted in state: $decoder_state (unprocessed bytes: inputBuffer=$inputCount, ioChannel=$streamLength)"
+
+        set result 0
+
+      } else {
+
+        ::LOG::Msg error "$LTAG: multipart decoder aborted in state: $decoder_state (unprocessed bytes: inputBuffer=$inputCount, ioChannel=$streamLength)"
+
+      }
+
+    } else {
+
+      # no errors so far, but... was anything actually received?
+
+      if {$received_files == 0} { return -17 }
+
+    }
+
+    return $result
+  }
+  #--------------------------------------------------------------------------
+
+
+
+
+  #		 -2	I/O error while reading
+  #		 -3	EOF/connection closed by remote
+  #		 -4	I/O timeout expired
+  #
+  #		 -5	malformed multipart stream (no file received)
+  #
+  #		 -6	missing filename
+  #		 -7	filename is invalid (malformed)
+  #		 -8	invalid saveMode
+  #		 -9	filename lock exists
+  #		-10	filename already used by another file
+  #		-11	filename already used by a directory
+  #		-12	autorename failed
+  #		-13	open failed (other error)
+  #		-14	failed to configure output channel in binary mode
+  #
+  #		-15	write file failed
+  #		-16	close file failed (deferred write-error?)
+  #		-17	multipart stream decoded ok but no file-upload part identified
+  #
+  #		-18	BinaryChannelCopy failed
+
+  # note: success (0) handled directly
+
+  array set Upload_RespStatusTable {
+     -2	{ "ErrCommIO"            "I/O error while receiving data" }
+     -3	{ "ErrCommIO"            "EOF while receiving data" }
+     -4	{ "ErrCommIO"            "I/O timeout expired" }
+     -5	{ "ErrMalformedContent"  "Multipart stream is malformed" }
+     -6 { "ErrMissingData"       "Filename is missing or was cleared when removing absolute components" }
+     -7	{ "ErrInvalidData"       "Filename does not comply with STORAGE naming rules" }
+     -8	{ "ErrBadOptionValue"    "Upload saving-mode is invalid, allowed values are: unique, overwrite, append, rename" }
+     -9	{ "ErrBusy"              "Target file is being accessed" }
+    -10	{ "ErrForbidden"         "Filename conflict (used by another file)" }
+    -11	{ "ErrForbidden"         "Filename conflict (reserved as resource name)" }
+    -12	{ "ErrForbidden"         "Filename conflict, auto-rename failed" }
+    -13	{ "ErrFileSystemIO"      "Failed to create file" }
+    -14	{ "ErrFileSystemIO"      "Failed to configure output channel" }
+    -15	{ "ErrFileSystemIO"      "I/O error writing output file" }
+    -16	{ "ErrFileSystemIO"      "I/O error closing output file (deferred write-error?)" }
+    -17	{ "ErrMissingData"       "Multipart stream apparently did not contain any file-upload" }
+    -18 { "ErrCommIO"            "I/O error during channel-to-channel raw binary copy" }
+  }
+
+
+
+
+  #--------------------------------------------------------------------------
+  proc ReceiveFileUpload {} {
+
+    upvar RequestHandle					RequestHandle
+    upvar ServiceStatus					ServiceStatus
+    upvar ServiceStatusMsg				ServiceStatusMsg
+    upvar ContentTreeRootHandle				ContentTreeRootHandle
+    upvar P						P
+
+    upvar ${RequestHandle}::QueryTokensAssigned		Options
+    upvar ${RequestHandle}::chIn             		chIn
+    upvar ${RequestHandle}::RequestContentType		RequestContentType
+    upvar ${RequestHandle}::RequestContentLen		RequestContentLen
+
+
+    set LTAG  "STORAGE::ReceiveFileUpload"
+
+
+    if {$RequestContentLen == ""} {
+      ::LOG::Msg error "$LTAG: request is missing Content-Length header's field"
+      set ServiceStatus    "ErrNoContentLength"
+      set ServiceStatusMsg "Request does not appear to have any content"
+      return 1
+    }
+
+
+    if {$RequestContentType == ""} {
+      ::LOG::Msg error "$LTAG: request is missing Content-Type header's field"
+      set ServiceStatus    "ErrNoContentType"
+      set ServiceStatusMsg "Request appears to have a content but no Content-Type is specified"
+      return 1
+    }
+
+
+    # read options and set local vars properly
+
+    if {[info exists Options(mode)]} { set mode $Options(mode) } else { set mode "unique" }
+
+    if {[info exists Options(filename)]} { set filename $Options(filename) } else { set filename "" }
+
+
+    # identify type of request's content and do the dirty job
+
+    if {[regexp -nocase {^multipart/form-data;[[:blank:]]+boundary=(.+)$} $RequestContentType mall boundary]} {
+
+      # ----------------
+      # multipart upload
+      # ----------------
+      
+      # process boundary removing any quoting and trimming blanks
+
+      set q [string index $boundary 0]
+      if {$q==[string index $boundary end] && ($q=={"} || $q=={'})} {
+        set boundary [string trim $boundary $q]
+      } else {
+        set boundary [string trimright $boundary " "]
+      }
+
+      # setup the input channel
+
+      if {[::IO::SetupChannel $chIn -eol-binary]} {
+        ::LOG::Msg error "$LTAG: failed to configure input channel"
+        set ServiceStatus    "ErrCommIO"
+        set ServiceStatusMsg "Failed to configure input channel"
+        return 1
+      }
+
+      set result [::STORAGE::DecodeMultipartUpload $chIn $::HTTP::ioTimeout $RequestContentLen $boundary $mode $P(disk_path) filename]
+
+    } elseif {[string compare -nocase "application/octet-stream" $RequestContentType] == 0} {
+
+      # ----------
+      # raw upload
+      # ----------
+
+      if {![set result [::STORAGE::OpenFileForStorage $mode $P(disk_path) filename outChannel]]} {
+
+        set full_stored_filename [file join $P(disk_path) $filename]
+
+        ::LOG::Msg info "receiving file \"$full_stored_filename\""
+
+        if {$RequestContentLen != 0} {
+          if {[::IO::BinaryChannelCopy $chIn $outChannel $RequestContentLen]} {
+            ::LOG::Msg error "$LTAG: I/O failure saving request content"
+            set result -18
+          }
+        }
+
+        if {[catch {close $outChannel} retval]} {
+          if {$result == 0} {
+            # error in normal close: will be returned
+            ::LOG::Msg error "$LTAG: $retval"
+            set result -16
+          } else {
+            # error during cleanup-close: will be reported as warning
+            # (result is unchanged and indicates the original error)
+            ::LOG::Msg warning "failed cleanup-close, $retval"
+          }
+        }
+
+        if {$result == 0} {
+          ::LOG::Msg notice "successfully received file \"$full_stored_filename\" ($RequestContentLen bytes)"
+        } else {
+          # cleanup-delete
+          if {[catch {file delete -force -- $full_stored_filename} retval]} {
+            ::LOG::Msg warning "failed cleanup-delete, $retval"
+          }
+        }
+
+        ::STORAGE::UnlockResource $P(disk_path)
+      }
+
+    } else {
+
+      ::LOG::Msg error "$LTAG: unsupported Content-Type: \"$RequestContentType\""
+      set ServiceStatus    "ErrBadContentType"
+      set ServiceStatusMsg "Allowed Content-Types are: \"multipart/form-data\" (preferred), \"application/octet-stream\""
+      return 1
+
+    }
+
+
+    # setup response fields (common)
+
+    if {$result == 0} {
+      # upload was ok, return the actual name used into response
+
+      set ContentHandle [::XTREE::add_Child $ContentTreeRootHandle "ResponseContent"]
+      set EntityHandle  [::XTREE::add_Child $ContentHandle         "ResourceEntity"]
+      ::XTREE::set_Item $EntityHandle "StoredFileName" $filename
+
+      set ServiceStatus    "Updated"
+      set ServiceStatusMsg "File \"$filename\" uploaded to storage resource \"$P(storage_path)\""
+      return 1
+    }
+
+    # return error from table
+
+    if {[info exists ::STORAGE::Upload_RespStatusTable($result)]} {
+      set ServiceStatus    [lindex $::STORAGE::Upload_RespStatusTable($result) 0]
+      set ServiceStatusMsg [lindex $::STORAGE::Upload_RespStatusTable($result) 1]
+    } else {
+      set ServiceStatus    "ErrInternal"
+      set ServiceStatusMsg "Unexpected return code from upload receiver routines: $result"
+    }
+
+    return 1
+
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  # resource-tables
+
+  array set TABLE_MAIN {
+    ":self:"		"::STORAGE::RES_Handler_storage"
+    "/buckets"		"::STORAGE::TABLE_top_bucket"
+  }
+
+
+  array set TABLE_top_bucket {
+    ":any:"		"::STORAGE::URI_Handler_bucket"
+  }
+
+
+  array set TABLE_sub_bucket {
+    ":self:"		"::STORAGE::RES_Handler_bucket"
+    ":any:"		"::STORAGE::URI_Handler_bucket"
+  }
+
+
+
+  #--------------------------------------------------------------------------
+  # internal-response: returns informations about the service
+
+  proc RES_Handler_storage {} {
+    upvar RequestHandle			RequestHandle
+    upvar ServiceStatus			ServiceStatus
+    upvar ServiceStatusMsg		ServiceStatusMsg
+
+    if {[set id [::RWS::CheckMethod "GET"]]<0} { return 1 }
+
+
+    set ServiceStatus    "Found"
+    set ServiceStatusMsg "STORAGE Service Informations"
+
+    upvar ContentTreeRootHandle	ContentTreeRootHandle
+
+    set ContentHandle [::XTREE::add_Child $ContentTreeRootHandle "ResponseContent"]
+    set EntityHandle  [::XTREE::add_Child $ContentHandle         "ResourceEntity"]
+    set h_app         [::XTREE::add_Child $EntityHandle          "Application"]
+    set h_config      [::XTREE::add_Child $EntityHandle          "ReadOnlyConfig"]
+
+    ::XTREE::set_Item $h_app "Name"	$::STORAGE::SRV_NAME
+    ::XTREE::set_Item $h_app "Version"	$::STORAGE::SRV_VER
+    ::XTREE::set_Item $h_app "Info"	$::STORAGE::SRV_INFO
+
+
+    ::XTREE::set_Item $h_config "pathBucketsRoot"\
+      [expr {($::STORAGE::DATA_BUCKETS_FOLDER!="")?"$::STORAGE::DATA_BUCKETS_FOLDER":"undefined"}]
+
+    # generate internal response
+    return 1
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+
+  proc URI_Handler_bucket {bucket_name} {
+    upvar ServiceStatus		ServiceStatus
+    upvar ServiceStatusMsg	ServiceStatusMsg
+    upvar Parameters		P
+
+    set ltag "STORAGE::URI_Handler_bucket"
+
+
+
+    if {![info exists P(disk_path)]} {
+      # first time called (bucket_name is a "top" bucket)
+      if {$::STORAGE::DATA_BUCKETS_FOLDER==""} {
+        ::LOG::Msg error "$ltag: storage root directory is undefined, check service configuration's"
+        set ServiceStatus    "ErrConfig"
+        set ServiceStatusMsg "Storage root directory is undefined: service is not correctly configured"
+        return ""
+      }
+      if {![file isdirectory $::STORAGE::DATA_BUCKETS_FOLDER]} {
+        ::LOG::Msg error "$ltag: storage root directory \"$::STORAGE::DATA_BUCKETS_FOLDER\" does not exist"
+        set ServiceStatus    "ErrConfig"
+        set ServiceStatusMsg "Storage root directory does not exist"
+        return ""
+      }
+      set P(disk_path)    $::STORAGE::DATA_BUCKETS_FOLDER
+      set P(storage_path) "/buckets"
+    } else {
+      if {![file isdirectory $P(disk_path)]} {
+        ::LOG::Msg error "$ltag: directory \"$P(disk_path)\" does not exist"
+        set ServiceStatus    "ErrNotFound"
+        set ServiceStatusMsg "Storage directory \"$P(storage_path)\" does not exist"
+        return ""
+      }
+    }
+
+    # parent-folder is ok
+
+    if { $bucket_name != "" } {
+      if {[::STORAGE::IsValidFileName $bucket_name]} {
+        set P(disk_path)    [file join $P(disk_path)    $bucket_name]
+        set P(storage_path) [file join $P(storage_path) $bucket_name]
+        return "::STORAGE::TABLE_sub_bucket"
+      }
+      ::LOG::Msg error "$ltag: directory name rejected: \"$bucket_name\""
+      set ServiceStatus    "ErrForbidden"
+      set ServiceStatusMsg "Not a valid storage resource name: \"$bucket_name\""
+      return ""
+    }
+
+
+    # bucket_name == "" : return the list of subdirectories
+
+    set resources {}
+    foreach resname [glob -nocomplain -directory $P(disk_path) -types {d} -- *] {
+      lappend resources [file tail $resname]
+    }
+    return [lsort -dictionary $resources]
+
+  }
+  #--------------------------------------------------------------------------
+
+
+
+
+  #--------------------------------------------------------------------------
+  # This is the "core" of the STORAGE service
+
+  proc RES_Handler_bucket {} {
+    upvar RequestHandle					RequestHandle
+    upvar ServiceStatus					ServiceStatus
+    upvar ServiceStatusMsg				ServiceStatusMsg
+    upvar ContentTreeRootHandle				ContentTreeRootHandle
+    upvar Parameters					P
+
+    upvar ${RequestHandle}::QueryTokensAssigned		Options
+
+    set ltag "STORAGE::RES_Handler_bucket"
+
+    set resource_exists [file isdirectory $P(disk_path)]
+
+    if {[set id [::RWS::CheckMethod "GET POST DELETE PUT"]] < 0} { return 1 }
+
+
+    if { $id == 3 } {
+      ##################################################
+      # method is PUT : create resource (i.e. directory)
+      ##################################################
+
+      if { $resource_exists} {
+        ::LOG::Msg error "$ltag: refused to create directory \"$P(disk_path)\": already exists"
+        set ServiceStatus    "ErrExists"
+        set ServiceStatusMsg "Storage directory \"$P(storage_path)\" already exist"
+        return 1
+      }
+
+      if {[file exists $P(disk_path)]} {
+        ::LOG::Msg error "$ltag: refused to create directory \"$P(disk_path)\": a file with the same name already exists"
+        set ServiceStatus    "ErrForbidden"
+        set ServiceStatusMsg "Storage directory name \"$P(storage_path)\" cannot be used"
+        return 1
+      }
+
+      # go ahead with directory creation
+
+      if {![catch {file mkdir $P(disk_path)} retval]} {
+        set ServiceStatus    "Created"
+        set ServiceStatusMsg "Storage directory \"$P(storage_path)\" created successfully"
+        return 1
+      }
+
+      # creation failed
+
+      ::LOG::Msg error "$ltag: failed to create directory: $retval"
+
+      set ServiceStatus    "ErrFileSystemIO"
+      set ServiceStatusMsg "Failed to create storage directory \"$P(storage_path)\""
+      return 1
+  
+    }
+
+
+    ###############################################
+    # for GET, DELETE, POST the resource must exist
+    ###############################################
+
+    if { !$resource_exists } {
+      ::LOG::Msg error "$ltag: directory \"$P(disk_path)\" does not exist"
+      set ServiceStatus    "ErrNotFound"
+      set ServiceStatusMsg "Storage directory \"$P(storage_path)\" does not exist"
+      return 1
+    }
+
+
+    if { $id == 2 } {
+
+      #######################################################
+      # method is DELETE : action depends on requested option
+      #######################################################
+
+      ### note: mode=forced not longer supported
+
+      ### -- new style, default=delete dir, filename= for deleting a file
+
+      if {[info exists Options(filename)]} {
+
+        # delete a file from directory -- check filename validity
+
+        set filename $Options(filename)
+
+        if {![::STORAGE::IsValidFileName $filename]} {
+          ::LOG::Msg error "$ltag: filename rejected: \"$filename\""
+          set ServiceStatus    "ErrForbidden"
+          set ServiceStatusMsg "Filename does not comply with STORAGE naming rules"
+          return 1
+        }
+
+        set full_stored_filename [file join $P(disk_path) $filename]
+
+        if {(![file exists $full_stored_filename]) || [file isdirectory $full_stored_filename]} {
+          ::LOG::Msg error "$ltag: cannot delete file \"$full_stored_filename\": file does not exist or is a directory"
+          set ServiceStatus    "ErrForbidden"
+          set ServiceStatusMsg "Requested filename does not exist"
+          return 1
+        } else {
+          if {[::STORAGE::LockResource $P(disk_path) 5]} {
+            ::LOG::Msg error "failed to acquire MUTEX: directory \"$P(disk_path)\" is being accessed"
+            set ServiceStatus    [lindex $::STORAGE::Upload_RespStatusTable(-9) 0]
+            set ServiceStatusMsg [lindex $::STORAGE::Upload_RespStatusTable(-9) 1]
+            return 1
+          }
+          if {[catch {file delete -- $full_stored_filename} retval]} {
+            ::STORAGE::UnlockResource $P(disk_path)
+            ::LOG::Msg error "$ltag: failed to delete file: $retval"
+            set ServiceStatus    "ErrFileSystemIO"
+            set ServiceStatusMsg "Failed to delete file \"$filename\" from storage directory \"$P(storage_path)\""
+            return 1
+          }
+          ::STORAGE::UnlockResource $P(disk_path)
+        }
+        set ServiceStatus    "Updated"
+        set ServiceStatusMsg "File \"$filename\" was deleted from storage directory \"$P(storage_path)\""
+        return 1
+      }
+
+      # delete the directory itself
+
+      if {[llength [glob -nocomplain -directory $P(disk_path) -types {d f} -- *]] != 0} {
+        ::LOG::Msg error "$ltag: refused to delete directory \"$P(disk_path)\": not empty"
+        set ServiceStatus    "ErrForbidden"
+        set ServiceStatusMsg "Cannot delete storage directory \"$P(storage_path)\": not empty"
+        return 1
+      }
+
+      if {[::STORAGE::LockResource $P(disk_path) 5]} {
+        ::LOG::Msg error "failed to acquire MUTEX: directory \"$P(disk_path)\" is being accessed"
+        set ServiceStatus    [lindex $::STORAGE::Upload_RespStatusTable(-9) 0]
+        set ServiceStatusMsg [lindex $::STORAGE::Upload_RespStatusTable(-9) 1]
+        return 1
+      }
+
+      if {[catch {file delete -- $P(disk_path)} retval]} {
+        ::STORAGE::UnlockResource $P(disk_path)
+        ::LOG::Msg error "$ltag: failed to delete directory: $retval"
+        set ServiceStatus    "ErrFileSystemIO"
+        set ServiceStatusMsg "Failed to delete storage directory \"$P(storage_path)\""
+        return 1
+      }
+
+      ::STORAGE::UnlockResource $P(disk_path)
+
+      set ServiceStatus    "Deleted"
+      set ServiceStatusMsg "Storage directory \"$P(storage_path)\" successfully deleted"
+      return 1
+    }
+
+
+    if { $id == 1 } {
+
+      #############################################
+      # method is POST : handled by a specific proc
+      #############################################
+
+      return [::STORAGE::ReceiveFileUpload]
+    }
+
+
+
+    #####################################################
+    # method is GET : action depends on requested options
+    #####################################################
+
+    if {[info exists Options(filename)]} {
+
+      # requested to return file content
+
+      set filename $Options(filename)
+
+      # check filename validity
+
+      if {![::STORAGE::IsValidFileName $filename]} {
+        ::LOG::Msg error "$ltag: filename rejected: \"$filename\""
+        set ServiceStatus    "ErrForbidden"
+        set ServiceStatusMsg "Filename does not comply with STORAGE naming rules"
+        return 1
+      }
+
+      if {[::STORAGE::LockResource $P(disk_path) 5]} {
+        ::LOG::Msg error "failed to acquire MUTEX: directory \"$P(disk_path)\" is being accessed"
+        set ServiceStatus    [lindex $::STORAGE::Upload_RespStatusTable(-9) 0]
+        set ServiceStatusMsg [lindex $::STORAGE::Upload_RespStatusTable(-9) 1]
+        return 1
+      }
+
+      if {[::HTTP::SetupFileResponseContent $RequestHandle [file join $P(disk_path) $filename] "application/octet-stream"]} {
+        ::STORAGE::UnlockResource $P(disk_path)
+        set ServiceStatus    "ErrFileSystemIO"
+        set ServiceStatusMsg "Failed to open external file for reading"
+        return 1
+
+      }
+
+      # must unlock the resource at the end of the response
+
+      ::HTTP::RegisterEndOfResponseHandler $RequestHandle ::STORAGE::UnlockResource $P(disk_path)
+
+      # this will be used (as it is mapped to the HTTP status code)
+      set ServiceStatus    "Found"
+
+      # this will not be used in response, but will be logged anyway
+      set ServiceStatusMsg "Storage file content"
+
+      # engine return 0 to indicate an external response
+      return 0
+    }
+
+
+    # return list of files, check sorting options
+
+    # default sorting options
+
+    set sort_index 0
+    set sort_mode  "-dictionary"
+    set sort_order "-increasing"
+
+    # process user options, if any
+
+    if {[info exists Options(sorting)]} {
+      switch -exact -- $Options(sorting) {
+        "size" {
+          set sort_index 1
+          set sort_mode  "-integer"
+        }
+        "date" {
+          set sort_index 2
+          set sort_mode  "-integer"
+        }
+      }
+    }
+
+    if {[info exists Options(order)]} {
+      if {$Options(order) == "decreasing"} { set sort_order "-decreasing" }
+    }
+
+    # lista dei files (nota: se directory vuota, nessuna property in ResourceEntity)
+
+    set file_entries {}
+    foreach fname [glob -nocomplain -directory $P(disk_path) -types {f} -- *] {
+      lappend file_entries [list [file tail $fname] [file size $fname] [file mtime $fname]]
+    }
+
+    set ContentHandle [::XTREE::add_Child $ContentTreeRootHandle "ResponseContent"]
+    set EntityHandle  [::XTREE::add_Child $ContentHandle         "ResourceEntity"]
+
+    foreach file_entry [lsort $sort_mode $sort_order -index $sort_index $file_entries] {
+      set h_file  [::XTREE::add_Child $EntityHandle "File"]
+      ::XTREE::set_Item $h_file "Name" [lindex $file_entry 0]
+      ::XTREE::set_Item $h_file "Size" [lindex $file_entry 1]
+      ::XTREE::set_Item $h_file "LastModified" [clock format [lindex $file_entry 2] -format {%Y/%m/%d %T UTC} -gmt 1]
+    }
+
+    set ServiceStatus    "Found"
+    set ServiceStatusMsg "File(s) stored into storage directory \"$P(storage_path)\""
+    return 1
+
+  }
+  #--------------------------------------------------------------------------
+
+
+
+
+  #--------------------------------------------------------------------------
+  # This is the init-handler for the storage service: it gets called as soon
+  # as the RequestEngine parser enters the "storage" sub-tree: it performs
+  # the service init and returns the name of the service main table
+
+  proc URI_Handler_storage_init {label} {
+    upvar RequestHandle			RequestHandle
+    upvar RespondingService		RespondingService
+
+    ::HTTP::SetServletName $RequestHandle "${::STORAGE::SRV_NAME}/${::STORAGE::SRV_VER}"
+
+    set RespondingService $::STORAGE::SRV_NAME
+
+    set ::STORAGE::DATA_BUCKETS_FOLDER	[::HTTP::GetEnvVar "RWS_STORAGE_ROOT"]
+    
+    # returns storage's main table to RequestEngine to let the show going on
+
+    return "::STORAGE::TABLE_MAIN"
+
+  }
+  #--------------------------------------------------------------------------
+
+
+  # returns the name of the init function to the dynamic loader for
+  # service registration
+
+  return "::STORAGE::URI_Handler_storage_init"
+}
+#============================================================================
+
+### end of "storage" RWS service module
+
