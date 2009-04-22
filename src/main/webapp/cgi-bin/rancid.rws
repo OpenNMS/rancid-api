@@ -43,12 +43,11 @@
 #-----------------------------------------------------------------------------
 
 
-
 #============================================================================
 namespace eval ::RANCID {
 
   set SRV_NAME	"RANCID-API"
-  set SRV_VER	"0.9.2009033101"
+  set SRV_VER	"0.91.2009041802"
   set SRV_INFO	"RWS service API for \"rancid\" with the addition of hardware inventory extensions"
 
 
@@ -208,294 +207,13 @@ namespace eval ::RANCID {
 
 
   #--------------------------------------------------------------------------
-  # GetFilePermissions name
-  #
-  # Returns the file permissions of a file.
-  #
-  #
-  # Argument(s):
-  #
-  #	name		pathname of the file
-  #
-  #
-  # Return Code:
-  #
-  #	<integer>	permissions value in octal representation
-  #	-1		failure
-  #
-
-  proc GetFilePermissions { name } {
-    if {[catch {file attributes $name -permissions} retval]} {
-      ::LOG::Msg error "RANCID::GetFilePermissions: failed ($retval)"
-      return -1
-    }
-    return $retval
-  }
-  #--------------------------------------------------------------------------
-
-
-
-  #--------------------------------------------------------------------------
-  # CreateUniqueFile path perms __fname __fch
-  #
-  # Generates an unique file name (based on PID, an high-resolution value
-  # for current time and a random number) and opens it for write-only in
-  # create/exclusive mode (that is: the file MUST NOT already exist).
-  # The operation is retried up to 3 times in case of name collision.
-  #
-  #
-  # Argument(s):
-  #
-  #	path		path of directory where the file will be created
-  #
-  #	perms		permission mask -- integer (if -1 defaults to 0666)
-  #
-  #	__fname		name of variable where the generated file name will
-  #			be returned
-  #
-  #	__fch		name of variable where the file's i/o channel (open
-  #			for write-only) will be returned
-  #
-  #
-  # Return Code:
-  #
-  #	 0	success (file created and open)
-  #	-1	failure (repeated name collision or i/o problem)
-  #
-
-  proc CreateUniqueFile { path perms __fname __fch} {
-    set ltag "RANCID::CreateUniqueFile"
-
-    upvar $__fname  fname
-    upvar $__fch    fch
-
-    if {$perms == -1} {set perms 0666}
-
-    set try 0
-    while { [incr try] <= 3 } {
-      set fname "[file join $path [format "%04X-%08X-%04X.tmp"\
-                                  [pid] [clock clicks] [expr {int(rand()*65536)}]]]"
-
-      if {![catch {open $fname {WRONLY CREAT EXCL} $perms} fch]} {
-        ::LOG::Msg debug "$ltag: created file \"$fname\", permissions=$perms"
-        return 0
-      }
-      ::LOG::Msg warning "$ltag: temporary output file creation attempt($try) failed ($fch)"
-    }
-
-    ::LOG::Msg error "$ltag: failed to create temporary output file ($fch)"
-    set fname ""
-    set fch   ""
-    return -1
-  }
-  #--------------------------------------------------------------------------
-
-
-
-  #--------------------------------------------------------------------------
-  # CreateUniqueDir path __dirname
-  #
-  # Generates an unique directory name (based on PID, an high-resolution
-  # value for current time and a random number) and creates it having "path"
-  # as parent directory.
-  # The operation is retried up to 3 times in case of name collision.
-  #
-  #
-  # Argument(s):
-  #
-  #	path		path of the parent directory where the new one will
-  #			be created
-  #
-  #	__dirname	name of variable where the complete path of the
-  #			created directory will be returned
-  #
-  # Return Code:
-  #
-  #	 0	success (directory created)
-  #	-1	failure (repeated name collision or i/o problem)
-  #
-
-  proc CreateUniqueDir { path __dirname } {
-    set ltag "RANCID::CreateUniqueDir"
-
-    upvar $__dirname  dirname
-
-    set try 0
-    set retval "repeated name collision"
-
-    while { [incr try] <= 3 } {
-      
-      set dirname "[file join "$path" [format "TMPDIR-%04X-%08X-%04X" [pid]\
-                   [clock clicks] [expr {int(rand()*65536)}]]]"
-
-      if {![file exists $dirname]} {
-        # name is ok: create directory
-        if {![catch {file mkdir $dirname} retval]} { return 0 }
-        # creation failed
-        break
-      }
-      ::LOG::Msg warning "$ltag: temporary directory creation attempt($try) failed (name collision)"
-    }
-
-    ::LOG::Msg error "$ltag: failed to create temporary directory ($retval)"
-
-    set dirname ""
-    return -1
-  }
-  #--------------------------------------------------------------------------
-
-
-
-  #--------------------------------------------------------------------------
-  # CreateMUTEX mutex_name {max_attempts 1} {ms_wait 200}
-  #
-  # Locks access to a given resource by creating (in exclusive mode) a MUTEX
-  # flag file. A rancid-compatible group lockfile may be created by passing
-  # as <mutex_name> the name of a rancid's valid group, thus preventing
-  # rancid from processing the given group of devices while a MODIFICATION
-  # is being performed on that group by the RANCID-API (and viceversa).
-  # This function is also used to create API's own lockfiles, preventing
-  # corrptions of the corresponding protected resource due to concurrent
-  # executions of different running instances of the RANCID-API itself.
-  #
-  # When only the <mutex_name> is passed as argument, the function does NOT
-  # perform any retry in case of collision.
-  #
-  #
-  # Argument(s)
-  #
-  #	mutex_name	the name of a valid rancid's group (or also one of
-  #			the "special" names for the API own MUTEXes)
-  #
-  #	max_attempts	number of attempts to perform (default = 1)
-  #
-  #	ms_wait		time to wait between two consecutive attempts
-  #			(default = 200 ms)
-  #
-  #
-  # Return Code
-  #
-  #	 0	success (file created, lock engaged)
-  #	-1	failure (resource already locked)
-  #
-
-  proc CreateMUTEX { mutex_name {max_attempts 1} {ms_wait 500} } {
-    set ltag "RANCID::CreateMUTEX"
-
-    set fn [file join "$::RANCID::RancidConf(TMPDIR)" ".${mutex_name}.run.lock"]
-
-
-    set try 1
-
-    while {1} {
-      if {![catch {open "$fn" {WRONLY CREAT EXCL}} fch]} { break }
-
-      # failed to acquire MUTEX
-
-      ::LOG::Msg warning "$ltag: \"$mutex_name\" creation attempt($try) failed ($fch)"
-
-      if {[incr try] > $max_attempts} {
-        ::LOG::Msg error "$ltag: \"$mutex_name\" creation failed (no more attempts left)"
-        return -1
-      }
-
-      # wait and retry
-
-      after $ms_wait
-    }
-
-    # MUTEX file created successfully
-
-    set result 0
-
-    if {[catch {puts $fch "[pid] RWS RANCID-API"} retval]} {
-      ::LOG::Msg error "$ltag: failed to write process data into \"$mutex_name\" ($retval)"
-      set result -1
-    }
-
-    if {[catch {close $fch} retval]} {
-      ::LOG::Msg error "$ltag: failed to close MUTEX file, possible deferred-write error ($retval)"
-      set result -1
-    }
-
-    if {$result == 0} { ::LOG::Msg debug "$ltag: \"$mutex_name\" acquired on attempt $try" }
-
-    return $result
-
-  }
-  #--------------------------------------------------------------------------
-
-
-
-  #--------------------------------------------------------------------------
-  # ReleaseMUTEX
-  #
-  # Delete a previously created MUTEX-file thus releasing an acquired lock.
-  # Note: this function always return success, as such any error is reported
-  #       as "warning" into the logfile.
-  #
-  # Argument(s)
-  #
-  #	mutex_name	name of a valid rancid's group previously locked by
-  #			the RANCID-API
-  #
-  #
-  # Return Code
-  #
-  #	 0	success (always)
-  #
-
-  proc ReleaseMUTEX { mutex_name } {
-    set ltag "RANCID::ReleaseMUTEX"
-    if {[catch {file delete [file join $::RANCID::RancidConf(TMPDIR) ".${mutex_name}.run.lock"]} retval]} {
-      ::LOG::Msg warning "$ltag: unable to release \"$mutex_name\" ($retval)"
-    } else {
-      ::LOG::Msg debug "$ltag: \"$mutex_name\" released"
-    }
-    return 0
-  }
-  #--------------------------------------------------------------------------
-
-
-  #--------------------------------------------------------------------------
-  # IsValidIPv4
-  #
-  # Returns 1 (TRUE) if the passed string is a valid IPv4 address in the usual
-  # "dotted-decimal-notation", 0 (FALSE) otherwise.
-
-  proc IsValidIPv4 { ipv4 } {
-    if { [regexp {^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$} $ipv4 \
-                 dummy b1 b2 b3 b4] != 0 } {
-      if {($b1<256)&&($b2<256)&&($b3<256)&&($b4<256)} {return 1}
-    }
-    return 0
-  }
-  #--------------------------------------------------------------------------
-
-
-  #--------------------------------------------------------------------------
-  # IsValidDomainHostName
-  #
-  # Returns 1 (TRUE) if the passed string is a valid host name, 0 (FALSE)
-  # otherwise. Note that the allowed format is somewhat "relaxed" if compared
-  # to official DNS specifications (according to what is actually accepted by
-  # current resolver's implementations)
-
-  proc IsValidDomainHostName { name } {
-    if {![regexp {^(?:[[:alnum:]-]*[[:alpha:]-][[:alnum:]-]*\.?)+$} $name]} { return 0 }
-    return [regexp {^(?:[[:alnum:]]+(?:\-[[:alnum:]]+)*\.?)+$} $name]
-  }
-  #--------------------------------------------------------------------------
-
-
-  #--------------------------------------------------------------------------
   # IsValidDeviceName
 
   proc IsValidDeviceName {device_name} {
 
-    if { [IsValidIPv4 $device_name] } { return 1 }
+    if { [::UTILS::IsValidIPv4 $device_name] } { return 1 }
 
-    return [IsValidDomainHostName $device_name]
+    return [::UTILS::IsValidDomainHostName $device_name]
   }
   #--------------------------------------------------------------------------
 
@@ -566,7 +284,7 @@ namespace eval ::RANCID {
 
     set devlist {}
 
-    if {[::RANCID::CreateMUTEX "${::RANCID::MUTEX_PREFIX}$group" 5]} {return -1}
+    if {[::UTILS::CreateMUTEX $::RANCID::RancidConf(TMPDIR) "${::RANCID::MUTEX_PREFIX}$group" 5]} {return -1}
 
     set db_name [file join $::RANCID::RancidConf(BASEDIR) $group $::RANCID::DB_NAME]
 
@@ -617,7 +335,7 @@ namespace eval ::RANCID {
 
     }
 
-    ::RANCID::ReleaseMUTEX "${::RANCID::MUTEX_PREFIX}$group"
+    ::UTILS::ReleaseMUTEX $::RANCID::RancidConf(TMPDIR) "${::RANCID::MUTEX_PREFIX}$group"
 
     return $res
   }
@@ -670,7 +388,7 @@ namespace eval ::RANCID {
     set state   ""
     set comment ""
 
-    if { $lock } { if {[::RANCID::CreateMUTEX "${::RANCID::MUTEX_PREFIX}$group" 5]} {return -1} }
+    if { $lock } { if {[::UTILS::CreateMUTEX $::RANCID::RancidConf(TMPDIR) "${::RANCID::MUTEX_PREFIX}$group" 5]} {return -1} }
 
     set db_name [file join $::RANCID::RancidConf(BASEDIR) $group $::RANCID::DB_NAME]
 
@@ -726,7 +444,7 @@ namespace eval ::RANCID {
       }
     }
 
-    if { $lock } { ::RANCID::ReleaseMUTEX "${::RANCID::MUTEX_PREFIX}$group" }
+    if { $lock } { ::UTILS::ReleaseMUTEX $::RANCID::RancidConf(TMPDIR) "${::RANCID::MUTEX_PREFIX}$group" }
 
     return $res
   }
@@ -773,10 +491,10 @@ namespace eval ::RANCID {
 
 
     # acquires rancid's group MUTEX first
-    if {[::RANCID::CreateMUTEX $group]} {return -1}
+    if {[::UTILS::CreateMUTEX $::RANCID::RancidConf(TMPDIR) $group]} {return -1}
 
     # then acquires API group MUTEX
-    if {[::RANCID::CreateMUTEX "${::RANCID::MUTEX_PREFIX}$group" 5]} {set res -1} else {
+    if {[::UTILS::CreateMUTEX $::RANCID::RancidConf(TMPDIR) "${::RANCID::MUTEX_PREFIX}$group" 5]} {set res -1} else {
 
       # NOTE: starting from 0.9.2009021501 this routine DOES NOT modify the
       #       devicename's case. It is expected to be properly adjusted by
@@ -854,12 +572,12 @@ namespace eval ::RANCID {
 
       if { $res > 2 } {
 
-        if { [set fperms [GetFilePermissions $db_name]] == -1 } {
+        if { [set fperms [::UTILS::GetFilePermissions $db_name]] == -1 } {
           set fperms 0666
           ::LOG::Msg warning "$ltag: temporary group file will be created with default $fperms permissions"
         }
 
-        if { [::RANCID::CreateUniqueFile $db_path $fperms ofname ofch] } {set res -12} else {
+        if { [::UTILS::CreateUniqueFile $db_path $fperms ofname ofch] } {set res -12} else {
 
           if {[catch {open $db_name "r"} ifch]} {
 
@@ -947,11 +665,11 @@ namespace eval ::RANCID {
       }
 
       # release API group MUTEX
-      ::RANCID::ReleaseMUTEX "${::RANCID::MUTEX_PREFIX}$group"
+      ::UTILS::ReleaseMUTEX $::RANCID::RancidConf(TMPDIR) "${::RANCID::MUTEX_PREFIX}$group"
     }
 
     # release rancid's group MUTEX
-    ::RANCID::ReleaseMUTEX $group
+    ::UTILS::ReleaseMUTEX $::RANCID::RancidConf(TMPDIR) $group
 
     return $res
   }
@@ -1031,7 +749,7 @@ namespace eval ::RANCID {
 
     array unset p  *
 
-    if { $lock } { if {[::RANCID::CreateMUTEX $::RANCID::CL_MUTEX_NAME]} {return -1} }
+    if { $lock } { if {[::UTILS::CreateMUTEX $::RANCID::RancidConf(TMPDIR) $::RANCID::CL_MUTEX_NAME]} {return -1} }
 
     set unmatched $::RANCID::CL_DIRECTIVES
 
@@ -1165,7 +883,7 @@ namespace eval ::RANCID {
       incr ilev -1
     }
 
-    if { $lock } { ::RANCID::ReleaseMUTEX $::RANCID::CL_MUTEX_NAME }
+    if { $lock } { ::UTILS::ReleaseMUTEX $::RANCID::RancidConf(TMPDIR) $::RANCID::CL_MUTEX_NAME }
 
     # note: here resp==0 just means that the file(s) were processed correctly:
     #       if p is empty no patterns were matched: change exit code to -5
@@ -1217,7 +935,7 @@ namespace eval ::RANCID {
       }
     }
 
-    if {[::RANCID::CreateMUTEX $::RANCID::CL_MUTEX_NAME]} {return -1}
+    if {[::UTILS::CreateMUTEX $::RANCID::RancidConf(TMPDIR) $::RANCID::CL_MUTEX_NAME]} {return -1}
 
     # NOTE: starting from 0.9.2009021501 this routine DOES NOT modify the
     #       devicename's case. It is expected to be properly adjusted by
@@ -1297,12 +1015,12 @@ namespace eval ::RANCID {
       set cl_name [file join $::RANCID::CONF::pathRancidHome $::RANCID::CL_NAME]
       set cl_bkup [file join $::RANCID::CONF::pathBackup "${::RANCID::CL_NAME}.backup"]
 
-      if { [set fperms [GetFilePermissions $cl_name]] == -1 } {
+      if { [set fperms [::UTILS::GetFilePermissions $cl_name]] == -1 } {
         set fperms 0666
         ::LOG::Msg warning "$ltag: temporary access file will be created with default $fperms permissions"
       }
 
-      if { [::RANCID::CreateUniqueFile $::RANCID::CONF::pathRancidHome $fperms ofname ofch] } {set res -7} else {
+      if { [::UTILS::CreateUniqueFile $::RANCID::CONF::pathRancidHome $fperms ofname ofch] } {set res -7} else {
 
         # write the new set of directives for our device at the beginning of the file
 
@@ -1406,7 +1124,7 @@ namespace eval ::RANCID {
 
     }
 
-    ::RANCID::ReleaseMUTEX $::RANCID::CL_MUTEX_NAME
+    ::UTILS::ReleaseMUTEX $::RANCID::RancidConf(TMPDIR) $::RANCID::CL_MUTEX_NAME
 
     return $res
   }
@@ -3287,7 +3005,7 @@ namespace eval ::RANCID {
       set ServiceStatusMsg "[lindex $::RANCID::Device_RespStatusTable($result) 1]"
     } else {
       set ServiceStatus    "ErrInternal"
-      set ServiceStatusMsg "Unexpected return code from rancid group's database routines"
+      set ServiceStatusMsg "Unexpected return code from rancid group's database routines: $result"
     }
   }
   #--------------------------------------------------------------------------
@@ -3499,6 +3217,7 @@ namespace eval ::RANCID {
 
     ::XTREE::set_Item $h_app "Name"	$::RANCID::SRV_NAME
     ::XTREE::set_Item $h_app "Version"	$::RANCID::SRV_VER
+    ::XTREE::set_Item $h_app "Info"	$::RANCID::SRV_INFO
 
     foreach vname $::RANCID::API_CONF_VARS {
       upvar ::RANCID::CONF::$vname confvar
@@ -3764,7 +3483,7 @@ namespace eval ::RANCID {
       set ServiceStatusMsg "[lindex $::RANCID::DeviceAccess_RespStatusTable($result) 1]"
     } else {
       set ServiceStatus    "ErrInternal"
-      set ServiceStatusMsg "Unexpected return code from rancid .cloginrc file routines"
+      set ServiceStatusMsg "Unexpected return code from rancid .cloginrc file routines: $result"
     }
 
     return 1
@@ -3843,7 +3562,7 @@ namespace eval ::RANCID {
     array set revinfo {}
 
     if {[set resp [::RANCID::CVS_GetRevisionsInfo "$gname" "$dname" revinfo]] != ""} {
-      set ServiceStatus    "ErrInternal"
+      set ServiceStatus    "ErrExternal"
       set ServiceStatusMsg "$resp"
       return 1
     }
@@ -3899,7 +3618,7 @@ namespace eval ::RANCID {
     array set revs {}
 
     if {[set resp [::RANCID::CVS_GetRevisions "$gname" "$dname" revs]] != ""} {
-      set ServiceStatus    "ErrInternal"
+      set ServiceStatus    "ErrExternal"
       set ServiceStatusMsg "$resp"
       return ""
     }
@@ -3962,8 +3681,8 @@ namespace eval ::RANCID {
 
     set temp_dir ""
 
-    if {[::RANCID::CreateUniqueDir $::RANCID::CONF::pathTemp temp_dir]} {
-      set ServiceStatus    "ErrInternal"
+    if {[::UTILS::CreateUniqueDir $::RANCID::CONF::pathTemp temp_dir]} {
+      set ServiceStatus    "ErrFileSystemIO"
       set ServiceStatusMsg "Failed to create unique temporary directory"
       return 1
     }
@@ -3973,7 +3692,7 @@ namespace eval ::RANCID {
     if {[set resp [::RANCID::CVS_ExportRevision $P(groupname) $P(devicename) $P(revdate)\
                      "$temp_dir"]] != ""} {
 
-      set ServiceStatus    "ErrInternal"
+      set ServiceStatus    "ErrExternal"
       set ServiceStatusMsg "$resp"
       return 1
 
@@ -3984,7 +3703,7 @@ namespace eval ::RANCID {
     if {[::HTTP::SetupFileResponseContent $RequestHandle\
            "$temp_dir/$P(devicename)" "text/plain; charset=ISO-8859-1"]} {
 
-      set ServiceStatus    "ErrInternal"
+      set ServiceStatus    "ErrFileSystemIO"
       set ServiceStatusMsg "Failed to open external file for reading"
       return 1
 
@@ -4014,8 +3733,8 @@ namespace eval ::RANCID {
 
     set temp_dir ""
 
-    if {[::RANCID::CreateUniqueDir $::RANCID::CONF::pathTemp temp_dir]} {
-      set ServiceStatus    "ErrInternal"
+    if {[::UTILS::CreateUniqueDir $::RANCID::CONF::pathTemp temp_dir]} {
+      set ServiceStatus    "ErrFileSystemIO"
       set ServiceStatusMsg "Failed to create unique temporary directory"
       return 1
     }
@@ -4025,7 +3744,7 @@ namespace eval ::RANCID {
     if {[set resp [::RANCID::CVS_ExportRevision $P(groupname) $P(devicename) $P(revdate)\
                      "$temp_dir"]] != ""} {
 
-      set ServiceStatus    "ErrInternal"
+      set ServiceStatus    "ErrExternal"
       set ServiceStatusMsg "$resp"
       return 1
 
@@ -4059,23 +3778,23 @@ namespace eval ::RANCID {
       }
 
       -3 {
-        set ServiceStatus    "ErrInternal"
+        set ServiceStatus    "ErrCorrupted"
         set ServiceStatusMsg "External file is invalid (unable to identify rancid's content type)"
       }
 
       -4 {
-        set ServiceStatus    "ErrInternal"
+        set ServiceStatus    "ErrUnsupported"
         set ServiceStatusMsg "Inventory functions are not (yet) supported on this deviceType"
       }
 
       -5 {
-        set ServiceStatus    "ErrInternal"
+        set ServiceStatus    "ErrCorrupted"
         set ServiceStatusMsg "External file apparently does not contain inventory data"
       }
 
       default {
         set ServiceStatus    "ErrInternal"
-        set ServiceStatusMsg "Unexpected return code from inventory parsing routines"
+        set ServiceStatusMsg "Unexpected return code from inventory parsing routines: $ecode"
       }
 
     }
