@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
-RWS RESTful Server Side Application CGI and RANCID-API RWS Service Module
+RWS RESTful ServerSide Application CGI + RANCID-API & STORAGE Service Modules
 
 Copyright (c) 2009+ Rocco Rionero
 Copyright (c) 2009+ The OpenNMS Group, Inc.
@@ -89,11 +89,17 @@ The overall framework developed is quite generic and flexible to implement
 any sort of RESTful-based interface and can be easily used by any client
 tool able to "speak" the HTTP/1.1 message protocol.
 
-The RWS main module and the RANCID-API service module are written as Tcl
-(Tool Command Language) scripts; this gives the package high portability
-as almost any current Operating System environment supports Tcl, and it
-is also the scripting language of choiche for several kind of embedded
-systems. 
+This release of the RWS package includes an additional RWS service module
+named "storage" which implements a basic yet quite flexible remote storage
+service with ability of directories creation/deletion to any level of depth,
+directory listing (sorted by name/size/date in both increasing/decreasing
+order), file download and upload (in both custom raw-binary-encoding or
+standard multipart-encoding).
+
+The RWS main module and the RWS service modules are written as Tcl
+(Tool Command Language) scripts; this gives the package high portability as
+almost any current Operating System environment supports Tcl, and it is also
+the scripting language of choiche for several kind of embedded systems. 
 
 
 
@@ -105,9 +111,14 @@ systems.
   The instruction file you are reading right now.
 
 
+- CHANGES
+
+  A brief description of changes over previous release of the package.
+
+
 - rws-cgi.tcl
 
-  The core RWS CGI executable script module, written in Tcl.
+  The core RWS CGI executable script module.
 
 
 - rancid.rws
@@ -120,6 +131,11 @@ systems.
   The RANCID-API configuration file.
 
 
+- storage.rws
+
+  The STORAGE RWS Service Module, dynamically loaded by the RWS main module.
+
+
 
 
 3. PRE-REQUISITES
@@ -127,14 +143,32 @@ systems.
 A general knowledge of CGI concepts and httpd configuration is assumed. The
 instructions will also assume that Apache HTTPD (version >= 1.3.27) is used
 as httpd server daemon. As the RWS servlet is a Tcl script, a working Tcl
-environment (version >= Tcl 8.3.4) is needed on the hosting system. The RWS
-script does not require any additional module, library or Tcl extension.
+environment (version >= Tcl 8.3.4) is needed on the hosting system.
 
-The script expects the Tcl interpreter "tclsh" in the following location:
-/usr/local/bin. If this is not the case on your system, just create a proper
-symbolic link, e.g.
+PLEASE NOTE: the rws-cgi.tcl script now requires by default a TclX (Extended
+Tcl) interpreter; the only eXtensions actually used are POSIX signals
+manipulation abilities. The TclX interpreter is expected in /usr/local/bin,
+that is, the first line of the script reads as follows:
 
-	ln -s /my/local/path/to/tclsh  /usr/local/bin/tclsh
+	#!/usr/local/bin/tcl
+
+The TclX extended interpreter "tcl" is usually deployed with the Tcl standard
+interpreter "tclsh": if the hosting system does not have the "tcl" executable
+(meaning that either it does not support TclX or that -as seen on some custom
+implementations- TclX extensions are included in the "tclsh" executable),
+you may revert the first line of the rws-cgi.tcl script to the following one
+(as on the previously released script):
+
+	#!/usr/local/bin/tclsh
+
+The RWS code will automatically detect the availability of TclX extensions
+(namely, POSIX signals manipulation) and will avoid to use them if not
+supported by the hosting interpreter (reverting to previous behaviour); in
+such a case a "warning" message will be logged.
+
+You may also edit the above first line of the script to accomodate different
+interpreter's location on your system (if you don't want or are not able to
+use symbolic links).
 
 If all of the above is satisfied, then go ahead with the installation.
 
@@ -149,9 +183,9 @@ If all of the above is satisfied, then go ahead with the installation.
   directory of your system;
 
 
-- the untar process created in /tmp the directory "rancid-api-X.Y"
+- the untar process created in /tmp the directory "rws-package-X.Y"
   (the trailing string "X.Y" being the version of the package); from now
-  on I will refer to the /tmp/rancid-api-X.Y directory as "the package
+  on I will refer to the /tmp/rws-package-X.Y directory as "the package
   directory"
 
 
@@ -166,6 +200,7 @@ If all of the above is satisfied, then go ahead with the installation.
 	rws-cgi.tcl
 	rancid.rws
 	rancid.rws.rc
+	storage.rws
 
 
 - give the "rws-cgi.tcl" main module proper ownership and execution permissions
@@ -174,8 +209,8 @@ If all of the above is satisfied, then go ahead with the installation.
   the same user which runs Apache (further improvements might be to properly
   configure Apache to use the "suEXEC" feature so to run the rws-cgi script
   with a different identity, being namely the identity of the user running
-  rancid). The "rancid.rws" and "rancid.rws.rc" files DO NOT need execution
-  permission but must be just readable by the user above.
+  rancid). The other files DO NOT need execution permission but must be just
+  readable by the user above.
 
 
 - configure Apache with an "alias" for the rws-cgi script; assuming that the
@@ -197,12 +232,14 @@ If all of the above is satisfied, then go ahead with the installation.
 	  Options        None
 	</Directory>
 
-  so that no access is allowed (except to the rws-cgi.tcl script, as done by
-  the ScriptAlias directive) to any other file. This is very important if the
-  rws-cgi directory resides in the http document tree of your server (normally
-  not needed and not suggested); it will not hurt, anyway. Note also that it
-  is usually NOT required to set the "ExecCGI" option for the rws-cgi directory
-  as the ScriptAlias directive alone will do the job. YMMV.
+  so that no directory indexing is allowed if the rws-cgi directory resides
+  in the http document tree of your server (normally not needed and not
+  suggested); it will not hurt, anyway. Please note that in such a case
+  additional measures could be needed to secure your setup.
+  Note also that it is usually NOT required to set the "ExecCGI" option for
+  the rws-cgi directory as the ScriptAlias directive alone will do the job;
+  this is due to a "back-compatibility kludge" usually implemented in the
+  standard Apache's "mod_cgi" module. YMMV.
 
 
 - create a directory on your system for the RWS logfile; I will assume that
@@ -253,6 +290,24 @@ If all of the above is satisfied, then go ahead with the installation.
   hierarchy. This is left as an exercise to the reader... :-)
 
 
+- create a directory on your system to be used as "root location" for the
+  STORAGE service repository; I will assume that the directory will be
+  /mnt/rws-storage-root; give the directory proper ownership and access
+  permissions so to be writeable by the user which runs the RWS CGI script
+  (that is, if no suEXEC feature is used, the user running Apache)
+
+
+- configure the STORAGE service by adding the following directive in the same
+  section of the httpd.conf file where you created the ScriptAlias above:
+
+	SetEnv RWS_STORAGE_ROOT  /mnt/rws-storage-root
+
+- you can restrict access to the STORAGE root directory above and/or require
+  authorization to the RWS STORAGE URIs by adding the already described
+  <Directory> and <LocationMatch> directives to the usual section of the
+  httpd.conf file; this is, again, left as an exercise to the reader... :-)
+
+
 - restart Apache by executing "apachectl graceful" and verify that the daemon
   re-starts correctly (if it doesn't, double check your httpd.conf)
 
@@ -263,165 +318,41 @@ If all of the above is satisfied, then go ahead with the installation.
 
 Open a browser and access (GET request) the following URL:
 
-	http://<yourservername>/rws
+	http://<yourservername>/rws?responsetype=text
 
-verify that a correct XML response is returned. Following is an example of the
-expected response obtained with the "curl" HTTP client and including all HTTP
-headers (normally not shown by a browser):
+and verify that a response reporting some information about the RWS service
+and your hosting environment is correctly returned; then obtain a list of the
+RWS services installed, by accessing the following URL:
 
-  HTTP/1.1 200 OK
-  Date: Tue, 31 Mar 2009 13:49:20 GMT
-  Server: Apache/1.3.27 (Unix)
-  Cache-Control: no-transform, no-cache
-  Expires: Thu, 01 Jan 1970 00:00:00 GMT
-  Pragma: no-cache
-  X-Servlet: RWS/0.8.2009033101 (R2HTTP-CGI/0.4.2009032501; Tcl 8.3.4; Linux 2.4.20; unix; i586)
-  Content-Length: 1709
-  Content-Type: application/xml; charset=ISO-8859-1
+	http://<yourservername>/rws/?responsetype=text
 
-  <?xml version="1.0" encoding="ISO-8859-1" ?>
-  <RWS>
-    <ResponseStatus>
-      <Code>Found</Code>
-      <Class>Success</Class>
-      <Description>Resource successfully accessed</Description>
-      <ResourceURI>http://(YOURSERVERNAME)/rws</ResourceURI>
-      <Service>RWS</Service>
-      <ServiceMessage>RWS Servlet Informations</ServiceMessage>
-    </ResponseStatus>
-    <ResponseContent>
-      <ResourceEntity>
-        <Application>
-          <Name>RWS</Name>
-          <Version>0.8.2009033101</Version>
-          <HttpLibrary>R2HTTP-CGI</HttpLibrary>
-          <HttpLibraryVersion>0.4.2009032501</HttpLibraryVersion>
-          <RuntimeLibrary>Tcl</RuntimeLibrary>
-          <RuntimeLibraryVersion>8.3.4</RuntimeLibraryVersion>
-        </Application>
-        <HostingWebServer>
-          <ServerSoftware>Apache/1.3.27 (Unix)</ServerSoftware>
-          <ServerInterface>CGI/1.1</ServerInterface>
-          <ServerName>(YOURSERVERNAME)</ServerName>
-          <ServerAddress>(YOURIPADDRESS)</ServerAddress>
-          <ServerPort>80</ServerPort>
-          <ServiceBaseURI>/rws</ServiceBaseURI>
-        </HostingWebServer>
-        <HostingEnvironment>
-          <HardwareType>i586</HardwareType>
-          <OperatingSystem>
-            <Family>unix</Family>
-            <Name>Linux</Name>
-            <Version>2.4.20</Version>
-          </OperatingSystem>
-          <CurrentSystemTime>
-            <SecondsSinceEpoch>1238507360</SecondsSinceEpoch>
-            <UTC>Tue, 31 Mar 2009 13:49:20</UTC>
-            <Local>Tue, 31 Mar 2009 15:49:20</Local>
-            <TimeZone>CEST</TimeZone>
-            <TimeZoneOffset>+0200</TimeZoneOffset>
-          </CurrentSystemTime>
-        </HostingEnvironment>
-      </ResourceEntity>
-    </ResponseContent>
-  </RWS>
+verify that a correct response is returned and that both the "rancid" and
+"storage" resources are listed.
 
 
+Finally verify that the both the RANCID-API and the STORAGE services are
+correctly loaded and executed by accessing the following URLs (note: this
+might require authentication if you enabled it):
 
-then obtain a list of the RWS services installed, by accessing the following
-URL:
-
-	http://<yourservername>/rws/
-
-verify that a correct XML response is returned and that the "rancid" resource
-is correctly listed. Following is an example of the expected response obtained
-with the "curl" HTTP client and including all HTTP headers (normally not shown
-by a browser):
+	http://<yourservername>/rws/rancid?responsetype=text
+	http://<yourservername>/rws/storage?responsetype=text
 
 
-  HTTP/1.1 200 OK
-  Date: Tue, 31 Mar 2009 13:58:31 GMT
-  Server: Apache/1.3.27 (Unix)
-  Cache-Control: no-transform, no-cache
-  Expires: Thu, 01 Jan 1970 00:00:00 GMT
-  Pragma: no-cache
-  X-Servlet: RWS/0.8.2009033101 (R2HTTP-CGI/0.4.2009032501; Tcl 8.3.4; Linux 2.4.20; unix; i586)
-  Content-Length: 486
-  Content-Type: application/xml; charset=ISO-8859-1
+verify that in both cases a correct response is returned.
 
-  <?xml version="1.0" encoding="ISO-8859-1" ?>
-  <RWS>
-    <ResponseStatus>
-      <Code>Found</Code>
-      <Class>Success</Class>
-      <Description>Resource successfully accessed</Description>
-      <ResourceURI>http://(YOURSERVERNAME)/rws/</ResourceURI>
-      <Service>RWS</Service>
-      <ServiceMessage>List of resources</ServiceMessage>
-    </ResponseStatus>
-    <ResponseContent>
-      <ResourceEntity>
-        <Resource>rancid</Resource>
-      </ResourceEntity>
-    </ResponseContent>
-  </RWS>
+The response returned by the "rancid" service (first URL above) will include
+some "Config" parameters with a value of "undefined". This is CORRECT as this
+is your first setup and the rancid service needs to be configured.
+
+The response returned by the "storage" service (second URL above) will include
+a single "ReadOnlyConfig" parameter named "pathBucketsRoot"; verify that its
+value matches the expected pathname of the storage root directory.
 
 
-
-Finally verify that the RANCID-API service is correctly loaded and executed by
-accessing the following URL (note: this might require authentication if you
-enabled it):
-
-	http://<yourservername>/rws/rancid
-
-verify that a correct XML response is returned. Following is an example of the
-expected response obtained with the "curl" HTTP client and including all HTTP
-headers (normally not shown by a browser):
-
-
-  HTTP/1.1 200 OK
-  Date: Tue, 31 Mar 2009 14:03:34 GMT
-  Server: Apache/1.3.27 (Unix)
-  Cache-Control: no-transform, no-cache
-  Expires: Thu, 01 Jan 1970 00:00:00 GMT
-  Pragma: no-cache
-  X-Servlet: RANCID-API/0.9.2009033101 (RWS/0.8.2009033101; R2HTTP-CGI/0.4.2009032501; Tcl 8.3.4; Linux 2.4.20; unix; i586)
-  Content-Length: 928
-  Content-Type: application/xml; charset=ISO-8859-1
-
-  <?xml version="1.0" encoding="ISO-8859-1" ?>
-  <RWS>
-    <ResponseStatus>
-      <Code>Found</Code>
-      <Class>Success</Class>
-      <Description>Resource successfully accessed</Description>
-      <ResourceURI>http://(YOURSERVERNAME)/rws/rancid</ResourceURI>
-      <Service>RANCID-API</Service>
-      <ServiceMessage>RANCID-API Service Informations</ServiceMessage>
-    </ResponseStatus>
-    <ResponseContent>
-      <ResourceEntity>
-        <Application>
-          <Name>RANCID-API</Name>
-          <Version>0.9.2009033101</Version>
-        </Application>
-        <Config>
-          <fileRancidConf>undefined</fileRancidConf>
-          <pathRancidHome>undefined</pathRancidHome>
-          <pathBackup>undefined</pathBackup>
-          <pathTemp>undefined</pathTemp>
-          <commandCVS>undefined</commandCVS>
-          <urlViewVC>undefined</urlViewVC>
-        </Config>
-      </ResourceEntity>
-    </ResponseContent>
-  </RWS>
-
-
-If everything did as described above, both the RWS CGI and the RANCID-API
-service were installed correctly. You just need to configure the RANCID-API
-according to your rancid's setup (see all that "undefined" values in the
-response above? It means that the corresponding variables are not set).
+If everything did as described above, both the RWS CGI and the RANCID-API /
+STORAGE services were installed correctly. You just need to configure the
+RANCID-API according to your rancid's setup. The STORAGE service does not
+require additional configuration staps and is ready to be used.
 
 
 
@@ -436,23 +367,23 @@ do the trick). So open the rancid.rws.rc file with your favourite text editor
 and follow the instructions contained therein. When you're done with the
 configuration send a GET request again to the rancid resource:
 
-	http://<yourservername>/rws/rancid
+	http://<yourservername>/rws/rancid?responsetype=text
 
 and verify the the value you assigned are correctly returned in place of
 the previous "undefined" tokens.
 
 If you made it so far, you have done. Move to your client (i.e. OpenNMS) and
-start working with the RANCID-API.
+start working with the RANCID-API and the STORAGE service.
 
 
 
 
 7. CONCLUSION
 
-There is still a LOT to say, I know. But this is just a beta-release of the RWS
-module/RANCID-API essentially directed to the people involved in the
-OpenNMS/RANCID Project. Please, wait for the stable release of the package,
-which willinclude a complete documentation.
+There is still a LOT to say, I know. But this is again a beta-release of the
+RWS package essentially directed to the people involved in the OpenNMS/RANCID
+Project. Please, wait for the stable release of the package, which will
+include a complete documentation.
 
 Although there is absolutely NO SUPPORT on this package, you can contact me
 at the above listed email address.
