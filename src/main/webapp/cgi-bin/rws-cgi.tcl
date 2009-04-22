@@ -1,4 +1,5 @@
-#!/usr/local/bin/tclsh
+#!/usr/local/bin/tcl
+
 
 #============================================================================
 # RWS * RESTful Web Service ServerSide Application Engine (servlet)
@@ -44,11 +45,12 @@
 
 
 
-### INCLUDE-BEGIN ("logger.inc.tcl") ########################################
+### INCLUDE-BEGIN (logger.inc.tcl) ##########################################
 
+#============================================================================
 namespace eval ::LOG {
   set LIB_NAME		"LOGGER"
-  set LIB_VER		"0.5.2009032201"
+  set LIB_VER		"0.6.2009041801"
   set LIB_INFO		"Message logging functions (subset)"
 
   array set Levels {
@@ -75,6 +77,32 @@ namespace eval ::LOG {
 
 
   #--------------------------------------------------------------------------
+  # Flush { }
+  #
+  # Arguments:
+  #	(none)
+  #
+  # Description:
+  #	flush the log file ensuring that all output is written to disk
+  #	
+  #
+  # Returned Value:
+  #	1	always
+
+  proc Flush {} {
+    variable Channel
+
+    Msg debug "flushing logfile messages"
+
+    if { "$Channel" != "" } { catch {flush $Channel} }
+
+    return 1
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
   # Close { }
   #
   # Arguments:
@@ -85,8 +113,7 @@ namespace eval ::LOG {
   #	
   #
   # Returned Value:
-  #	0	logging system was not active
-  #	1	logging system was correctly shut-down
+  #	1	always
 
   proc Close {} {
     variable Channel
@@ -94,7 +121,7 @@ namespace eval ::LOG {
     Msg logging "stopped (last message for this run)"
 
     if { "$Channel" != "" } {
-      close $Channel
+      catch {close $Channel}
       set Channel ""
     }
 
@@ -169,10 +196,10 @@ namespace eval ::LOG {
     if { "$message" == "" } { return 0 }
     if { [info exists Levels($lid,tag)] } {
       if { $Levels($lid,lev) < $Levels(logging,lev) && $Levels($lid,lev) >= $Levels($Level_stderr,lev) } {
-        puts stderr "[format "%s \[%05d\]:" $Levels($lid,tag) [pid]] $message"
+        catch {puts stderr "[format "%s \[%05d\]:" $Levels($lid,tag) [pid]] $message"}
       }
       if { $Levels($lid,lev) < $Levels(disabled,lev) && $Levels($lid,lev) >= $Levels($Level_logfile,lev) && "$Channel" != "" } {
-        puts $Channel "[clock format [clock seconds] -format {%b %e %T}] [format "%s \[%05d\]:" $Levels($lid,tag) [pid]] $message"
+        catch {puts $Channel "[clock format [clock seconds] -format {%b %e %T}] [format "%s \[%05d\]:" $Levels($lid,tag) [pid]] $message"}
       }
       return 1
     }
@@ -246,12 +273,13 @@ namespace eval ::LOG {
 
 
 }
-
-### INCLUDE-END   ("logger.inc.tcl") ########################################
-
+#============================================================================
 
 
-### INCLUDE-BEGIN ("io.inc.tcl") ############################################
+### INCLUDE-END   (logger.inc.tcl) ##########################################
+
+
+### INCLUDE-BEGIN (io.inc.tcl) ##############################################
 
 #============================================================================
 # The "IO" namespace holds routine and variables used to manage TCL
@@ -260,7 +288,7 @@ namespace eval ::LOG {
 
 namespace eval ::IO {
   set LIB_NAME		"IO"
-  set LIB_VER		"0.6.2009032201"
+  set LIB_VER		"0.7.2009040101"
   set LIB_INFO		"Input/Output functions (subset)"
 
   array set Error {
@@ -466,18 +494,24 @@ namespace eval ::IO {
   #
   #
   # Description:
-  #	reads from "ch" a block of "count" chars, in max "timeout";
+  #	reads from "ch" a block of up to "count" chars, in max "timeout";
   #	the received chars are stored into the __buffer variable and the
   #	number of received chars is stored into the __buffer_count variable;
+  #	in case of error buffer_count might be greater than zero (if some
+  #	data, but less than "count", were read)
   #
   # Returned Value:
-  #	 0	success, "count" chars received
+  #	 0	success, all "count" chars were received
   #	-2	i/o error
   #	-3	EOF/connection closed by remote
   #	-4	timeout
+  #
+  # NOTE:
+  #	caller should always check for buffer_count on return, also if the
+  #	return code is not zero
 
   proc ReadBlock { ch count timeout __buffer __buffer_count } {
-    set ltag "ReadBlock"
+    set ltag  "ReadBlock"
 
     upvar $__buffer       buffer
     upvar $__buffer_count buffer_count
@@ -498,16 +532,15 @@ namespace eval ::IO {
         set result -2
         break
       }
-      if {[set chunk_size [string length $ioresp]] > 0} {
-        append buffer $ioresp
+      if {[set chunk_size [string length $ioresp]] > 0 } {
+        append buffer     $ioresp
         incr buffer_count $chunk_size
+        set ioresp ""
         if {[incr count -$chunk_size] == 0} {
-          set ioresp ""
           set result 0
           break
         }
       }
-      set ioresp ""
       if {[eof $ch]} {
         set result -3
         break
@@ -636,17 +669,15 @@ namespace eval ::IO {
 }
 #============================================================================
 
-### INCLUDE-END   ("io.inc.tcl") ############################################
+### INCLUDE-END   (io.inc.tcl) ##############################################
 
 
-
-
-### INCLUDE-BEGIN ("http.inc.tcl") ##########################################
+### INCLUDE-BEGIN (http.inc.tcl) ############################################
 
 #============================================================================
 namespace eval ::HTTP {
   set LIB_NAME		"R2HTTP"
-  set LIB_VER		"0.4.2009032501"
+  set LIB_VER		"0.5.2009041803"
   set LIB_INFO		"HTTP server-side functions (subset)"
 
   set ioTimeout		30000
@@ -718,7 +749,12 @@ namespace eval ::HTTP {
       upvar ${handle}::HttpLib     HttpLib
       upvar ${handle}::HttpLibVer  HttpLibVer
       set ServletName	"$HttpLib/$HttpLibVer"
-      set ServletInfo	"Tcl $::tcl_patchLevel;\
+      if {![catch {infox appname} retval]} {
+        set ServletInfo "$retval [infox version]; "
+      } else {
+        set ServletInfo ""
+      }
+      set ServletInfo	"${ServletInfo}Tcl $::tcl_patchLevel;\
 			 $::tcl_platform(os) $::tcl_platform(osVersion);\
 			 $::tcl_platform(platform); $::tcl_platform(machine)"
     }
@@ -975,7 +1011,7 @@ namespace eval ::HTTP {
       upvar ${handle}::EndOfResponseHandlers EndOfResponseHandlers
 
       set EndOfResponseHandlers [linsert $EndOfResponseHandlers 0 $args]
-      ::LOG::Msg debug "registered EOR-handler: $args"
+      ::LOG::Msg debug "HTTP::RegisterEndOfResponseHandler: registered \[${args}\]"
     }
   }
   #--------------------------------------------------------------------------
@@ -1094,7 +1130,7 @@ namespace eval ::HTTP {
       set ResponseContentLen  [lindex $ResponseContent 1]
       set ResponseContentType [lindex $ResponseContent 2]
 
-      ::LOG::Msg debug "will send external response from channel \"$chIn\",\
+      ::LOG::Msg debug "$ltag: will send external response from channel \"$chIn\",\
                         size=\"$ResponseContentLen\",\
                         content-type=\"$ResponseContentType\""
 
@@ -1133,6 +1169,8 @@ namespace eval ::HTTP {
 
       # send response header to client
 
+      ::LOG::Msg debug "$ltag: sending HTTP response-header"
+
       if {[::IO::Write $chOut $respHeader $::HTTP::ioTimeout]} {
 
         ::LOG::Msg error "$ltag: I/O failure trying to send response header"
@@ -1148,6 +1186,10 @@ namespace eval ::HTTP {
           set cinfo   ""
 
         } else {
+
+          ::LOG::Msg debug "$ltag: sending HTTP response-content"
+
+          ::LOG::Flush
 
           if { $chIn == "" } {
             set csource "internal"
@@ -1186,9 +1228,9 @@ namespace eval ::HTTP {
     # call end-of-response callback handlers (if any)
 
     foreach handler $EndOfResponseHandlers {
-      ::LOG::Msg debug "$ltag: calling end-of-response handler: \"$handler\""
+      ::LOG::Msg debug "$ltag: calling end-of-response handler: \[$handler\]"
       if {[catch {eval $handler} retval]} {
-        ::LOG::Msg warning "$ltag: failure executing end-of-response handler \"$handler\" ($retval)"
+        ::LOG::Msg warning "$ltag: failure executing end-of-response handler \[${handler}\] ($retval)"
       }
     }
 
@@ -1199,6 +1241,8 @@ namespace eval ::HTTP {
 
   #--------------------------------------------------------------------------
   proc SetupFileResponseContent { handle file_name content_type } {
+    set ltag "HTTP::SetupFileResponseContent"
+
     upvar ${handle}::ResponseContentLen    ResponseContentLen
     upvar ${handle}::ResponseContentType   ResponseContentType
     upvar ${handle}::ResponseContent       ResponseContent
@@ -1207,11 +1251,13 @@ namespace eval ::HTTP {
     # check that the file exists and is readable
 
     if {![file exists "$file_name"]} {
+      ::LOG::Msg error "$ltag: file \"$file_name\" does not exist"
       return -1
     }
 
 
     if {![file readable "$file_name"]} {
+      ::LOG::Msg error "$ltag: file \"$file_name\" is not readable"
       return -2
     }
 
@@ -1219,6 +1265,7 @@ namespace eval ::HTTP {
     # gets size of file
 
     if {[catch {file size "$file_name"} fsize]} {
+      ::LOG::Msg error "$ltag: $fsize"
       return -3
     }
 
@@ -1226,17 +1273,12 @@ namespace eval ::HTTP {
     # open file for reading
 
     if {[catch {open "$file_name" "r"} fch]} {
+      ::LOG::Msg error "$ltag: $fch"
       return -4
     }
 
 
     # assigns fields for response
-
-
-    #set ResponseContentType $content_type
-    #set ResponseContentLen  $fsize
-    #set ResponseContent     $fch
-
 
     set ResponseContent     [list $fch $fsize $content_type]
     set ResponseContentLen  -1
@@ -1251,13 +1293,10 @@ namespace eval ::HTTP {
 }
 #============================================================================
 
-
-### INCLUDE-END   ("http.inc.tcl") ##########################################
-
+### INCLUDE-END   (http.inc.tcl) ############################################
 
 
-
-### INCLUDE-BEGIN ("libxtree.inc.tcl") ######################################
+### INCLUDE-BEGIN (xtree.inc.tcl) ###########################################
 
 #============================================================================
 # Namespace ::XTREE
@@ -1273,7 +1312,7 @@ namespace eval ::HTTP {
 namespace eval ::XTREE {
 
   set	LIB_NAME	"XTREE"
-  set	LIB_VER		"0.2.2009032301"
+  set	LIB_VER		"0.3.2009040901"
   set	LIB_INFO	"XML tree-management functions (subset)"
 
   set	INODES 0
@@ -1518,8 +1557,8 @@ namespace eval ::XTREE {
 
     foreach label $node(I_LABELS) sublist $node(I_VALUES) {
       foreach value $sublist {
-        #set D "<$label><!\[CDATA\[$value\]\]></$label>"
-        set D "<$label>$value</$label>"
+        set D "<$label><!\[CDATA\[$value\]\]></$label>"
+        #set D "<$label>$value</$label>"
         eval $dumpscript
       }
     }
@@ -1528,7 +1567,7 @@ namespace eval ::XTREE {
       foreach handle $sublist {
         set D "<$label>"
         eval $dumpscript
-        ::XTREE::walk_XML $handle "  $I" "$dumpscript"
+        ::XTREE::walk_XML $handle "  $I" $dumpscript
         set D "</$label>"
         eval $dumpscript
       }
@@ -1573,10 +1612,125 @@ namespace eval ::XTREE {
     set D "<$root(LABEL)>"
     eval $dumpscript
 
-    ::XTREE::walk_XML $root_handle "  " "$dumpscript"
+    ::XTREE::walk_XML $root_handle "  " $dumpscript
 
     set D "</$root(LABEL)>"
     eval $dumpscript
+  }
+  #--------------------------------------------------------------------------
+
+
+  #--------------------------------------------------------------------------
+  # walk_TEXT - generates a TEXT representation of a (sub) tree
+  #
+  # Synopsis:
+  #	walk_TEXT { start_node_handle dumpscript }
+  #
+  # Description:
+  #     walks recursively the entire tree-branch starting at the given node
+  #	calling the user-specified <dumpscript> to generate each resulting
+  #	line. Lines are NOT indented.
+  #
+  #	NOTE: <dumpscript> is NOT called for the current node-label.
+  #
+  # Arguments:
+  #	node_handle	handle to the node
+  #
+  #	dumpscript	script to be evaluated for each TEXT line to emit
+  #
+  #
+  # Returned Value:
+  #	(none)
+  #
+  # Note:
+  #	see the "walk_XML" function above for a description of <dumpscript>,
+  #	with the specific exception that the text-output generated by this
+  #	function is NEVER indented: the $I variable is anyway defined and
+  #	set to "" (as it might be expected by <dumpscript>)
+
+  proc walk_TEXT {start_node_handle prefix dumpscript} {
+    upvar $start_node_handle node
+
+    set I ""
+
+    foreach label $node(I_LABELS) sublist $node(I_VALUES) {
+      set bfl "${prefix}.${label}"
+      set idx 0
+      foreach value $sublist {
+        set D "${bfl}\[${idx}\]=${value}"
+        eval $dumpscript
+        incr idx
+      }
+    }
+
+    foreach label $node(C_LABELS) sublist $node(C_HANDLES) {
+      set bfl "${prefix}.${label}"
+      set idx 0
+      foreach handle $sublist {
+        ::XTREE::walk_TEXT $handle "${bfl}\[${idx}\]" $dumpscript
+        incr idx
+      }
+    }
+
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  # dump_TEXT - generates an entire TEXT-content document
+  #
+  # Synopsis:
+  #	dump_TEXT { root_handle dumpscript }
+  #
+  # Description:
+  #	generates an entire TEXT-document starting at the given root-node;
+  #	it generates the heading/trailing lines directly and calls the
+  #	"walk_TEXT" function to dump the actual content (see above).
+  #
+  # Arguments:
+  #	root_handle	handle to the root node
+  #
+  #	dumpscript	script to be evaluated for each XML line to emit
+  #
+  #
+  # Returned Value:
+  #	(none)
+  #
+  # Note:
+  #	see the "walk_XML" function above for a description of <dumpscript>,
+  #	with the specific exception that the text-output generated by this
+  #	function is NEVER indented: the $I variable is anyway defined and
+  #	set to "" (as it might be expected by <dumpscript>)
+  #
+  #	Two empty lines (consisting in a single whitespace) are generated
+  #	just before the heading line/after the trailing line: this is needed
+  #	if the text response is to be collected by Internet Explorer (with
+  #	the tecnique of the hidden iframe) as The Beast sometimes removes
+  #	empty lines at the beginning/end of a text content thus preventing
+  #	a text-parser to correctly detect the heading/trailing lines.
+
+  proc dump_TEXT {root_handle dumpscript} {
+    upvar $root_handle root
+
+    if {![info exists root(PARENT)]} {error $::XTREE::ERR_BadHandle $::XTREE::ERR_Info}
+
+    set I ""
+
+    set D " "
+    eval $dumpscript
+
+    set D "---RWS-RESPONSE-BEGIN---"
+    eval $dumpscript
+
+    ::XTREE::walk_TEXT $root_handle $root(LABEL) $dumpscript
+
+    set D "---RWS-RESPONSE-END---"
+    eval $dumpscript
+
+    set D " "
+    eval $dumpscript
+
   }
   #--------------------------------------------------------------------------
 
@@ -1585,16 +1739,319 @@ namespace eval ::XTREE {
 # end of ::XTREE namespace
 #============================================================================
 
-### INCLUDE-END   ("libxtree.inc.tcl") ######################################
+### INCLUDE-END   (xtree.inc.tcl) ###########################################
+
+
+### INCLUDE-BEGIN (utils.inc.tcl) ###########################################
+
+#============================================================================
+# The "UTILS" namespace holds routine and variables of general use
+#
+
+namespace eval ::UTILS {
+  set LIB_NAME		"UTILS"
+  set LIB_VER		"0.1.2009041803"
+  set LIB_INFO		"General-purpose utility functions"
+
+
+  #--------------------------------------------------------------------------
+  # GetFilePermissions name
+  #
+  # Returns the file permissions of a file.
+  #
+  #
+  # Argument(s):
+  #
+  #	name		pathname of the file
+  #
+  #
+  # Return Code:
+  #
+  #	<integer>	permissions value in octal representation
+  #	-1		failure
+  #
+
+  proc GetFilePermissions { name } {
+    if {[catch {file attributes $name -permissions} retval]} {
+      ::LOG::Msg error "UTILS::GetFilePermissions: failed ($retval)"
+      return -1
+    }
+    return $retval
+  }
+  #--------------------------------------------------------------------------
 
 
 
+  #--------------------------------------------------------------------------
+  # CreateUniqueFile path perms __fname __fch
+  #
+  # Generates an unique file name (based on PID, an high-resolution value
+  # for current time and a random number) and opens it for write-only in
+  # create/exclusive mode (that is: the file MUST NOT already exist).
+  # The operation is retried up to 3 times in case of name collision.
+  #
+  #
+  # Argument(s):
+  #
+  #	path		path of directory where the file will be created
+  #
+  #	perms		permission mask -- integer (if -1 defaults to 0666)
+  #
+  #	__fname		name of variable where the generated file name will
+  #			be returned
+  #
+  #	__fch		name of variable where the file's i/o channel (open
+  #			for write-only) will be returned
+  #
+  #
+  # Return Code:
+  #
+  #	 0	success (file created and open)
+  #	-1	failure (repeated name collision or i/o problem)
+  #
 
+  proc CreateUniqueFile { path perms __fname __fch} {
+    set ltag "UTILS::CreateUniqueFile"
+
+    upvar $__fname  fname
+    upvar $__fch    fch
+
+    if {$perms == -1} {set perms 0666}
+
+    set try 0
+    while { [incr try] <= 3 } {
+      set fname "[file join $path [format "%04X-%08X-%04X.tmp"\
+                                  [pid] [clock clicks] [expr {int(rand()*65536)}]]]"
+
+      if {![catch {open $fname {WRONLY CREAT EXCL} $perms} fch]} {
+        ::LOG::Msg debug "$ltag: created file \"$fname\", permissions=$perms"
+        return 0
+      }
+      ::LOG::Msg warning "$ltag: temporary output file creation attempt($try) failed ($fch)"
+    }
+
+    ::LOG::Msg error "$ltag: failed to create temporary output file ($fch)"
+    set fname ""
+    set fch   ""
+    return -1
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  # CreateUniqueDir path __dirname
+  #
+  # Generates an unique directory name (based on PID, an high-resolution
+  # value for current time and a random number) and creates it having "path"
+  # as parent directory.
+  # The operation is retried up to 3 times in case of name collision.
+  #
+  #
+  # Argument(s):
+  #
+  #	path		path of the parent directory where the new one will
+  #			be created
+  #
+  #	__dirname	name of variable where the complete path of the
+  #			created directory will be returned
+  #
+  # Return Code:
+  #
+  #	 0	success (directory created)
+  #	-1	failure (repeated name collision or i/o problem)
+  #
+
+  proc CreateUniqueDir { path __dirname } {
+    set ltag "UTILS::CreateUniqueDir"
+
+    upvar $__dirname  dirname
+
+    set try 0
+    set retval "repeated name collision"
+
+    while { [incr try] <= 3 } {
+      
+      set dirname "[file join "$path" [format "TMPDIR-%04X-%08X-%04X" [pid]\
+                   [clock clicks] [expr {int(rand()*65536)}]]]"
+
+      if {![file exists $dirname]} {
+        # name is ok: create directory
+        if {![catch {file mkdir $dirname} retval]} { return 0 }
+        # creation failed
+        break
+      }
+      ::LOG::Msg warning "$ltag: temporary directory creation attempt($try) failed (name collision)"
+    }
+
+    ::LOG::Msg error "$ltag: failed to create temporary directory ($retval)"
+
+    set dirname ""
+    return -1
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  # CreateMUTEX path mutex_name {max_attempts 1} {ms_wait 500}
+  #
+  # Locks access to a given resource by creating (in exclusive mode) a MUTEX
+  # flag file. A rancid-compatible group lockfile may be created by passing
+  # as <mutex_name> the name of a rancid's valid group, thus preventing
+  # rancid from processing the given group of devices while a MODIFICATION
+  # is being performed on that group by the RANCID-API (and viceversa).
+  # This function is also used to create API's own lockfiles, preventing
+  # corrptions of the corresponding protected resource due to concurrent
+  # executions of different running instances of the RANCID-API itself.
+  #
+  # When only the <mutex_name> is passed as argument, the function does NOT
+  # perform any retry in case of collision.
+  #
+  #
+  # Argument(s)
+  #
+  #	path		path of directory where the lockfile will be created
+  #
+  #	mutex_name	the name of a valid rancid's group (or also one of
+  #			the "special" names for the API own MUTEXes)
+  #
+  #	max_attempts	number of attempts to perform (default = 1)
+  #
+  #	ms_wait		time to wait between two consecutive attempts
+  #			(default = 200 ms)
+  #
+  #
+  # Return Code
+  #
+  #	 0	success (file created, lock engaged)
+  #	-1	failure (resource already locked)
+  #
+
+  proc CreateMUTEX { path mutex_name {max_attempts 1} {ms_wait 500} } {
+    set ltag "UTILS::CreateMUTEX"
+
+    set fn [file join $path ".${mutex_name}.run.lock"]
+
+
+    set try 1
+
+    while {1} {
+      if {![catch {open "$fn" {WRONLY CREAT EXCL}} fch]} { break }
+
+      # failed to acquire MUTEX
+
+      ::LOG::Msg warning "$ltag: \"$mutex_name\" creation attempt($try) failed ($fch)"
+
+      if {[incr try] > $max_attempts} {
+        ::LOG::Msg error "$ltag: \"$mutex_name\" creation failed (no more attempts left)"
+        return -1
+      }
+
+      # wait and retry
+
+      after $ms_wait
+    }
+
+    # MUTEX file created successfully
+
+    set result 0
+
+    if {[catch {puts $fch "[pid] RWS"} retval]} {
+      ::LOG::Msg error "$ltag: failed to write process data into \"$mutex_name\" ($retval)"
+      set result -1
+    }
+
+    if {[catch {close $fch} retval]} {
+      ::LOG::Msg error "$ltag: failed to close MUTEX file, possible deferred-write error ($retval)"
+      set result -1
+    }
+
+    if {$result == 0} { ::LOG::Msg debug "$ltag: \"$mutex_name\" acquired on attempt $try" }
+
+    return $result
+
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  # ReleaseMUTEX path mutex_name
+  #
+  # Delete a previously created MUTEX-file thus releasing an acquired lock.
+  # Note: this function always return success, as such any error is reported
+  #       as "warning" into the logfile.
+  #
+  # Argument(s)
+  #
+  #	path		path of directory where the lockfile was created
+  #
+  #	mutex_name	name of a valid rancid's group previously locked by
+  #			the RANCID-API
+  #
+  #
+  # Return Code
+  #
+  #	 0	success (always)
+  #
+
+  proc ReleaseMUTEX { path mutex_name } {
+    set ltag "UTILS::ReleaseMUTEX"
+    if {[catch {file delete [file join $path ".${mutex_name}.run.lock"]} retval]} {
+      ::LOG::Msg warning "$ltag: unable to release \"$mutex_name\" ($retval)"
+    } else {
+      ::LOG::Msg debug "$ltag: \"$mutex_name\" released"
+    }
+    return 0
+  }
+  #--------------------------------------------------------------------------
+
+
+  #--------------------------------------------------------------------------
+  # IsValidIPv4
+  #
+  # Returns 1 (TRUE) if the passed string is a valid IPv4 address in the usual
+  # "dotted-decimal-notation", 0 (FALSE) otherwise.
+
+  proc IsValidIPv4 { ipv4 } {
+    if { [regexp {^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$} $ipv4 \
+                 dummy b1 b2 b3 b4] != 0 } {
+      if {($b1<256)&&($b2<256)&&($b3<256)&&($b4<256)} {return 1}
+    }
+    return 0
+  }
+  #--------------------------------------------------------------------------
+
+
+  #--------------------------------------------------------------------------
+  # IsValidDomainHostName
+  #
+  # Returns 1 (TRUE) if the passed string is a valid host name, 0 (FALSE)
+  # otherwise. Note that the allowed format is somewhat "relaxed" if compared
+  # to official DNS specifications (according to what is actually accepted by
+  # current resolver's implementations)
+
+  proc IsValidDomainHostName { name } {
+    if {![regexp {^(?:[[:alnum:]-]*[[:alpha:]-][[:alnum:]-]*\.?)+$} $name]} { return 0 }
+    return [regexp {^(?:[[:alnum:]]+(?:\-[[:alnum:]]+)*\.?)+$} $name]
+  }
+  #--------------------------------------------------------------------------
+
+
+
+}
+#============================================================================
+
+### INCLUDE-END   (utils.inc.tcl) ###########################################
+
+
+### INCLUDE-BEGIN (rws-cgi.inc.tcl) #########################################
 
 #============================================================================
 namespace eval ::RWS {
   set APP_NAME		"RWS"
-  set APP_VER		"0.9.2009033101"
+  set APP_VER		"0.92.2009041802"
   set APP_INFO		"RESTful Web Service Server-Side Application Engine"
 
 
@@ -1618,34 +2075,40 @@ namespace eval ::RWS {
   #	- a status description in human-readable form
 
   array set STATUS_TABLE {
-    Found		 { 0 "200" "OK"                        "Resource successfully accessed" }
-    Created		 { 0 "201" "Resource Created"          "Resource successfully created" }
-    Updated		 { 0 "200" "Resource Updated"          "Resource successfully updated" }
-    NotChanged		 { 0 "200" "Resource Not Changed"      "Resource did not require any update" }
-    Deleted		 { 0 "200" "Resource Deleted"          "Resource successfully deleted" }
-    Reset		 { 0 "200" "Resource Reset"            "Resource successfully reset to default state" }
+    Found		 { 0 "200" "OK"                         "Resource successfully accessed" }
+    Created		 { 0 "201" "Resource Created"           "Resource successfully created" }
+    Updated		 { 0 "200" "Resource Updated"           "Resource successfully updated" }
+    NotChanged		 { 0 "200" "Resource Not Changed"       "Resource did not require any update" }
+    Deleted		 { 0 "200" "Resource Deleted"           "Resource successfully deleted" }
+    Reset		 { 0 "200" "Resource Reset"             "Resource successfully reset to default state" }
 
-    ErrInvalidURI	 { 1 "400" "Bad Request URI"           "Request's URI is invalid or malformed" }
-    ErrAuthentication    { 1 "401" "Authentication Required"   "Request requires proper authentication" }
-    ErrAuthorization     { 1 "403" "Not Authorized"            "Request requires different authorization level" }
-    ErrForbidden	 { 1 "403" "Access Forbidden"          "Access to addressed resource is forbidden" }
-    ErrNotFound		 { 1 "404" "Resource Not Found"        "Resource does not exist" }
-    ErrContainer	 { 1 "403" "Operation Not Allowed"     "The addressed resource is a container" }
-    ErrInvalidMethod	 { 1 "501" "Method Not Implemented"    "Invalid HTTP request-method" }
-    ErrBadMethod	 { 1 "405" "Method Not Allowed"        "HTTP request-method not allowed" }
-    ErrBusy		 { 1 "503" "Resource Busy"             "Resource is temporarily unvailable" }
-    ErrNoContentType	 { 1 "415" "Missing Content-Type"      "\"Content-Type\" field missing in HTTP request-header" }
-    ErrBadContentType	 { 1 "415" "Unsupported Content-Type"  "Request has an unsupported Content-Type" }
-    ErrMalformedContent	 { 1 "400" "Malformed Request Content" "Request's content is malformed" }
-    ErrMissingData	 { 1 "403" "Insufficient Data"         "Missing mandatory content's information(s)" }
-    ErrInvalidData	 { 1 "403" "Invalid Data"              "Invalid content's information(s)" }
-    ErrExists		 { 1 "409" "Resource Conflict"         "Resource already exists" }
+    ErrBusy		 { 1 "503" "Resource Busy"              "Resource is temporarily unvailable" }
+    ErrInvalidURI	 { 1 "400" "Bad Request URI"            "Request's URI is invalid or malformed" }
+    ErrAuthentication    { 1 "401" "Authentication Required"    "Request requires proper authentication" }
+    ErrAuthorization     { 1 "403" "Not Authorized"             "Request requires different authorization level" }
+    ErrForbidden	 { 1 "403" "Access Forbidden"           "Access to addressed resource is forbidden" }
+    ErrNotFound		 { 1 "404" "Resource Not Found"         "Resource does not exist" }
+    ErrContainer	 { 1 "403" "Operation Not Allowed"      "The addressed resource is a container" }
+    ErrInvalidMethod	 { 1 "501" "Method Not Implemented"     "Invalid HTTP request-method" }
+    ErrBadMethod	 { 1 "405" "Method Not Allowed"         "HTTP request-method not allowed" }
+    ErrBadOptionValue	 { 1 "403" "Invalid Request Option"     "One or more request options (URI's \"query-string\" components) have an invalid value" }
+    ErrNoContentLength	 { 1 "411" "Missing Content-Length"     "\"Content-Length\" field missing in HTTP request-header" }
+    ErrNoContentType	 { 1 "415" "Missing Content-Type"       "\"Content-Type\" field missing in HTTP request-header" }
+    ErrBadContentType	 { 1 "415" "Unsupported Content-Type"   "Request has an unsupported Content-Type" }
+    ErrMalformedContent	 { 1 "400" "Malformed Request Content"  "Request's content is malformed" }
+    ErrMissingData	 { 1 "403" "Insufficient Data"          "Missing mandatory content's information(s)" }
+    ErrInvalidData	 { 1 "403" "Invalid Data"               "Invalid content's information(s)" }
+    ErrExists		 { 1 "409" "Resource Conflict"          "Resource already exists" }
 
-    ErrConfig		 { 1 "500" "Configuration Error"       "Configuration error" }
-    ErrFileSystemIO	 { 1 "500" "FileSystem Error"          "FileSystem I/O error" }
-    ErrCommIO		 { 1 "500" "Communication Error"       "Communication I/O error" }
-    ErrCorrupted	 { 1 "500" "Source Data Error"         "Invalid data from an external source (e.g. corrupted file)" }
-    ErrInternal		 { 1 "500" "Internal Error"            "System or application failure"  }
+    ErrConfig		 { 1 "500" "Configuration Error"        "Configuration error" }
+    ErrFileSystemIO	 { 1 "500" "FileSystem Error"           "FileSystem I/O error" }
+    ErrCommIO		 { 1 "500" "Communication Error"        "Communication I/O error" }
+    ErrServiceLoader	 { 1 "500" "Service Loader Error"       "Failed to load or register a dynamic service module" }
+    ErrUnsupported	 { 1 "500" "Unsupported Feature"        "The requested specific feature is not currently supported"  }
+    ErrCorrupted	 { 1 "500" "Source Data Error"          "Invalid data from an external source (e.g. corrupted file)" }
+    ErrException	 { 1 "500" "Unhandled Exception"        "The RWS Request Processor Engine aborted due to an unhandled exception" }
+    ErrExternal		 { 1 "500" "External Process Error"     "An external child process returned a failure exit-code" }
+    ErrInternal		 { 1 "500" "Internal Error"             "Unexpected system or application failure"  }
   }
 
 
@@ -1702,45 +2165,46 @@ namespace eval ::RWS {
 
     # check if the request has any content
 
-    if {"$RequestContentLen" != ""} {
+    if {$RequestContentLen == ""} {
+      ::LOG::Msg error "$ltag: missing Content-Length header field"
+      set ServiceStatus    "ErrNoContentLength"
+      set ServiceStatusMsg "Request does not appear to have any content"
+      return 1
+    }
 
-      if {$RequestContentLen > 0} {
+    if {$RequestContentLen > 0} {
 
-        if {"$RequestContentType" == ""} {
-          ::LOG::Msg error "$ltag: missing Content-Type header field"
-          set ServiceStatus    "ErrNoContentType"
-          set ServiceStatusMsg "Request appears to have a content but no\
-			        Content-Type is specified"
-          return 1
-        }
-
-        if {![regexp -nocase "^${allowed_ctype}(?:;.*)?$" $RequestContentType]} {
-          ::LOG::Msg error "$ltag: unsupported Content-Type: \"$RequestContentType\""
-          set ServiceStatus    "ErrBadContentType"
-          set ServiceStatusMsg "Allowed Content-Type is: $allowed_ctype"
-          return 1          
-        }
-
-        if {[::IO::SetupChannel $chIn -eol-binary]} {
-          ::LOG::Msg error "$ltag: failed to configure input channel"
-          set ServiceStatus    "ErrCommIO"
-          set ServiceStatusMsg "Failed to configure input channel"
-          return 1
-        }
-
-        if {[::IO::ReadBlock $chIn $RequestContentLen $::HTTP::ioTimeout content read_count]} {
-          ::LOG::Msg error "$ltag: failed to read request content"
-          set ServiceStatus    "ErrCommIO"
-          set ServiceStatusMsg "Failed to read request's content"
-          return 1
-        }
-
-        upvar $__assigned    assigned_tokens
-        upvar $__unassigned  unassigned_tokens
-        ::HTTP::SplitAssignments content assigned_tokens unassigned_tokens
-
-        return 0
+      if {"$RequestContentType" == ""} {
+        ::LOG::Msg error "$ltag: missing Content-Type header field"
+        set ServiceStatus    "ErrNoContentType"
+        set ServiceStatusMsg "Request appears to have a content but no Content-Type is specified"
+        return 1
       }
+
+      if {![regexp -nocase "^${allowed_ctype}(?:;.*)?$" $RequestContentType]} {
+        ::LOG::Msg error "$ltag: unsupported Content-Type: \"$RequestContentType\""
+        set ServiceStatus    "ErrBadContentType"
+        set ServiceStatusMsg "Allowed Content-Type is: \"$allowed_ctype\""
+        return 1          
+      }
+
+      if {[::IO::SetupChannel $chIn -eol-binary]} {
+        ::LOG::Msg error "$ltag: failed to configure input channel"
+        set ServiceStatus    "ErrCommIO"
+        set ServiceStatusMsg "Failed to configure input channel"
+        return 1
+      }
+
+      if {[::IO::ReadBlock $chIn $RequestContentLen $::HTTP::ioTimeout content read_count]} {
+        ::LOG::Msg error "$ltag: failed to read request content"
+        set ServiceStatus    "ErrCommIO"
+        set ServiceStatusMsg "Failed to read request's content"
+        return 1
+      }
+
+      upvar $__assigned    assigned_tokens
+      upvar $__unassigned  unassigned_tokens
+      ::HTTP::SplitAssignments content assigned_tokens unassigned_tokens
 
     }
 
@@ -1807,19 +2271,59 @@ namespace eval ::RWS {
     set ContentHandle [::XTREE::add_Child $ContentTreeRootHandle "ResponseContent"]
     set EntityHandle  [::XTREE::add_Child $ContentHandle         "ResourceEntity"]
 
-    # section "ResponseContent/ResourceEntity/Application"
+
+
+    #--------------------------------------------------
+    # node "ResponseContent/ResourceEntity/Application"
+    #--------------------------------------------------
 
     set h_app [::XTREE::add_Child $EntityHandle "Application"]
 
-    ::XTREE::set_Item $h_app "Name"                   $::RWS::APP_NAME
-    ::XTREE::set_Item $h_app "Version"                $::RWS::APP_VER
-    ::XTREE::set_Item $h_app "HttpLibrary"            $HttpLib
-    ::XTREE::set_Item $h_app "HttpLibraryVersion"     $HttpLibVer
-    ::XTREE::set_Item $h_app "RuntimeLibrary"         "Tcl"
-    ::XTREE::set_Item $h_app "RuntimeLibraryVersion"  $::tcl_patchLevel
+    ::XTREE::set_Item $h_app "Name"     $::RWS::APP_NAME
+    ::XTREE::set_Item $h_app "Version"  $::RWS::APP_VER
+    ::XTREE::set_Item $h_app "Info"     $::RWS::APP_INFO
 
 
-    # section "ResponseContent/ResourceEntity/HostingWebServer"
+
+    #-----------------------------------------------------------
+    # nodes "ResponseContent/ResourceEntity/Application/Library"
+    #-----------------------------------------------------------
+
+    foreach nsn [lsort -dictionary [namespace children "::"]] {
+      upvar ${nsn}::LIB_NAME lib_name
+      upvar ${nsn}::LIB_VER  lib_ver
+      upvar ${nsn}::LIB_INFO lib_info
+      if {[info exists lib_name] && [info exists lib_ver] && [info exists lib_info]} {
+        set h_lib [::XTREE::add_Child $h_app "Library"]
+        ::XTREE::set_Item $h_lib "Name"    $lib_name
+        ::XTREE::set_Item $h_lib "Version" $lib_ver
+        ::XTREE::set_Item $h_lib "Info"    $lib_info
+      }
+    }
+
+
+
+    #----------------------------------------------------------
+    # node "ResponseContent/ResourceEntity/Application/Runtime"
+    #----------------------------------------------------------
+
+    if {![catch {infox appname} retval]} {
+      set h_lib [::XTREE::add_Child $h_app "Runtime"]
+      ::XTREE::set_Item $h_lib "Name"    $retval
+      ::XTREE::set_Item $h_lib "Version" [infox version]
+      ::XTREE::set_Item $h_lib "Info"    [infox applongname]
+    }
+
+    set h_lib [::XTREE::add_Child $h_app "Runtime"]
+    ::XTREE::set_Item $h_lib "Name"    "Tcl"
+    ::XTREE::set_Item $h_lib "Version" $::tcl_patchLevel
+    ::XTREE::set_Item $h_lib "Info"    "Standard Tcl"
+
+
+
+    #-------------------------------------------------------
+    # node "ResponseContent/ResourceEntity/HostingWebServer"
+    #-------------------------------------------------------
 
     set h_websrv [::XTREE::add_Child $EntityHandle "HostingWebServer"]
 
@@ -1831,14 +2335,20 @@ namespace eval ::RWS {
     ::XTREE::set_Item $h_websrv "ServiceBaseURI" "$BaseURI"
 
 
-    # section "ResponseContent/ResourceEntity/HostingEnvironment
+
+    #---------------------------------------------------------
+    # node "ResponseContent/ResourceEntity/HostingEnvironment"
+    #---------------------------------------------------------
 
     set h_hostenv [::XTREE::add_Child $EntityHandle "HostingEnvironment"]
 
     ::XTREE::set_Item $h_hostenv "HardwareType"           $::tcl_platform(machine)
 
 
-    # section "ResponseContent/ResourceEntity/HostingEnvironment/OperatingSystem
+
+    #-------------------------------------------------------------------------
+    # node "ResponseContent/ResourceEntity/HostingEnvironment/OperatingSystem"
+    #-------------------------------------------------------------------------
 
     set h_os [::XTREE::add_Child $h_hostenv "OperatingSystem"]
 
@@ -1847,7 +2357,10 @@ namespace eval ::RWS {
     ::XTREE::set_Item $h_os "Version" $::tcl_platform(osVersion)
 
 
-    # section "ResponseContent/ResourceEntity/HostingEnvironment/CurrentSystemTime
+
+    #---------------------------------------------------------------------------
+    # node "ResponseContent/ResourceEntity/HostingEnvironment/CurrentSystemTime"
+    #---------------------------------------------------------------------------
 
     set h_time [::XTREE::add_Child $h_hostenv "CurrentSystemTime"]
 
@@ -1856,6 +2369,8 @@ namespace eval ::RWS {
     ::XTREE::set_Item $h_time "Local"             "[clock format $TimeStamp -format {%a, %d %b %Y %T} -gmt 0]"
     ::XTREE::set_Item $h_time "TimeZone"          "[clock format $TimeStamp -format {%Z} -gmt 0]"
     ::XTREE::set_Item $h_time "TimeZoneOffset"    "[clock format $TimeStamp -format {%z} -gmt 0]"
+
+
 
     set ServiceStatus    "Found"
     set ServiceStatusMsg "RWS Servlet Informations"
@@ -1904,7 +2419,7 @@ namespace eval ::RWS {
       ::LOG::Msg debug "$ltag: loading: \"$s_label\""
       if {[catch {namespace eval :: { source $::RWS::DYNAMIC_SERVICE_FILE }} result]} {
         unset ::RWS::DYNAMIC_SERVICE_FILE
-        set ServiceStatus    "ErrInternal"
+        set ServiceStatus    "ErrServiceLoader"
         set ServiceStatusMsg "An error occurred while loading the service module \"$s_label\" : $result"
         return ""
       }
@@ -1926,7 +2441,7 @@ namespace eval ::RWS {
           return $result
         }
       }
-      set ServiceStatus    "ErrInternal"
+      set ServiceStatus    "ErrServiceLoader"
       set ServiceStatusMsg "Failed to register service module \"$s_label\""
       return ""
     }
@@ -1978,6 +2493,9 @@ namespace eval ::RWS {
 
       if { "$relative_uri" == "" } {
         if {[info exists table(:self:)]} {
+          # the resource handler returns with:
+          #  0 = external response
+          #  1 = internal response (including errors), subject to option "reponsetype=" (default=xml)
           return [eval $table(:self:)]
         } else {
           set ServiceStatus    "ErrContainer"
@@ -2167,8 +2685,8 @@ namespace eval ::RWS {
       ::HTTP::ClearResponseFields  $RequestHandle
 
       # set the response status fields
-      set ServiceStatus		"ErrInternal"
-      set ServiceStatusMsg	"The RWS Request Processor Engine aborted the execution due to an unhandled exception."
+      set ServiceStatus		"ErrException"
+      set ServiceStatusMsg	"Dump of the interpreter's execution call-stack"
       set RespondingService	$::RWS::APP_NAME
 
       # clear the XML tree and setup it again
@@ -2182,9 +2700,9 @@ namespace eval ::RWS {
       ::XTREE::set_Item $EntityHandle "ErrorMessage" $engine_status
       ::XTREE::set_Item $EntityHandle "ErrorCode"    $::errorCode
 
-      ::XTREE::set_Item $EntityHandle "ExecutionCallStack" "<!\[CDATA\[\r\n$::errorInfo\r\n\]\]>"
+      ::XTREE::set_Item $EntityHandle "ExecutionCallStack" "<!\[CDATA\[$::errorInfo\]\]>"
 
-      # set engine_status to 1 so to produce an XML response
+      # set engine_status to 1 so to produce an internal response
 
       set engine_status 1
 
@@ -2211,7 +2729,7 @@ namespace eval ::RWS {
 
     if {$engine_status > 0} {
 
-      # XML internal response
+      # internal response
 
       ::XTREE::set_Item $StatusHandle "Code" "$ServiceStatus"
 
@@ -2231,12 +2749,34 @@ namespace eval ::RWS {
         ::XTREE::set_Item $StatusHandle "ServiceMessage" "$ServiceStatusMsg"
       }
 
-      ::HTTP::SetResponseContentType $RequestHandle "application/xml; charset=ISO-8859-1"
-      ::XTREE::dump_XML $ContentTreeRootHandle [concat ::HTTP::AddToResponseContent $RequestHandle {$I$D\r\n}]
+      # values for engine_status:
+      #
+      #  1 = internal response default to XML (subject to "responsetype=" option)
+      #  2 = internal response forced to XML  ("responsetype=" option ignored)
+      #  3 = internal response forced to TEXT ("responsetype=" option ignored)
 
-      # this is an old test -- commented out
-      #::HTTP::SetResponseContentType $RequestHandle "text/plain; charset=ISO-8859-1"
-      #::TREE::dump_TEXT $ContentTreeRootHandle [concat ::HTTP::AddToResponseContent $RequestHandle {$D\r\n}]
+      if {$engine_status == 1} {
+        # internal response is subject to "reponsetype=" option
+
+        upvar ${RequestHandle}::QueryTokensAssigned  Options
+
+        if {[info exists Options(responsetype)]} {
+          if { $Options(responsetype) == "text" } {
+            set engine_status 3
+          } else {
+            set engine_status 2
+          }
+        }
+
+      }
+
+      if {$engine_status == 3} {  
+        ::HTTP::SetResponseContentType $RequestHandle "text/plain; charset=ISO-8859-1"
+        ::XTREE::dump_TEXT $ContentTreeRootHandle [concat ::HTTP::AddToResponseContent $RequestHandle {$D\r\n}]
+      } else {
+        ::HTTP::SetResponseContentType $RequestHandle "application/xml; charset=ISO-8859-1"
+        ::XTREE::dump_XML $ContentTreeRootHandle [concat ::HTTP::AddToResponseContent $RequestHandle {$I$D\r\n}]
+      }
 
     }
 
@@ -2271,10 +2811,22 @@ if {! [::LOG::Open [::HTTP::GetEnvVar "RWS_LOGFILE"]]} {
   ::LOG::Open "/tmp/rws-cgi.log"
 }
 
-# calls the RWS entry-point passing the handle of the request structure
+# if we are running under a Tcl/TclX interpreter which supports signals,
+# configure some of them to return a Tcl error instead of aborting
 
-set exit_code [::RWS::ProcessRequest [::HTTP::CGI_SetupRequestStructure]]
+if {[catch {signal error {HUP INT QUIT ABRT PIPE TERM}} retval]} {
+  ::LOG::Msg warning "unable to configure signals: $retval"
+}
+
+# set-up the request structure and call the RWS entry-point passing the
+# returned request-handle
+
+set retval [::RWS::ProcessRequest [::HTTP::CGI_SetupRequestStructure]]
 
 ::LOG::Close
 
-exit $exit_code
+exit $retval
+
+
+### INCLUDE-END   (rws-cgi.inc.tcl) #########################################
+
