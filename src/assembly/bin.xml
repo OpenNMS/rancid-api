@@ -14,8 +14,9 @@
       <directory>${project.basedir}</directory>
 		<outputDirectory></outputDirectory>
       <includes>
-        <include>COPYING*</include>
-        <include>README*</include>
+        <include>ChangeLog</include>
+        <include>COPYING</include>
+        <include>README</include>
       </includes>
     </fileSet>
   </fileSets>

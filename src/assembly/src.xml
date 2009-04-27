@@ -9,7 +9,9 @@
     <fileSet>
       <includes>
         <include>${project.basedir}/pom.xml</include>
-        <include>${project.basedir}/README*</include>
+        <include>${project.basedir}/ChangeLog</include>
+        <include>${project.basedir}/COPYING</include>
+        <include>${project.basedir}/README</include>
       </includes>
       <useDefaultExcludes>true</useDefaultExcludes>
     </fileSet>
