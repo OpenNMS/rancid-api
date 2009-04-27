@@ -1,0 +1,462 @@
+2009-04-27 15:25  rangerrick
+
+	* .: add svn2cl
+
+2009-04-27 14:47  rangerrick
+
+	* pom.xml: [maven-release-plugin] prepare for next development
+	  iteration
+
+2009-04-27 14:46  rangerrick
+
+	* pom.xml: [maven-release-plugin] prepare release rancid-api-0.92
+
+2009-04-22 19:30  rssntn67
+
+	* src/main/java/org/opennms/rancid/apiclient/RWSStub.java,
+	  src/test, src/test/java, src/test/java/org,
+	  src/test/java/org/opennms, src/test/java/org/opennms/rancid,
+	  src/test/java/org/opennms/rancid/apiclient,
+	  src/test/java/org/opennms/rancid/apiclient/RWSStub.java: Moved
+	  Stub class to test
+
+2009-04-22 00:39  rionero
+
+	* src/main/webapp/cgi-bin/storage.rws: STORAGE RWS Service Module
+	  version 0.3.2009041803
+
+2009-04-22 00:39  rionero
+
+	* src/main/webapp/cgi-bin/rancid.rws: RANCID-API RWS Service Module
+	  version 0.91.2009041802
+
+2009-04-22 00:38  rionero
+
+	* src/main/webapp/cgi-bin/rws-cgi.tcl: RWS Core CGI Script version
+	  0.92.2009041802
+
+2009-04-22 00:37  rionero
+
+	* src/main/webapp/cgi-bin/README: Short install/setup instructions
+
+2009-04-22 00:35  rionero
+
+	* src/main/webapp/cgi-bin/CHANGES: Short list of changes over
+	  previous release
+
+2009-04-21 20:02  rssntn67
+
+	* src/main/java/org/opennms/rancid/RWSClientApi.java: commented the
+	  methid forceDeleteBucket becouse the server does not support it
+	  more
+
+2009-04-13 10:16  rssntn67
+
+	* pom.xml, src/main/java/org/opennms/rancid/RWSClientApi.java:
+	  Fixed the getRWSBucket method. Added log4j dependency
+
+2009-04-08 17:54  rssntn67
+
+	* src/main/java/org/opennms/rancid/RWSBucket.java,
+	  src/main/java/org/opennms/rancid/RWSClientApi.java: RWSClient
+	  clean up
+	  Added support for storage service
+
+2009-04-03 17:13  rangerrick
+
+	* pom.xml: [maven-release-plugin] prepare for next development
+	  iteration
+
+2009-04-03 17:13  rangerrick
+
+	* pom.xml: [maven-release-plugin] prepare release rancid-api-0.4
+
+2009-04-03 17:12  rangerrick
+
+	* pom.xml: whups, put it back, the release plugin bombed
+
+2009-04-03 17:10  rangerrick
+
+	* pom.xml: [maven-release-plugin] prepare release rancid-api-0.4
+
+2009-04-03 17:09  rangerrick
+
+	* src/main/webapp/cgi-bin/README: due to mavenisms, the directory
+	  is rancid-api-X.X, not rws-rancid-api-X.X
+
+2009-04-03 17:06  rangerrick
+
+	* src/assembly/bin.xml: whups, package COPYING too
+
+2009-04-03 17:05  rangerrick
+
+	* ., COPYING, README, pom.xml, src/assembly, src/assembly/bin.xml,
+	  src/assembly/src.xml: create assemblies and such for
+	  packaging/releasing the RWS code
+
+2009-04-02 18:54  rangerrick
+
+	* pom.xml: [maven-release-plugin] prepare for next development
+	  iteration
+
+2009-04-02 18:54  rangerrick
+
+	* pom.xml: [maven-release-plugin] prepare release rancid-api-0.3
+
+2009-03-31 19:06  rionero
+
+	* src/main/webapp/cgi-bin/README,
+	  src/main/webapp/cgi-bin/rancid.rws,
+	  src/main/webapp/cgi-bin/rancid.rws.rc,
+	  src/main/webapp/cgi-bin/rws-cgi.tcl: RWS CGI Server Side Script
+	  beta version 0.9 build 20090331-01
+	  RANCID-API RWS Service beta version 0.9 build 20090331-01
+
+2009-03-31 18:59  rionero
+
+	* src/main/filtered/contrib/RANCID-CUSTOM-MIB.mib,
+	  src/main/filtered/contrib/README,
+	  src/main/filtered/contrib/rancid.patch: rancid's notification
+	  extensions, beta version 0.9 build 20090331-01
+
+2009-03-30 16:29  rssntn67
+
+	* src/main/filtered/contrib/RANCID-CUSTOM-MIB.mib: upgraded to 1.1
+	  version
+
+2009-03-30 16:22  rangerrick
+
+	* pom.xml: [maven-release-plugin] prepare for next development
+	  iteration
+
+2009-03-30 16:21  rangerrick
+
+	* pom.xml: [maven-release-plugin] prepare release rancid-api-0.2
+
+2009-03-27 20:28  rssntn67
+
+	* src/main/filtered/contrib/RANCID-CUSTOM-MIB.mib,
+	  src/main/filtered/contrib/rancid.mib: Used a new ib definition
+	  for Rancid
+
+2009-03-26 18:41  rssntn67
+
+	* src/main/filtered, src/main/filtered/contrib,
+	  src/main/filtered/contrib/rancid.mib: Added mib definition to use
+	  by rancid to send traps to opennms
+
+2009-03-20 14:20  guic
+
+	* src/main/java/org/opennms/rancid/RWSClientApi.java,
+	  src/main/java/org/opennms/rancid/apiclient/RWSStub.java:
+	  Correction on Inventory
+
+2009-03-20 14:17  guic
+
+	* src/main/java/org/opennms/rancid/InventoryElement2.java,
+	  src/main/java/org/opennms/rancid/InventoryMemory.java,
+	  src/main/java/org/opennms/rancid/InventorySoftware.java,
+	  src/main/java/org/opennms/rancid/RWSClientApi.java,
+	  src/main/java/org/opennms/rancid/apiclient/RWSStub.java: Recoded
+	  the inventory api since the RWS structure has changed.
+
+2009-03-20 08:49  rssntn67
+
+	* src/main/java/org/opennms/rancid/RancidNode.java: fixes a null
+	  pointer exception for devicename
+
+2009-03-20 07:14  rssntn67
+
+	* src/main/java/org/opennms/rancid/RWSClientApi.java: Cleanup of a
+	  client request. No need t get response
+
+2009-03-20 06:25  rssntn67
+
+	* src/main/java/org/opennms/rancid/RWSClientApi.java,
+	  src/main/java/org/opennms/rancid/apiclient/RWSStub.java: Found a
+	  way to manage errorsand exceptions
+
+2009-03-20 03:55  dhustace
+
+	* src/main/java/org/opennms/rancid/RancidNode.java: added hashCode
+	  implementation
+
+2009-03-20 03:34  dhustace
+
+	* src/main/java/org/opennms/rancid/RancidNode.java: added toString
+	  and equals methods and added field for RancidAuth object to avoid
+	  creating a "container" object that holds each.
+
+2009-03-19 20:02  rssntn67
+
+	* src/main/java/org/opennms/rancid/RWSClientApi.java: Write a
+	  better exception message
+
+2009-03-19 18:30  rssntn67
+
+	* src/main/java/org/opennms/rancid/RWSClientApi.java: Try to fix
+	  error handling.
+
+2009-03-19 17:18  rssntn67
+
+	* src/main/java/org/opennms/rancid/RWSClientApi.java,
+	  src/main/java/org/opennms/rancid/RancidApiException.java: Added
+	  control for update
+
+2009-03-17 15:47  guic
+
+	* src/main/java/org/opennms/rancid/RWSClientApi.java: minor
+	  cosmetic changes
+
+2009-03-17 15:04  guic
+
+	* src/main/java/org/opennms/rancid/RWSClientApi.java,
+	  src/main/java/org/opennms/rancid/apiclient/RWSStub.java:
+	  Corrected some inconsistencies while using connection properties
+
+2009-03-12 16:40  guic
+
+	* src/main/java/org/opennms/rancid/ConnectionProperties.java,
+	  src/main/java/org/opennms/rancid/InventoryElement.java,
+	  src/main/java/org/opennms/rancid/InventoryItem.java,
+	  src/main/java/org/opennms/rancid/InventorySlot.java,
+	  src/main/java/org/opennms/rancid/RWSClientApi.java,
+	  src/main/java/org/opennms/rancid/Tuple.java,
+	  src/main/java/org/opennms/rancid/apiclient/RWSStub.java:
+	  Inventory management:
+	  
+	  added the following method:
+	  
+	  public static InventoryElement
+	  getRWSRancidNodeInventoryElement(ConnectionProperties cp,
+	  RancidNode rancidNode, String version) throws RancidApiException
+	  {
+
+2009-03-11 10:04  rssntn67
+
+	* src/main/java/org/opennms/rancid/RWSClientApi.java: Added methods
+	  to get devicetype list
+
+2009-02-24 18:39  rssntn67
+
+	* src/main/java/org/opennms/rancid/RWSClientApi.java: Added methid
+	  the url in RancidException
+
+2009-02-24 11:33  rssntn67
+
+	* src/main/java/org/opennms/rancid/apiclient/RWSStub.java:
+	  Commented out a sample code to build
+
+2009-02-24 11:01  guic
+
+	* src/main/java/org/opennms/rancid/RWSClientApi.java,
+	  src/main/java/org/opennms/rancid/RancidApiException.java,
+	  src/main/java/org/opennms/rancid/apiclient/RWSStub.java: Added a
+	  method to check if the server is busy or not.
+
+2009-02-23 21:30  guic
+
+	* src/main/java/org/opennms/rancid/RWSClientApi.java,
+	  src/main/java/org/opennms/rancid/apiclient/RWSStub.java: Create
+	  or Update Rancid Node in a single command
+
+2009-02-23 19:16  rssntn67
+
+	* .: Added ignore eclispe stuff
+
+2009-02-23 18:03  guic
+
+	* src/main/java/org/opennms/rancid/ConnectionProperties.java:
+	  ConnectionProperties class
+
+2009-02-23 17:56  guic
+
+	* src/main/java/org/opennms/rancid/RWSClientApi.java,
+	  src/main/java/org/opennms/rancid/RancidApiException.java,
+	  src/main/java/org/opennms/rancid/apiclient/RWSStub.java: Added
+	  not found expection
+
+2009-02-23 17:15  guic
+
+	* src/main/java/org/opennms/rancid/RWSClientApi.java,
+	  src/main/java/org/opennms/rancid/RWS_MT_ClientApi.java,
+	  src/main/java/org/opennms/rancid/apiclient/RWSStub.java: Handle
+	  not existent Rancid Node
+
+2009-02-23 13:55  guic
+
+	* src/main/java/org/opennms/rancid/InventoryNode.java,
+	  src/main/java/org/opennms/rancid/RWSClientApi.java,
+	  src/main/java/org/opennms/rancid/apiclient/RWSStub.java: Added
+	  basic html authentication and possibility to set a timeout
+	  for the connection.
+
+2009-02-19 22:24  dhustace
+
+	* pom.xml: added dependencies jar for easier inclusion with openNMS
+
+2009-02-13 14:12  guic
+
+	* src/main/java/org/opennms/rancid/RWS_MT_ClientApi.java: Added
+	  provisioning of Clogin
+
+2009-02-12 12:20  guic
+
+	* src/main/java/org/opennms/rancid/RWS_MT_ClientApi.java: forgot to
+	  put the real provisioning command instead of the fake one
+	  used to generate ad-hoc error codes
+
+2009-02-12 12:15  guic
+
+	* src/main/java/org/opennms/rancid/RWSClientApi.java,
+	  src/main/java/org/opennms/rancid/RWS_MT_ClientApi.java,
+	  src/main/java/org/opennms/rancid/RancidApiException.java,
+	  src/main/java/org/opennms/rancid/apiclient/RWSStub.java: Added
+	  the threaded provisioning RWS_MT_ClientApi
+	  added some missing error handling
+	  Still need log4 integration
+
+2009-01-30 17:25  guic
+
+	* src/main/java/org/opennms/rancid/RWSClientApi.java: More fixes in
+	  Clogin
+
+2009-01-30 16:04  guic
+
+	* src/main/java/org/opennms/rancid/RWSClientApi.java: Clogin fixes
+
+2009-01-30 14:48  guic
+
+	* src/main/java/org/opennms/rancid/RWSClientApi.java,
+	  src/main/java/org/opennms/rancid/apiclient/RWSStub.java: Fixed
+	  bugs in clogin info update.
+
+2009-01-26 17:34  guic
+
+	* src/main/java/org/opennms/rancid/RWSClientApi.java,
+	  src/main/java/org/opennms/rancid/apiclient/RWSStub.java: Minor
+	  changes
+	  api for group provisioning
+
+2009-01-19 16:29  guic
+
+	* src/main/java/org/opennms/rancid/RancidNode.java: HeadRevision
+	  incorrectly set to int
+	  converted to String.
+
+2009-01-19 16:00  guic
+
+	* src/main/java/org/opennms/rancid/apiclient/RWSStub.java: Remove
+	  the importing of RancidNodeAggregate
+
+2009-01-19 15:52  guic
+
+	* src/main/java/org/opennms/rancid/RancidNodeAggregate.java:
+	  RancidNodeAggregate is not useful
+	  required wrapper will be implemented under the webapp
+
+2009-01-19 15:51  guic
+
+	* src/main/java/org/opennms/rancid/InventoryNode.java,
+	  src/main/java/org/opennms/rancid/RWSClientApi.java,
+	  src/main/java/org/opennms/rancid/RancidNode.java,
+	  src/main/java/org/opennms/rancid/RancidNodeAuthentication.java,
+	  src/main/java/org/opennms/rancid/apiclient/RWSStub.java:
+	  Reorganized RancidNode and RancidNodeAuthentication
+	  
+	  RancidNode: added /config info
+	  
+	  RancidNoceAuthentication: now independent from RancidNode
+
+2009-01-17 10:47  rssntn67
+
+	* src/main/webapp, src/main/webapp/cgi-bin: Added Hiuerarchy for
+	  the RWS server
+
+2009-01-16 17:20  guic
+
+	* src/main/java/org/opennms/rancid/RancidNodeAuthentication.java,
+	  src/main/java/org/opennms/rancid/apiclient/RWSStub.java: Added
+	  contructors to RancidNodeAuthentication.
+
+2009-01-14 16:09  guic
+
+	* src/main/java/org/opennms/rancid/RWSClientApi.java,
+	  src/main/java/org/opennms/rancid/RancidNodeAggregate.java: Added
+	  a method to RancidNodeAggregate
+
+2009-01-14 15:30  guic
+
+	* src/main/java/org/opennms/rancid/InventoryNode.java,
+	  src/main/java/org/opennms/rancid/RWSClientApi.java,
+	  src/main/java/org/opennms/rancid/apiclient/RWSStub.java:
+	  Inventory Node implemented
+
+2009-01-12 17:52  guic
+
+	* src/main/java/org/opennms/rancid/RWSClientApi.java,
+	  src/main/java/org/opennms/rancid/RancidNodeAggregate.java,
+	  src/main/java/org/opennms/rancid/apiclient/RWSStub.java:
+	  RancidNodeAggregate is the map <group,rancidNode> since a
+	  rancidnode
+	  may be listed under more than one group.
+
+2009-01-12 16:06  guic
+
+	* src/main/java/org/opennms/rancid/RancidNode.java: typo in method
+
+2009-01-11 11:59  rssntn67
+
+	* src/main/java/org/opennms/rancid/RancidNode.java: Add Method to
+	  add Configuration
+
+2009-01-09 18:11  rangerrick
+
+	* pom.xml: [maven-release-plugin] prepare for next development
+	  iteration
+
+2009-01-09 18:11  rangerrick
+
+	* pom.xml: [maven-release-plugin] prepare release rancid-api-0.1
+
+2008-12-22 15:28  guic
+
+	* src/main/java/org/opennms/rancid/RWSClientApi.java,
+	  src/main/java/org/opennms/rancid/apiclient/RWSStub.java: Latest
+	  changes wiht latest Rancid server
+
+2008-12-19 21:13  rangerrick
+
+	* ., pom.xml: update to allow deploy
+
+2008-12-18 16:40  rssntn67
+
+	* pom.xml: Fixed the layout oif this
+
+2008-12-18 16:37  rssntn67
+
+	* pom.xml: Needed some changes to compile with 1.5
+
+2008-12-17 18:28  guic
+
+	* pom.xml, src, src/main, src/main/java, src/main/java/org,
+	  src/main/java/org/opennms, src/main/java/org/opennms/rancid,
+	  src/main/java/org/opennms/rancid/InventoryElement.java,
+	  src/main/java/org/opennms/rancid/InventoryNode.java,
+	  src/main/java/org/opennms/rancid/RWSClientApi.java,
+	  src/main/java/org/opennms/rancid/RWSResourceList.java,
+	  src/main/java/org/opennms/rancid/RancidApiException.java,
+	  src/main/java/org/opennms/rancid/RancidNode.java,
+	  src/main/java/org/opennms/rancid/RancidNodeAuthentication.java,
+	  src/main/java/org/opennms/rancid/apiclient,
+	  src/main/java/org/opennms/rancid/apiclient/RWSStub.java: Version
+	  0.1 of the Rancid Api
+
+2008-12-17 16:46  guic
+
+	* pom.xml: Maven Pom file
+
+2008-12-16 18:11  rangerrick
+
+	* .: create a new project folder for the RANCID API
+
