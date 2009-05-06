@@ -47,7 +47,7 @@
 namespace eval ::RANCID {
 
   set SRV_NAME	"RANCID-API"
-  set SRV_VER	"0.91.2009041802"
+  set SRV_VER	"0.92.2009050501"
   set SRV_INFO	"RWS service API for \"rancid\" with the addition of hardware inventory extensions"
 
 
@@ -1039,7 +1039,7 @@ namespace eval ::RANCID {
 
           if {[info exists cp(enablepassword)]} {
             if {![info exists cp(password)]} {set cp(password) [list ""]}
-            lappend cp(password) $cp(enablepassword)
+            set cp(password) [concat $cp(password) $cp(enablepassword)]
             unset cp(enablepassword)
           }
 
