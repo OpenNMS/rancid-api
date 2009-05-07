@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
-RWS RESTful ServerSide Application CGI + RANCID-API & STORAGE Service Modules
+RWS Package for OpenNMS                                OpenNMS/RANCID Project
 
 Copyright (c) 2009+ Rocco Rionero
 Copyright (c) 2009+ The OpenNMS Group, Inc.
@@ -113,7 +113,7 @@ the scripting language of choiche for several kind of embedded systems.
 
 - CHANGES
 
-  A brief description of changes over previous release of the package.
+  A brief description of changes over previous releases of the package.
 
 
 - rws-cgi.tcl
@@ -183,9 +183,9 @@ If all of the above is satisfied, then go ahead with the installation.
   directory of your system;
 
 
-- the untar process created in /tmp the directory "rws-package-X.Y"
+- the untar process created in /tmp the directory "rws-opennms-pkg-X.Y"
   (the trailing string "X.Y" being the version of the package); from now
-  on I will refer to the /tmp/rws-package-X.Y directory as "the package
+  on I will refer to the /tmp/rws-opennms-pkg-X.Y directory as "the package
   directory"
 
 
@@ -194,7 +194,7 @@ If all of the above is satisfied, then go ahead with the installation.
   now on I will refer to it as "the rws-cgi directory"
 
 
-- copy in the rws-cgi directory the following three files from the package
+- copy in the rws-cgi directory the following four files from the package
   directory:
 
 	rws-cgi.tcl
