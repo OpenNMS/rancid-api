@@ -1,5 +1,5 @@
 #============================================================================
-# RANCID-API Configuration File
+# RANCID-API Configuration File                        Version 0.2.2009050601
 #
 # Copyright (c) 2009+ Rocco Rionero
 # Copyright (c) 2009+ The OpenNMS Group, Inc.
@@ -44,27 +44,41 @@
 
 
 
-# NOTE: you can choose to edit this file "manually" or to set the values
-#	via the RANCID-API itself by accessing the corresponding
-#	Config.<variablename> properties of the /rws/rancid resource.
+#=============================================================================
 #
-#	Try a GET http://yourservername/yourserverpath/rws/rancid
+# You can choose to edit this file "manually" or to set the values via the
+# RANCID-API itself by accessing the corresponding Config.<variablename>
+# properties of the /rws/rancid resource.
 #
-#	to see the values. A POST on the same URI will let you to
-#	modify them by passing the assignment as request content
-#	in the usual way.
+# Try a:
 #
-#	I.E. a POST on the resource URI above with a content of:
+#	GET http://yourservername/yourserverpath/rws/rancid
+#
+# to see the values. A POST on the same URI will let you to modify them by
+# passing the assignments into the request's body with the usual content-type
+# of "application/x-www-form-urlencoded"
+#
+# I.E. a POST on the above resource URI having a content of:
 #
 #	Config.pathTemp=<newvalue>
 #
-#	will change the pathTemp variable.
+# will change the pathTemp variable.
+#
+#-----------------------------------------------------------------------------
+#
+# NOTE: when the configuration is changed via the RANCID-API itself (that is,
+# by the mean of a POST request as described above) this file will be
+# entirely rewritten in a "compact" form and all comments will be lost.
+#
+#=============================================================================
+
 
 
 # set this to the home directory of the user running rancid
-# (i.e. the directory where the .cloginrc fileis located)
+# (i.e. the directory where the .cloginrc file is located)
 
 #set pathRancidHome                      "/home/rancid"
+
 
 
 # set this to the full pathname of the rancid's configuration file
@@ -72,14 +86,16 @@
 #set fileRancidConf                      "/home/rancid/tmp/r/etc/rancid.conf"
 
 
+
 # set this to the directory where the API will create a backup-copy of
-# all modified files (i.e. router.db, .cloginrc, etc.); please note that
-# that in most cases the backup operation done by the API is just a "rename"
-# of the original file (done before creating the new one), so for
-# performance reasons it is better to use a directory on the same file-system
-# where rancid's own directories reside.
+# all modified files (i.e. "router.db", ".cloginrc", etc.); please note that
+# in most cases the backup operation done by the API is just a "rename" of
+# the original file (done before creating the new one), so for performance
+# reasons it is better to use a directory on the same file-system where
+# rancid's own directories reside.
 
 #set pathBackup                          "/home/rancid/tmp"
+
 
 
 # set this to the directory used to create temporary files; note that each
