@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
-RWS RESTful ServerSide Application CGI + RANCID-API & STORAGE Service Modules
+RWS Package for OpenNMS version 0.93                   OpenNMS/RANCID Project
 
 Copyright (c) 2009+ Rocco Rionero
 Copyright (c) 2009+ The OpenNMS Group, Inc.
@@ -45,13 +45,93 @@ RANCID application is Copyright by Terrapin Communications, Inc.
 
 
 
-This is a brief list of changes inplemented in the second beta-release
-of the RWS package.
+PACKAGE HISTORY
+===============
+
+
+RELEASE 0.93
+------------
+rancid.rws	0.92 build 2009050501	CHANGED
+rancid.rws.rc	0.2  build 2009050601	CHANGED
+storage.rws	0.3  build 2009041803
+rws-cgi.tcl	0.92 build 2009041802
+
+
+
+RELEASE 0.92
+------------
+rws-cgi.tcl	0.92 build 2009041802	CHANGED
+rancid.rws	0.91 build 2009041802	CHANGED
+storage.rws	0.3  build 2009041803	ADDED
+rancid.rws.rc	unversioned
+
+
+
+RELEASE 0.4
+-----------
+rws-cgi.tcl	0.9  build 2009033101	ADDED
+rancid.rws	0.9  build 2009033101	ADDED
+rancid.rws.rc	unversioned		ADDED
 
 
 
 
-rws-cgi.tcl	(RWS core module)
+
+FILE HISTORY
+============
+
+rancid.rws version 0.92 build 2009050501
+----------------------------------------
+
+- corrected handling of "enablepassword" property in "clogin" resources
+
+
+
+rancid.rws version 0.91 build 2009041802
+----------------------------------------
+
+- moved some functions of general interest from the rancid.rws module into
+  the "utils" library (included in the main RWS script)
+
+- extended the node element RWS.ResponseContent.ResourceEntity.Application
+  (returned by the /rws/rancid resource) by adding the "Info" property
+
+- modified the ResponseStatus of some functions to a more specific failure
+  code;
+
+
+
+rancid.rws version 0.9 build 2009033101
+---------------------------------------
+
+- first release of the RANCID-API service module
+
+
+
+
+
+
+rancid.rws.rc version 0.2 build 2009050601
+------------------------------------------
+
+- corrected / added comments
+
+- added version numbering
+
+
+
+rancid.rws.rc (unversioned)
+------------------------------------------
+
+- first release of RANCID-API configuration file
+
+
+
+
+
+
+rws-cgi.tcl version 0.92 build 2009041802
+-----------------------------------------
 
 - modified the generated XML output: all items (i.e. terminal XML-nodes
   having an actual value and no child-nodes) are now of CDATA type; this
@@ -86,78 +166,50 @@ rws-cgi.tcl	(RWS core module)
   condition check;
 
 - added support for POSIX signals (if supported by the hosting Tcl/TclX
-  interpreter)
+  environment): PLEASE NOTE that the rws-cgi.tcl script now requires by
+  default a TclX interpreter (the only eXtensions actually used are POSIX
+  signals manipulation abilities); the TclX interpreter is expected in
+  /usr/local/bin, that is, the first line of the script reads as follows:
+
+	#!/usr/local/bin/tcl
+
+  the TclX extended interpreter "tcl" is usually deployed with the Tcl
+  standard interpreter "tclsh": if the hosting system does not have the "tcl"
+  executable (meaning that either it does not support TclX or that TclX
+  extensions are included in the "tclsh" executable -- as seen on some custom
+  implementations), you may revert the first line of the rws-cgi.tcl script
+  to the following one (as on the previously released script):
+
+	#!/usr/local/bin/tclsh
+
+  the RWS code will automatically detect the availability of TclX extensions
+  (namely, POSIX signals manipulation) and will avoid to use them if not
+  supported by the hosting interpreter (reverting to previous behaviour); in
+  such a case a "warning" message will be logged;
 
 - modified the node element RWS.ResponseContent.ResourceEntity.Application
   (returned by the /rws resource) by adding the "Info" property, removing
   the HttpLibrary, HttpLibraryVersion, RuntimeLibrary, RuntimeLibraryVersion
   and introducing more general and structured nodes "Library" and "Runtime".
   Informations about all the internal libraries and both standard/extended
-  Tcl/TclX runtime interpreters are now returned.
+  Tcl/TclX runtime interpreters are now returned;
 
 - performed some general cleanup and optimizations;
 
 
--------------------------------------------------------------------------------
-PLEASE NOTE: the rws-cgi.tcl script now requires by default a TclX interpreter;
-the only eXtensions actually used are POSIX signals manipulation abilities. The
-TclX interpreter is expected in /usr/local/bin, that is, the first line of the
-script reads as follows:
 
-	#!/usr/local/bin/tcl
+rws-cgi.tcl version 0.9 build 2009033101
+----------------------------------------
 
-The TclX extended interpreter "tcl" is usually deployed with the Tcl standard
-interpreter "tclsh": if the hosting system does not have the "tcl" executable
-(meaning that either it does not support TclX or that TclX extensions are
-included in the "tclsh" executable -- as seen on some custom implementations),
-you may revert the first line of the rws-cgi.tcl script to the following one
-(as on the previously released script):
-
-	#!/usr/local/bin/tclsh
-
-The RWS code will automatically detect the availability of TclX extensions
-(namely, POSIX signals manipulation) and will avoid to use them if not
-supported by the hosting interpreter (reverting to previous behaviour); in
-such a case a "warning" message will be logged.
--------------------------------------------------------------------------------
-
-
-
-  
-rancid.rws	(RANCID-API service module)
-
-- moved some functions of general interest from the rancid.rws module into
-  the "utils" library (included in the main RWS script)
-
-- extended the node element RWS.ResponseContent.ResourceEntity.Application
-  (returned by the /rws/rancid resource) by adding the "Info" property
-
-- modified the ResponseStatus of some functions to a more specific failure
-  code;
+- first release of the RWS CGI script
 
 
 
 
-storage.rws	(STORAGE service module)
-
-- this is a new service module deployed for the first time with the present
-  release; it implements a basic yet quite flexible remote storage service
-  with ability of directories creation/deletion to any level of depth,
-  directory listing (sorted by name/size/date in both increasing/decreasing
-  order), file download and upload (in both custom raw-binary-encoding or
-  standard multipart-encoding). To use the STORAGE service just copy the
-  storage.rws module into the RWS CGI directory and add the following
-  directive to the RWS section in your Apache httpd.conf:
-
-	SetEnv RWS_STORAGE_ROOT  <storage-root>
-
-  where <storage-root> is the absolute pathname of the top-most directory
-  under which all directories/files will be stored. Additional info are
-  included in the package's README file.
-
-  The STORAGE service is currently used by on-going development versions
-  of OpenNMS in order to provide a common repository for device-related
-  files (binary firmware images, etc.)
 
 
----end of CHANGES---
+storage.rws version 0.3 build 2009041803
+----------------------------------------
+
+- first release of the STORAGE service module;
+
