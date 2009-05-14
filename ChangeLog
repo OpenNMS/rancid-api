@@ -1,3 +1,31 @@
+2009-05-07 02:35  rionero
+
+	* src/main/webapp/cgi-bin/CHANGES: RWS Package for OpenNMS version
+	  0.93 - history of changes
+
+2009-05-07 02:35  rionero
+
+	* src/main/webapp/cgi-bin/README: RWS Package for OpenNMS version
+	  0.93 - install/setup instructions
+
+2009-05-07 02:33  rionero
+
+	* src/main/webapp/cgi-bin/rancid.rws.rc: RANCID-API RWS Service
+	  Module Configuration File version 0.2.2009050601
+
+2009-05-06 12:02  rionero
+
+	* src/main/webapp/cgi-bin/rancid.rws: RANCID-API RWS Service Module
+	  version 0.92.2009050501
+
+2009-04-27 15:33  rangerrick
+
+	* src/assembly/bin.xml, src/assembly/src.xml: update assemblies
+
+2009-04-27 15:27  rangerrick
+
+	* ChangeLog: add changelog
+
 2009-04-27 15:25  rangerrick
 
 	* .: add svn2cl
