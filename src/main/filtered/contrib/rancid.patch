@@ -1,8 +1,8 @@
-diff -Naur original-2.3.2a7/control_rancid modified-2.3.2a7/control_rancid
---- original-2.3.2a7/control_rancid	2009-03-31 06:59:11.000000000 +0000
-+++ modified-2.3.2a7/control_rancid	2009-03-31 17:49:41.000000000 +0000
-@@ -22,6 +22,30 @@
- #
+diff -Naur bin_ori/control_rancid bin/control_rancid
+--- bin_ori/control_rancid	2009-04-24 11:40:24.000000000 +0200
++++ bin/control_rancid	2009-04-24 11:53:27.000000000 +0200
+@@ -42,6 +42,30 @@
+ # 
  # control_rancid $GROUP
  #
 +#----------------------------------------------------------------------------
@@ -32,7 +32,25 @@ diff -Naur original-2.3.2a7/control_rancid modified-2.3.2a7/control_rancid
  
  # print a usage message to stderr
  pr_usage() {
-@@ -320,7 +344,8 @@
+@@ -301,6 +325,10 @@
+ 	fi
+ 	$RCSSYS commit -m 'new router' $router
+ 	echo "Added $router"
++	# A new router has been added in the repository, send an event
++	if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then
++  	  $OPENNMS_NOTIFY_CMD --added $GROUP $router
++	fi
+     done
+     echo
+     cd $DIR
+@@ -337,10 +365,15 @@
+ 	    svn add $router
+ 	fi
+ 	echo "$RCSSYS added missing router $router"
++	# A new router has been added in the repository, send an event
++	if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then
++  	  $OPENNMS_NOTIFY_CMD --added $GROUP $router
++	fi
      fi
  done
  echo
@@ -42,9 +60,20 @@ diff -Naur original-2.3.2a7/control_rancid modified-2.3.2a7/control_rancid
  for router in `find . \( -name \*.new -prune -o -name CVS -prune -o -name .svn -prune \) -o -type f -print | sed -e 's/^.\///'` ; do
      grep -i "^$router:" ../router.db > /dev/null 2>&1
      if [ $? -eq 1 ]; then
-@@ -361,16 +386,31 @@
+@@ -348,6 +381,10 @@
+ 	$RCSSYS delete $router
+ 	$RCSSYS commit -m 'deleted router' $router
+ 	echo "Deleted $router"
++	# A router has been deleted in the repository, send an event
++	if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then
++  	  $OPENNMS_NOTIFY_CMD --deleted $GROUP $router
++	fi
+     fi
+ done
+ cd $DIR
+@@ -381,16 +418,31 @@
  echo "Trying to get all of the configs."
- par -q -n $PAR_COUNT -c "rancid-fe \{}" $devlistfile
+ par -q -n $PAR_COUNT -c "rancid-fe {}" $devlistfile
  
 -# This section will generate a list of missed routers
 -# and try to grab them again.  It will run through
@@ -82,7 +111,7 @@ diff -Naur original-2.3.2a7/control_rancid modified-2.3.2a7/control_rancid
      for router in `cat $devlistfile`
      do
  	OFS=$IFS
-@@ -383,20 +423,43 @@
+@@ -403,20 +455,43 @@
  	then
  	    echo "$router:$mfg" >> $DIR/routers.up.missed
  	    rm -f $router.new
@@ -131,13 +160,32 @@ diff -Naur original-2.3.2a7/control_rancid modified-2.3.2a7/control_rancid
 +#--- end ------------------------------------------------------------------------------
  echo
  
- # Make sure that no empty configs are accepted.  Those that are non-empty
-diff -Naur original-2.3.2a7/rancid-run modified-2.3.2a7/rancid-run
---- original-2.3.2a7/rancid-run	2009-03-31 06:59:36.000000000 +0000
-+++ modified-2.3.2a7/rancid-run	2009-03-31 17:50:57.000000000 +0000
-@@ -23,6 +23,30 @@
+ # Make sure that no empty/truncated configs are accepted.  The remainder are
+@@ -441,6 +516,18 @@
+ 	then
+ 	    rm -f $router.new
+ 	else
++	    # Test if $router.new is different from $router
++	    # if yes, send a "RouterConfigurationChanged" trap
++	    diff $router.new $router 1>/dev/null 2>/dev/null
++	    if [ $? -ne 0 ]
++	    then
++		# There is a difference, send a trap
++		if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then
++		    $OPENNMS_NOTIFY_CMD --changed $GROUP $router
++		fi
++	    fi
++	    
++	    # overwrite the existing conf anyway, CVS will handle the diffs
+ 	    mv $router.new $router
+ 	    if [ $? -ne 0 ]; then
+ 		echo "Error: could not rename $router.new to $router"
+diff -Naur bin_ori/rancid-run bin/rancid-run
+--- bin_ori/rancid-run	2009-04-24 11:40:17.000000000 +0200
++++ bin/rancid-run	2009-04-24 11:50:17.000000000 +0200
+@@ -43,6 +43,30 @@
  # Run rancid for each of the rancid groups defined by $LIST_OF_GROUPS in
- # /usr/local/rancid/etc/rancid.conf or those specified on the command-line.
+ # /home/rancid/etc/rancid.conf or those specified on the command-line.
  #
 +#----------------------------------------------------------------------------
 +#
@@ -165,8 +213,8 @@ diff -Naur original-2.3.2a7/rancid-run modified-2.3.2a7/rancid-run
 +#----------------------------------------------------------------------------
  
  # Default ENVFILE, overrideable with -f flag.
- ENVFILE="/usr/local/rancid/etc/rancid.conf"
-@@ -137,6 +161,17 @@
+ ENVFILE="/home/rancid/etc/rancid.conf"
+@@ -157,6 +181,17 @@
  `ls -l $LOCKFILE`
  END
  		) | sendmail -t
@@ -184,10 +232,10 @@ diff -Naur original-2.3.2a7/rancid-run modified-2.3.2a7/rancid-run
  	    fi
  	    rm -f $TMPDIR/.$GROUP.old
  	else
-diff -Naur original-2.3.2a7/rancid-trap modified-2.3.2a7/rancid-trap
---- original-2.3.2a7/rancid-trap	1970-01-01 00:00:00.000000000 +0000
-+++ modified-2.3.2a7/rancid-trap	2009-03-31 17:56:37.000000000 +0000
-@@ -0,0 +1,234 @@
+diff -Naur bin_ori/rancid-trap bin/rancid-trap
+--- bin_ori/rancid-trap	1970-01-01 01:00:00.000000000 +0100
++++ bin/rancid-trap	2009-04-24 11:53:27.000000000 +0200
+@@ -0,0 +1,273 @@
 +#!/bin/bash
 +#
 +#=============================================================================
@@ -289,7 +337,9 @@ diff -Naur original-2.3.2a7/rancid-trap modified-2.3.2a7/rancid-trap
 +SpecificTrapDownloadSuccess=2
 +SpecificTrapDownloadFailure=3
 +SpecificTrapGroupLocked=4
-+
++SpecificTrapNodeAdded=5
++SpecificTrapNodeDeleted=6
++SpecificTrapConfigurationChanged=7
 +
 +
 +#-----------------------------------------------------------------------------
@@ -322,15 +372,28 @@ diff -Naur original-2.3.2a7/rancid-trap modified-2.3.2a7/rancid-trap
 +		as processed within the group <groupName>; <deviceName>
 +		will also be used as sending-agent of the trap
 +
++	--added <groupName> <deviceName>
++		sends a "Node Added" trap for the device <deviceName>
++		as processed within the group <groupName>; <deviceName>
++		will also be used as sending-agent of the trap
++
++	--deleted <groupName> <deviceName>
++		sends a "Node Deleted" trap for the device <deviceName>
++		as processed within the group <groupName>; <deviceName>
++		will also be used as sending-agent of the trap
++
++	--changed <groupName> <deviceName>
++		sends a "NodeConfigurationChanged" trap for the device <deviceName>
++		as processed within the group <groupName>; <deviceName>
++		will also be used as sending-agent of the trap
++
 +	--locked <groupName>
 +		sends a "group locked" trap for the group <groupName>; the
 +		sending-agent of the trap will be the localhost
 +
-+
 +	--failure <message>
 +		sends a "generic failure" trap using <message> as description
 +		the sending-agent of the trap will be the localhost
-+
 +
 +__EOT__
 +
@@ -382,6 +445,30 @@ diff -Naur original-2.3.2a7/rancid-trap modified-2.3.2a7/rancid-trap
 +
 +         "--ko") if [ "${2}" == "" -o "${3}" == "" ] ; then ShowUsage ; fi
 +                 trap=${SpecificTrapDownloadFailure}
++                 sndr=${3}
++                 uptime="0"
++                 vars=(${OID_GroupName} s "${2}" ${OID_DeviceName} s "${3}")
++                 shift 3
++                 ;;
++
++         "--added") if [ "${2}" == "" -o "${3}" == "" ] ; then ShowUsage ; fi
++                 trap=${SpecificTrapNodeAdded}
++                 sndr=${3}
++                 uptime="0"
++                 vars=(${OID_GroupName} s "${2}" ${OID_DeviceName} s "${3}")
++                 shift 3
++                 ;;
++
++         "--deleted") if [ "${2}" == "" -o "${3}" == "" ] ; then ShowUsage ; fi
++                 trap=${SpecificTrapNodeDeleted}
++                 sndr=${3}
++                 uptime="0"
++                 vars=(${OID_GroupName} s "${2}" ${OID_DeviceName} s "${3}")
++                 shift 3
++                 ;;
++
++         "--changed") if [ "${2}" == "" -o "${3}" == "" ] ; then ShowUsage ; fi
++                 trap=${SpecificTrapConfigurationChanged}
 +                 sndr=${3}
 +                 uptime="0"
 +                 vars=(${OID_GroupName} s "${2}" ${OID_DeviceName} s "${3}")

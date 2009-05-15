@@ -141,6 +141,30 @@
    ::= 4
 
 
+   rancidNodeAdded TRAP-TYPE
+       ENTERPRISE  rancidTraps
+       VARIABLES   { rancidGroupName, rancidDeviceName }
+       DESCRIPTION "This trap is sent each time rancid detects a node has 
+	            been added to the configuration file."
+
+   ::= 5
+
+
+   rancidNodeDeleted TRAP-TYPE
+       ENTERPRISE  rancidTraps
+       VARIABLES   { rancidGroupName, rancidDeviceName }
+       DESCRIPTION "This trap is sent each time rancid detects a node has 
+	            been deleted to the configuration file."
+   ::= 6
+
+
+   rancidConfigurationChanged TRAP-TYPE
+       ENTERPRISE  rancidTraps
+       VARIABLES   { rancidGroupName, rancidDeviceName }
+       DESCRIPTION "This trap is sent each time rancid detects that a 
+	            configuration has been changed on a router."
+   ::= 7
+
 
    END
 
