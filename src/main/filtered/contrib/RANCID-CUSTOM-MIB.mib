@@ -1,24 +1,49 @@
    ---
    --- SNMP v1 MIB FILE
    --- RANCID SNMP NOTIFICATIONS
-   --- (as implemented for the OpenNMS/rancid integration project)
+   --- (as implemented for the OpenNMS/RANCID integration project)
    ---
-   --- Version 1.1 (2009 03 28)
+   --- Version 1.3 (2009 05 08)
    ---
-   --- The enclosed MIB definitions were implemented under a private
-   --- enterprise number officially assigned by IANA to a member of
-   --- the OpenNMS/rancid integration project team.
+   --- Please note: as a member of the OpenNMS/RANCID project team, I
+   --- implemented the enclosed MIB definitions under my own private
+   --- enterprise number officially assigned by IANA.
    ---
    --- If you need any information or want to modify or extend this MIB,
-   --- PLEASE, contact <iana-pen-contact@rionero.com>. Thank you.
+   ---
+   ---		    *** PLEASE *** PLEASE *** PLEASE ***
+   ---
+   --- contact me at the following address: <iana-pen-contact@rionero.com>.
+   ---
+   ---						Thank you.
+   ---						Rocco "rock" RIONERO
    ---
    ---
    --- History of changes:
    ---
-   ---	1.1	corrected the descriptions for "rancidTrapGenericFailure"
-   ---		and "rancidFailureMessage" (typical "copy-and-paste" error)
+   ---	1.3	- added the following two specific traps:
    ---
-   ---	1.0	initial release
+   ---			"rancidTrapGroupProcessingStarted"
+   ---			"rancidTrapGroupProcessingCompleted"
+   ---
+   ---
+   ---	1.2	- added the following three specific traps (contributed by
+   ---		  Philippe Guillebert <philippe.guillebert@bull.net>):
+   ---
+   ---			"rancidTrapNodeAdded"
+   ---			"rancidTrapNodeDeleted"
+   ---			"rancidTrapConfigurationChanged"
+   ---
+   ---		  NOTE:	the original trap-names proposed by Philippe were
+   ---			changed in conformance to the general MIB naming
+   ---			scheme.
+   ---
+   ---
+   ---	1.1	- corrected the descriptions for "rancidTrapGenericFailure"
+   ---		  and "rancidFailureMessage"
+   ---
+   ---
+   ---	1.0	- initial release
    ---
 
 
@@ -67,7 +92,7 @@
    ---
    --- data objects
    ---
-   
+
    rancidDeviceName OBJECT-TYPE
        SYNTAX      OCTET STRING (SIZE (0..64))
        ACCESS      read-only
@@ -97,7 +122,7 @@
        ACCESS      read-only
        STATUS      current
        DESCRIPTION "A string describing a failure condition for which
-                   is not defined a more specific trap."
+       		   is not defined a more specific trap."
        ::= { rancidObjects 4 }
 
 
@@ -120,7 +145,7 @@
        ENTERPRISE  rancidTraps
        VARIABLES   { rancidGroupName, rancidDeviceName }
        DESCRIPTION "This trap is sent each time rancid successfully downloads
-                   the configuration from a device."
+     	 	   the configuration from a device."
    ::= 2
 
 
@@ -128,7 +153,7 @@
        ENTERPRISE  rancidTraps
        VARIABLES   { rancidGroupName, rancidDeviceName }
        DESCRIPTION "This trap is sent each time rancid fails to download the
-                   configuration from a device."
+       		   configuration from a device."
    ::= 3
 
 
@@ -141,29 +166,45 @@
    ::= 4
 
 
-   rancidNodeAdded TRAP-TYPE
+   rancidTrapNodeAdded TRAP-TYPE
        ENTERPRISE  rancidTraps
        VARIABLES   { rancidGroupName, rancidDeviceName }
-       DESCRIPTION "This trap is sent each time rancid detects a node has 
-	            been added to the configuration file."
+       DESCRIPTION "This trap is sent each time rancid detects that a new
+       		   device was added to a group's configuration file."
 
    ::= 5
 
 
-   rancidNodeDeleted TRAP-TYPE
+   rancidTrapNodeDeleted TRAP-TYPE
        ENTERPRISE  rancidTraps
        VARIABLES   { rancidGroupName, rancidDeviceName }
-       DESCRIPTION "This trap is sent each time rancid detects a node has 
-	            been deleted to the configuration file."
+       DESCRIPTION "This trap is sent each time rancid detects that a device
+       		   was deleted from a group's configuration file."
    ::= 6
 
 
-   rancidConfigurationChanged TRAP-TYPE
+   rancidTrapConfigurationChanged TRAP-TYPE
        ENTERPRISE  rancidTraps
        VARIABLES   { rancidGroupName, rancidDeviceName }
-       DESCRIPTION "This trap is sent each time rancid detects that a 
-	            configuration has been changed on a router."
+       DESCRIPTION "This trap is sent each time rancid detects that the
+	            configuration of a device has changed."
    ::= 7
+
+
+   rancidTrapGroupProcessingStarted TRAP-TYPE
+       ENTERPRISE  rancidTraps
+       VARIABLES   { rancidGroupName }
+       DESCRIPTION "This trap is sent each time rancid acquires a group's
+       		   lockfile and starts processing the corresponding devices."
+   ::= 8
+
+
+   rancidTrapGroupProcessingCompleted TRAP-TYPE
+       ENTERPRISE  rancidTraps
+       VARIABLES   { rancidGroupName }
+       DESCRIPTION "This trap is sent each time rancid releases a group's
+       		   lockfile after having processed the corresponding devices."
+   ::= 9
 
 
    END
