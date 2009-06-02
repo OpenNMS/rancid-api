@@ -71,12 +71,19 @@ The notifications sent are SNMPv1 "traps" and include:
 - persistent device's configuration download failure
 - temporary lock-out of a rancid's group of devices
 - prolonged lock-out of a rancid's group of devices
+- device added to a group (*)
+- device removed from a group (*)
+- device's configuration change detected by rancid (*)
+- rancid started processing a group (MUTEX group's lockfile acquired)
+- rancid finished processing a group (MUTEX group's lockfile released)
 
-The patch was developed for rancid version 2.3.2a7 and was verified to apply
-cleanly to the latest version 2.3.2a9. As only the "rancid-run" and the
-"control_rancid" scripts are involved (which are device-independent, did not
-change in a significant way in the past and are not expected to change in the
-near future), the patch should be compatible with most rancid's releases.
+(*) contributed by Philippe Guillebert <philippe.guillebert@bull.net>
+
+
+The patch was developed for rancid version 2.3.2a9. As only the "rancid-run"
+and the "control_rancid" scripts are involved (which are device-independent,
+did not change in a significant way in the past and are not expected to change
+in the near future), the patch should be compatible with most rancid's releases.
 
 
 
@@ -105,7 +112,7 @@ near future), the patch should be compatible with most rancid's releases.
 
 
 
-3. INSTALLATION
+3. INSTALLATION OVER AN ORIGINAL RANCID'S SETUP (UNPATCHED)
 
 - uncompress/untar the distribution package into a directory of your choice;
   if you are reading this README file you almost shurely already completed
@@ -190,7 +197,43 @@ near future), the patch should be compatible with most rancid's releases.
 
 
 
-4. TESTING THE TRAP GENERATIONS
+4. INSTALLATION OVER A RANCID'S SETUP ALREADY PATCHED WITH A PREVIOUS VERSION
+   OF THE RANCID'S NOTIFICATION SYSTEM
+
+- change your current working directory to the place where rancid's scripts
+  are located, i.e.:
+
+	cd /home/rancid/bin
+
+
+- restore the original rancid's unpatched files with the following commands:
+
+	cp rancid-run.original rancid-run
+	cp control_rancid.original control_rancid
+
+
+- delete the previously saved backups (restored on the step above)
+
+	rm rancid-run.original
+	rm control_rancid.original
+
+
+- delete the previous rancid-trap utility and its (fake) backup copy
+
+	rm rancid-trap
+	rm rancid-trap.original
+
+
+- install the new patch as described in previous SECTION 3.
+
+
+
+
+5. TESTING THE TRAP GENERATIONS
+
+- if you are already using a previous version of the rancid's notification
+  system, __FIRST__ UNLOAD the previous "RANCID-CUSTOM-MIB.mib" MIB file;
+
 
 - load the supplied MIB file "RANCID-CUSTOM-MIB.mib" in your SNMP server or
   network management system (i.e. OpenNMS), and ensure that it is running;
@@ -212,7 +255,7 @@ near future), the patch should be compatible with most rancid's releases.
 
 
 
-5. CONFIGURING RANCID FOR SENDING NOTIFICATIONS
+6. CONFIGURING RANCID FOR SENDING NOTIFICATIONS
 
 - edit the rancid's configuration file "rancid.conf" and add the following lines:
 
@@ -222,16 +265,17 @@ near future), the patch should be compatible with most rancid's releases.
 
 
 
-6. FINAL TEST
+7. FINAL TEST
 
 - run rancid as usual, (i.e. by typing "rancid-run <groupname>") and verify that
-  for each processed device a proper trap is generated and received by the SNMP
+  at the beginning/ending of group's processing and for each processed device
+  within the group a proper trap is generated and received by the SNMP
   server (i.e. OpenNMS)
 
 
 
 
-7. CONCLUSION
+8. CONCLUSION
 
 Nothing more to say, really. For any information you can contact me at the
 above email address.
