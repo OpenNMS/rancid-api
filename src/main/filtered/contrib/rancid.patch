@@ -1,7 +1,16 @@
-diff -Naur bin_ori/control_rancid bin/control_rancid
---- bin_ori/control_rancid	2009-04-24 11:40:24.000000000 +0200
-+++ bin/control_rancid	2009-04-24 11:53:27.000000000 +0200
-@@ -42,6 +42,30 @@
+diff -Naur bin-orig/control_rancid bin-0.3/control_rancid
+--- bin-orig/control_rancid	2009-06-01 12:05:27.000000000 +0000
++++ bin-0.3/control_rancid	2009-06-01 21:21:17.000000000 +0000
+@@ -2,7 +2,7 @@
+ ##
+ ## $Id: control_rancid.in,v 1.85 2008/04/24 19:07:05 heas Exp $
+ ##
+-## rancid 2.3.2a9
++## rancid 2.3.2a9 (opennms/rock patch 0.3 build 20090601-01)
+ ## Copyright (c) 1997-2008 by Terrapin Communications, Inc.
+ ## All rights reserved.
+ ##
+@@ -42,6 +42,31 @@
  # 
  # control_rancid $GROUP
  #
@@ -25,32 +34,46 @@ diff -Naur bin_ori/control_rancid bin/control_rancid
 +# Portion (c) Copyright 2009+ The OpenNMS Group, Inc.
 +#
 +#
-+# CUSTOM-VERSION:	0.1 (build 20090331-01)
-+# BASED-ON-VERSION:	2.3.2a7
++# CUSTOM-VERSION:	patch 0.3 (build 20090601-01)
++# BASED-ON-VERSION:	2.3.2a9
 +#
++# Includes extensions contributed by Philippe Guillebert
 +#----------------------------------------------------------------------------
  
  # print a usage message to stderr
  pr_usage() {
-@@ -301,6 +325,10 @@
+@@ -58,7 +83,7 @@
+     while [ 1 ] ; do
+ 	case $1 in
+ 	-V)
+-	    echo "rancid 2.3.2a9"
++	    echo "rancid 2.3.2a9 (opennms/rock patch 0.3 build 20090601-01)"
+ 	    exit 0
+ 	    ;;
+ 	-m)
+@@ -301,6 +326,12 @@
  	fi
  	$RCSSYS commit -m 'new router' $router
  	echo "Added $router"
++	#--- begin (rock, 20090601-01 : contributed by P. Guillebert) ---
 +	# A new router has been added in the repository, send an event
 +	if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then
 +  	  $OPENNMS_NOTIFY_CMD --added $GROUP $router
 +	fi
++	#--- end --------------------------------------------------------
      done
      echo
      cd $DIR
-@@ -337,10 +365,15 @@
+@@ -337,10 +368,17 @@
  	    svn add $router
  	fi
  	echo "$RCSSYS added missing router $router"
++	#--- begin (rock, 20090601-01 : contributed by P. Guillebert) ---
 +	# A new router has been added in the repository, send an event
 +	if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then
 +  	  $OPENNMS_NOTIFY_CMD --added $GROUP $router
 +	fi
++	#--- end --------------------------------------------------------
      fi
  done
  echo
@@ -60,18 +83,20 @@ diff -Naur bin_ori/control_rancid bin/control_rancid
  for router in `find . \( -name \*.new -prune -o -name CVS -prune -o -name .svn -prune \) -o -type f -print | sed -e 's/^.\///'` ; do
      grep -i "^$router:" ../router.db > /dev/null 2>&1
      if [ $? -eq 1 ]; then
-@@ -348,6 +381,10 @@
+@@ -348,6 +386,12 @@
  	$RCSSYS delete $router
  	$RCSSYS commit -m 'deleted router' $router
  	echo "Deleted $router"
++	#--- begin (rock, 20090601-01 : contributed by P. Guillebert) ---
 +	# A router has been deleted in the repository, send an event
 +	if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then
 +  	  $OPENNMS_NOTIFY_CMD --deleted $GROUP $router
 +	fi
++	#--- end --------------------------------------------------------
      fi
  done
  cd $DIR
-@@ -381,16 +418,31 @@
+@@ -381,16 +425,31 @@
  echo "Trying to get all of the configs."
  par -q -n $PAR_COUNT -c "rancid-fe {}" $devlistfile
  
@@ -111,7 +136,7 @@ diff -Naur bin_ori/control_rancid bin/control_rancid
      for router in `cat $devlistfile`
      do
  	OFS=$IFS
-@@ -403,20 +455,43 @@
+@@ -403,20 +462,43 @@
  	then
  	    echo "$router:$mfg" >> $DIR/routers.up.missed
  	    rm -f $router.new
@@ -161,10 +186,11 @@ diff -Naur bin_ori/control_rancid bin/control_rancid
  echo
  
  # Make sure that no empty/truncated configs are accepted.  The remainder are
-@@ -441,6 +516,18 @@
+@@ -441,6 +523,20 @@
  	then
  	    rm -f $router.new
  	else
++	    #--- begin (rock, 20090601-01 : contributed by P. Guillebert) ---
 +	    # Test if $router.new is different from $router
 +	    # if yes, send a "RouterConfigurationChanged" trap
 +	    diff $router.new $router 1>/dev/null 2>/dev/null
@@ -175,29 +201,39 @@ diff -Naur bin_ori/control_rancid bin/control_rancid
 +		    $OPENNMS_NOTIFY_CMD --changed $GROUP $router
 +		fi
 +	    fi
++	    #--- end --------------------------------------------------------
 +	    
-+	    # overwrite the existing conf anyway, CVS will handle the diffs
++	    # overwrite the existing conf anyway, RCSSYS will handle the diffs (P. Guillebert / rock)
  	    mv $router.new $router
  	    if [ $? -ne 0 ]; then
  		echo "Error: could not rename $router.new to $router"
-diff -Naur bin_ori/rancid-run bin/rancid-run
---- bin_ori/rancid-run	2009-04-24 11:40:17.000000000 +0200
-+++ bin/rancid-run	2009-04-24 11:50:17.000000000 +0200
+diff -Naur bin-orig/rancid-run bin-0.3/rancid-run
+--- bin-orig/rancid-run	2009-06-01 12:05:28.000000000 +0000
++++ bin-0.3/rancid-run	2009-06-01 21:23:48.000000000 +0000
+@@ -2,7 +2,7 @@
+ ##
+ ## $Id: rancid-run.in,v 1.38 2008/02/08 09:54:18 heas Exp $
+ ##
+-## rancid 2.3.2a9
++## rancid 2.3.2a9 (opennms/rock patch 0.3 build 20090601-01)
+ ## Copyright (c) 1997-2008 by Terrapin Communications, Inc.
+ ## All rights reserved.
+ ##
 @@ -43,6 +43,30 @@
  # Run rancid for each of the rancid groups defined by $LIST_OF_GROUPS in
- # /home/rancid/etc/rancid.conf or those specified on the command-line.
+ # /usr/local/rancid/etc/rancid.conf or those specified on the command-line.
  #
 +#----------------------------------------------------------------------------
 +#
 +# *** NOTICE ***
 +#
-+# This is a modified version of the "control_rancid" script from the rancid's
++# This is a modified version of the "rancid-run" script from the rancid's
 +# original distribution archive. The modifications were done in order to
 +# implement the SNMP notifications required by the OpenNMS/RANCID integration
 +# project.
 +#
 +# The modified version is distributed as a standard set of "patch" files; if
-+# you are reading this comments from the working "control_rancid" script file,
++# you are reading this comments from the working "rancid-run" script file,
 +# the patch was succesfully applied on your system (a backup copy of the
 +# original file should have been saved by the patch utility).
 +#
@@ -207,14 +243,23 @@ diff -Naur bin_ori/rancid-run bin/rancid-run
 +# Portion (c) Copyright 2009+ The OpenNMS Group, Inc.
 +#
 +#
-+# CUSTOM-VERSION:	0.1 (build 20090331-01)
-+# BASED-ON-VERSION:	2.3.2a7
++# CUSTOM-VERSION:	patch 0.3 (build 20090601-01)
++# BASED-ON-VERSION:	2.3.2a9
 +#
 +#----------------------------------------------------------------------------
  
  # Default ENVFILE, overrideable with -f flag.
- ENVFILE="/home/rancid/etc/rancid.conf"
-@@ -157,6 +181,17 @@
+ ENVFILE="/usr/local/rancid/etc/rancid.conf"
+@@ -67,7 +91,7 @@
+     while [ 1 ] ; do
+ 	case $1 in
+ 	-V)
+-	    echo "rancid 2.3.2a9"
++	    echo "rancid 2.3.2a9 (opennms/rock patch 0.3 build 20090601-01)"
+ 	    exit 0
+ 	    ;;
+ 	-f)
+@@ -157,14 +181,36 @@
  `ls -l $LOCKFILE`
  END
  		) | sendmail -t
@@ -232,10 +277,30 @@ diff -Naur bin_ori/rancid-run bin/rancid-run
  	    fi
  	    rm -f $TMPDIR/.$GROUP.old
  	else
-diff -Naur bin_ori/rancid-trap bin/rancid-trap
---- bin_ori/rancid-trap	1970-01-01 01:00:00.000000000 +0100
-+++ bin/rancid-trap	2009-04-24 11:53:27.000000000 +0200
-@@ -0,0 +1,273 @@
+-	    trap 'rm -fr $LOCKFILE;exit 1' 1 2 3 6 10 15
++	    #--- begin (rock, 20090601-01 : OpenNMS/rancid integration) ---------------------------
++	    trap 'rm -fr $LOCKFILE ; if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then $OPENNMS_NOTIFY_CMD --completed $GROUP ; fi ; exit 1' 1 2 3 6 10 15
+ 	    touch $LOCKFILE
+ 	    if [ $? -eq 0 ] ; then
++		# notify opennms that group's lockfile was acquired and rancid started processing the group
++		if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then
++		  $OPENNMS_NOTIFY_CMD --started $GROUP
++		fi
++		# process the group then release the lockfile
+ 		control_rancid $CR_ARGV $GROUP
+ 		rm -f $LOCKFILE
++		# notify opennms that group's lockfile was released and rancid finished processing the group
++		if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then
++		  $OPENNMS_NOTIFY_CMD --completed $GROUP
++		fi
++	    #--- end ------------------------------------------------------------------------------
+ 	    fi
+ 	    trap ''  1 2 3 6 10 15
+ 	fi
+diff -Naur bin-orig/rancid-trap bin-0.3/rancid-trap
+--- bin-orig/rancid-trap	1970-01-01 00:00:00.000000000 +0000
++++ bin-0.3/rancid-trap	2009-06-01 20:45:05.000000000 +0000
+@@ -0,0 +1,309 @@
 +#!/bin/bash
 +#
 +#=============================================================================
@@ -298,13 +363,13 @@ diff -Naur bin_ori/rancid-trap bin/rancid-trap
 +# address. Thank you.
 +
 +
-+SCRIPT_VERSION="0.1 (build 20090331-01)"
++SCRIPT_VERSION="0.3 (build 20090601-01)"
 +
 +
 +# NOTE: the value of following variable assumes that the snmptrap utility
 +#	is in the shell search path of the user executing this script; on
-+#	your system might need to include the full pathname to the snmptrap
-+#	binary
++#	your system you might need to include the full pathname to the
++#	snmptrap binary
 +
 +SNMP_TRAP_CMD="snmptrap"
 +
@@ -333,13 +398,23 @@ diff -Naur bin_ori/rancid-trap bin/rancid-trap
 +
 +# specific-trap numbers
 +
++# original traps defined in version 0.1
++
 +SpecificTrapGenericFailure=1
 +SpecificTrapDownloadSuccess=2
 +SpecificTrapDownloadFailure=3
 +SpecificTrapGroupLocked=4
++
++# traps contributed by Philippe Guillebert (untagged version - int. ref. 0.2)
++
 +SpecificTrapNodeAdded=5
 +SpecificTrapNodeDeleted=6
 +SpecificTrapConfigurationChanged=7
++
++# additional traps defined in 0.3
++
++SpecificTrapGroupProcessingStarted=8
++SpecificTrapGroupProcessingCompleted=9
 +
 +
 +#-----------------------------------------------------------------------------
@@ -383,13 +458,23 @@ diff -Naur bin_ori/rancid-trap bin/rancid-trap
 +		will also be used as sending-agent of the trap
 +
 +	--changed <groupName> <deviceName>
-+		sends a "NodeConfigurationChanged" trap for the device <deviceName>
-+		as processed within the group <groupName>; <deviceName>
-+		will also be used as sending-agent of the trap
++		sends a "NodeConfigurationChanged" trap for the device
++		<deviceName> as processed within the group <groupName>;
++		<deviceName> will also be used as sending-agent of the trap
 +
 +	--locked <groupName>
 +		sends a "group locked" trap for the group <groupName>; the
 +		sending-agent of the trap will be the localhost
++
++	--started <groupName>
++		sends a "group processing started" trap for the group
++		<groupName>; the sending-agent of the trap will be the
++		localhost
++
++	--completed <groupName>
++		sends a "group processing completed" trap for the group
++		<groupName>; the sending-agent of the trap will be the
++		localhost
 +
 +	--failure <message>
 +		sends a "generic failure" trap using <message> as description
@@ -451,7 +536,15 @@ diff -Naur bin_ori/rancid-trap bin/rancid-trap
 +                 shift 3
 +                 ;;
 +
-+         "--added") if [ "${2}" == "" -o "${3}" == "" ] ; then ShowUsage ; fi
++     "--locked") if [ "${2}" == "" ] ; then ShowUsage ; fi
++                 trap=${SpecificTrapGroupLocked}
++                 sndr=""
++                 uptime=""
++                 vars=(${OID_GroupName} s "${2}")
++                 shift 2
++                 ;;
++
++      "--added") if [ "${2}" == "" -o "${3}" == "" ] ; then ShowUsage ; fi
 +                 trap=${SpecificTrapNodeAdded}
 +                 sndr=${3}
 +                 uptime="0"
@@ -459,7 +552,7 @@ diff -Naur bin_ori/rancid-trap bin/rancid-trap
 +                 shift 3
 +                 ;;
 +
-+         "--deleted") if [ "${2}" == "" -o "${3}" == "" ] ; then ShowUsage ; fi
++    "--deleted") if [ "${2}" == "" -o "${3}" == "" ] ; then ShowUsage ; fi
 +                 trap=${SpecificTrapNodeDeleted}
 +                 sndr=${3}
 +                 uptime="0"
@@ -467,7 +560,7 @@ diff -Naur bin_ori/rancid-trap bin/rancid-trap
 +                 shift 3
 +                 ;;
 +
-+         "--changed") if [ "${2}" == "" -o "${3}" == "" ] ; then ShowUsage ; fi
++    "--changed") if [ "${2}" == "" -o "${3}" == "" ] ; then ShowUsage ; fi
 +                 trap=${SpecificTrapConfigurationChanged}
 +                 sndr=${3}
 +                 uptime="0"
@@ -475,8 +568,16 @@ diff -Naur bin_ori/rancid-trap bin/rancid-trap
 +                 shift 3
 +                 ;;
 +
-+     "--locked") if [ "${2}" == "" ] ; then ShowUsage ; fi
-+                 trap=${SpecificTrapGroupLocked}
++    "--started") if [ "${2}" == "" ] ; then ShowUsage ; fi
++                 trap=${SpecificTrapGroupProcessingStarted}
++                 sndr=""
++                 uptime=""
++                 vars=(${OID_GroupName} s "${2}")
++                 shift 2
++                 ;;
++
++  "--completed") if [ "${2}" == "" ] ; then ShowUsage ; fi
++                 trap=${SpecificTrapGroupProcessingCompleted}
 +                 sndr=""
 +                 uptime=""
 +                 vars=(${OID_GroupName} s "${2}")
