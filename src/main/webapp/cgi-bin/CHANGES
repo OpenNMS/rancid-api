@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
-RWS Package for OpenNMS version 0.93                   OpenNMS/RANCID Project
+RWS Package for OpenNMS version 0.94                   OpenNMS/RANCID Project
 
 Copyright (c) 2009+ Rocco Rionero
 Copyright (c) 2009+ The OpenNMS Group, Inc.
@@ -49,6 +49,15 @@ PACKAGE HISTORY
 ===============
 
 
+RELEASE 0.94
+------------
+rancid.rws	0.93 build 2009060401	CHANGED
+rancid.rws.rc	0.2  build 2009050601
+storage.rws	0.3  build 2009041803
+rws-cgi.tcl	0.93 build 2009060401	CHANGED
+
+
+
 RELEASE 0.93
 ------------
 rancid.rws	0.92 build 2009050501	CHANGED
@@ -79,6 +88,19 @@ rancid.rws.rc	unversioned		ADDED
 
 FILE HISTORY
 ============
+
+rancid.rws version 0.93 build 2009060401
+----------------------------------------
+
+- fixed an unhandled exception in Juniper's inventory parser due to
+  unexpected values returned by some M-series devices
+
+- added inventory support for additional sections returned by Juniper
+  M-series devices
+
+- general cleanup into the Juniper's inventory parser routines
+
+
 
 rancid.rws version 0.92 build 2009050501
 ----------------------------------------
@@ -127,6 +149,14 @@ rancid.rws.rc (unversioned)
 
 
 
+
+
+
+rws-cgi.tcl version 0.93 build 2009060401
+-----------------------------------------
+
+- fixed the wrong double CDATA-encapsulation of the "ExecutionCallStack"
+  property's value returned into an unhandled exception response;
 
 
 
