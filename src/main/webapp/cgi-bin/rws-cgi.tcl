@@ -2051,7 +2051,7 @@ namespace eval ::UTILS {
 #============================================================================
 namespace eval ::RWS {
   set APP_NAME		"RWS"
-  set APP_VER		"0.92.2009041802"
+  set APP_VER		"0.93.2009060401"
   set APP_INFO		"RESTful Web Service Server-Side Application Engine"
 
 
@@ -2700,7 +2700,7 @@ namespace eval ::RWS {
       ::XTREE::set_Item $EntityHandle "ErrorMessage" $engine_status
       ::XTREE::set_Item $EntityHandle "ErrorCode"    $::errorCode
 
-      ::XTREE::set_Item $EntityHandle "ExecutionCallStack" "<!\[CDATA\[$::errorInfo\]\]>"
+      ::XTREE::set_Item $EntityHandle "ExecutionCallStack" "$::errorInfo"
 
       # set engine_status to 1 so to produce an internal response
 
