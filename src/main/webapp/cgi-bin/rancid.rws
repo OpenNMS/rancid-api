@@ -47,7 +47,7 @@
 namespace eval ::RANCID {
 
   set SRV_NAME	"RANCID-API"
-  set SRV_VER	"0.92.2009050501"
+  set SRV_VER	"0.93.2009060401"
   set SRV_INFO	"RWS service API for \"rancid\" with the addition of hardware inventory extensions"
 
 
@@ -1247,7 +1247,7 @@ namespace eval ::RANCID {
 
 
   #==========================================================================
-  # Inventory Routines - Versione 2009032001 (UNIFORM/Cisco+Juniper)
+  # Inventory Routines - Versione 2009060401 (UNIFORM/Cisco+Juniper-T/M)
 
 
   #---[CORRELATOR SUPPORT FUNCTIONS]-----------------------------------------
@@ -1579,6 +1579,8 @@ namespace eval ::RANCID {
 
 
     while { 1 } {
+      # read line from input buffer
+
       set iline $SourceBuffer($source_idx)
       incr source_idx
 
@@ -1590,55 +1592,95 @@ namespace eval ::RANCID {
 
       if { $p_state == "boot" } {
 
-        # generic devices and busses
+        if {![regexp -nocase {^.* show system .*$} $iline]} {
 
-        if {[regexp {^[[:blank:]]*(.*):[[:blank:]]+<(.*)>[[:blank:]]+(?:(.*)[[:blank:]]+)?on[[:blank:]]+(.*)[[:blank:]]*$} $iline mall m1 m2 m3 m4]} {
-          # submatch for device-id
-          if {![regexp {[[:blank:]]*at device[[:blank:]]+([^[:blank:]]+)} $m3 mall m3]} { set m3 "" }
+          # generic devices and busses
 
-          ::RANCID::Inventory_AddEntry IDB_DATA $brn$m1 "" [list $::RANCID::ipDescr    $m2\
-                                                                 $::RANCID::ipLocation $brn$m4\
-                                                                 $::RANCID::ipBusId    $m3]
+          if {[regexp {^[[:blank:]]*(.*):[[:blank:]]+<(.*)>[[:blank:]]+(?:(.*)[[:blank:]]+)?on[[:blank:]]+(.*)[[:blank:]]*$} $iline mall m1 m2 m3 m4]} {
+            # submatch for device-id
+            if {![regexp {[[:blank:]]*at device[[:blank:]]+([^[:blank:]]+)} $m3 mall m3]} { set m3 "" }
+
+            ::RANCID::Inventory_AddEntry IDB_DATA $brn$m1 "" [list $::RANCID::ipDescr    $m2\
+                                                                   $::RANCID::ipLocation $brn$m4\
+                                                                   $::RANCID::ipBusId    $m3]
+            continue
+          }
+
+          # storage devices
+
+           if {[regexp -nocase {^[[:blank:]]*(.*):[[:blank:]]+([[:digit:]]+[[:blank:]]*.b)[[:blank:]]+<(.*)>[[:blank:]]+(?:\[.*\][[:blank:]]+)?at[[:blank:]]+([^-]+)-([^[:blank:]]+)[[:blank:]]+(.*)[[:blank:]]*$} $iline mall m1 m2 m3 m4 m5 m6]} {
+            set m2 "[KbMemorySize $m2] KB"
+
+            ::RANCID::Inventory_AddEntry IDB_DATA $brn$m1 "" [list $::RANCID::ipSize     $m2\
+                                                                   $::RANCID::ipModel    $m3\
+                                                                   $::RANCID::ipLocation $brn$m4\
+                                                                   $::RANCID::ipBusId    $m5\
+                                                                   $::RANCID::ipMode     $m6]
+
+            continue
+          }
+
+          # CPU
+
+          if {[regexp {^[[:blank:]]*CPU:[[:blank:]]+(.*)$} $iline mall m1]} {
+            ::RANCID::Inventory_AddEntry IDB_DATA "${brn}cpu$host_cpu" "" [list $::RANCID::ipDescr $m1]
+            incr host_cpu
+            continue
+          }
+
+
+          # special cases/1
+
+          if {[regexp {^[[:blank:]]*([^[:blank:]]+)(?:.*[[:blank:]]+)?on[[:blank:]]+(.*)[[:blank:]]*$} $iline mall m1 m2]} {
+            ::RANCID::Inventory_AddEntry IDB_DATA $brn$m1 "" [list $::RANCID::ipLocation $brn$m2]
+            continue
+          }
+
+          if {[regexp {^[[:blank:]]*([^[:blank:]]+):[[:blank:]]+type[[:blank:]]+([^,]+)(?:,[[:blank:]]+(.*))?[[:blank:]]*$} $iline mall m1 m2 m3]} {
+            ::RANCID::Inventory_AddEntry IDB_DATA $brn$m1 "" [list $::RANCID::ipModel $m2 $::RANCID::ipInfo $m3]
+            continue
+          }
+
+
+
+          # special cases/2
+
+          if {[regexp -nocase {^[[:blank:]]*([^[:blank:]]+):[[:blank:]]+(.*),[[:blank:]]+(rev[[:blank:]]+.*),[[:blank:]]+(addr[[:blank:]]+.*)[[:blank:]]*$} $iline mall m1 m2 m3 m4]} {
+            ::RANCID::Inventory_AddEntry IDB_DATA $brn$m1 "" [list $::RANCID::ipType $m2 $::RANCID::ipHWver $m3 $::RANCID::ipBusId $m4]
+            continue
+          }
+
+
+          # special cases/3
+
+          if {[regexp -nocase {^[[:blank:]]*([^[:blank:]]+):[[:blank:]]+([[:digit:]]+[[:blank:]]*.b)[[:blank:]]+\(.*\)[[:blank:]]*$} $iline mall m1 m2]} {
+            set m2 "[KbMemorySize $m2] KB"
+            ::RANCID::Inventory_AddEntry IDB_DATA $brn$m1 "" [list $::RANCID::ipSize $m2]
+            continue
+          }
+
+          if {[regexp -nocase {^[[:blank:]]*([^[:blank:]]+)[[:blank:]]+at[[:blank:]]+([^[:blank:]]+)[[:blank:]]+(bus .* target .* lun .*[^[:blank:]])[[:blank:]]*$} $iline mall m1 m2 m3]} {
+            ::RANCID::Inventory_AddEntry IDB_DATA $brn$m1 "" [list $::RANCID::ipLocation $brn$m2 $::RANCID::ipBusId $m3]
+            continue
+          }
+
+          if {[regexp -nocase {^[[:blank:]]*([^[:blank:]]+):[[:blank:]]+<(.*)>[[:blank:]]+([^[:blank:]].*[^[:blank:]])[[:blank:]]*$} $iline mall m1 m2 m3]} {
+            if {![regexp -nocase {^at[[:blank:]]+device[[:blank:]]} $m3]} {
+              ::RANCID::Inventory_AddEntry IDB_DATA $brn$m1 "" [list $::RANCID::ipType $m2 $::RANCID::ipDescr $m3]
+              continue
+            }
+          }
+
+
+          # line is ignored in boot-mode
+
+          ::LOG::Msg debug "$ltag: ingnored in boot section: \"$iline\""
+
           continue
+
         }
 
-        # storage devices
-
-        if {[regexp -nocase {^[[:blank:]]*(.*):[[:blank:]]+([[:digit:]]+[[:blank:]]*.b)[[:blank:]]+<(.*)>[[:blank:]]+at[[:blank:]]+([^-]+)-([^[:blank:]]+)[[:blank:]]+(.*)[[:blank:]]*$} $iline mall m1 m2 m3 m4 m5 m6]} {
-          set m2 "[KbMemorySize $m2] KB"
-
-          ::RANCID::Inventory_AddEntry IDB_DATA $brn$m1 "" [list $::RANCID::ipSize     $m2\
-                                                                 $::RANCID::ipModel    $m3\
-                                                                 $::RANCID::ipLocation $brn$m4\
-                                                                 $::RANCID::ipBusId    $m5\
-                                                                 $::RANCID::ipMode     $m6]
-
-          continue
-        }
-
-        if {[regexp {^[[:blank:]]*CPU:[[:blank:]]+(.*)$} $iline mall m1]} {
-          ::RANCID::Inventory_AddEntry IDB_DATA "${brn}cpu$host_cpu" "" [list $::RANCID::ipDescr $m1]
-          incr host_cpu
-          continue
-        }
-
-        # special cases
-
-        if {[regexp {^[[:blank:]]*([^[:blank:]]+)(?:.*[[:blank:]]+)?on[[:blank:]]+(.*)[[:blank:]]*$} $iline mall m1 m2]} {
-          ::RANCID::Inventory_AddEntry IDB_DATA $brn$m1 "" [list $::RANCID::ipLocation $brn$m2]
-          continue
-        }
-
-        if {[regexp {^[[:blank:]]*([^[:blank:]]+):[[:blank:]]+type[[:blank:]]+([^,]+)(?:,[[:blank:]]+(.*))?[[:blank:]]*$} $iline mall m1 m2 m3]} {
-          ::RANCID::Inventory_AddEntry IDB_DATA $brn$m1 "" [list $::RANCID::ipModel $m2 $::RANCID::ipInfo $m3]
-          continue
-        }
-
-        if {[regexp -nocase {trying to mount root from } $iline]} { set p_state "" }
-
-        # line is ignored in boot-mode
-
-        continue
+        set p_state ""
       }
 
 
@@ -1651,12 +1693,22 @@ namespace eval ::RANCID {
 
           # processing idb level-1
 
-          # check the infamous storage case
+          # check the infamous storage and usb cases
 
           if {[regexp -nocase {^(.*[^[:blank:]])[[:blank:]]+(.* .b)[[:blank:]]+(.*[^[:blank:]])[[:blank:]]+([^[:blank:]]+)[[:blank:]]+((?:compact flash)|(?:hard disk))[[:blank:]]*$} $iline mall f1 f2 f3 f4 f5]} {
+            set f1 [string range $f1 $f1_ofs end]
             set f2 "[KbMemorySize $f2] KB"
             set f2_tag $::RANCID::ipSize
             set f3_tag $::RANCID::ipModel
+            set swap_ld 0
+          } elseif {[regexp -nocase {^([[:blank:]]*usb[^[:blank:]]+ \(addr [^\)]+\))[[:blank:]]+.*[^[:blank:]][[:blank:]]+([^[:blank:]]+)[[:blank:]]*$} $iline mall f1 f5]} {
+            set f1 [string range $f1 $f1_ofs end]
+            set f2 [string trimright [string range $iline $f2_ofs $f3_end]]
+            regexp "^\[\[:blank:\]\]*(\[^\[:blank:\]\].*\[^\[:blank:\]\])\[\[:blank:\]\]+$f5" [string range $iline $f4_ofs end] mall f3
+            set f4 ""
+            set f2_tag $::RANCID::ipType
+            set f3_tag $::RANCID::ipInfo
+            set swap_ld 1
           } else {
             # standard fixed-length field extraction
             set f1 [string trimright [string range $iline $f1_ofs $f1_end]]
@@ -1666,6 +1718,7 @@ namespace eval ::RANCID {
             set f5 [string trimright [string range $iline $f5_ofs end]]
             set f2_tag $::RANCID::ipVersion
             set f3_tag $::RANCID::ipPartNo
+            set swap_ld 0
           }
 
           # calculate indentation level for item/subitem relationships
@@ -1673,7 +1726,14 @@ namespace eval ::RANCID {
           set ibl [expr {[string length $ibl] >> 1}]
 
           # create a structured global name
-          set idb_node($ibl) $label
+          if {$swap_ld == 0} {
+            # regular entry
+            set idb_node($ibl) $label
+          } else {
+            # usb device entry: swap name-label and description
+            set idb_node($ibl) $f5
+            set f5 $label
+          }
           set name $idb_node(0)
           set cl 0
           while {[incr cl] <= $ibl} { append name "/$idb_node($cl)" }
@@ -1791,52 +1851,80 @@ namespace eval ::RANCID {
       }
 
 
-      # ===========
-      # FPC SECTION
-      # ===========
+      # ================
+      # FPC/FEB SECTIONS
+      # ================
 
-      if {"$p_state" == "fpc2"} {
 
-        # processing fpc level-2
+      if {$p_state == "fpc-feb-2"} {
 
-        if {[regexp -nocase {^[[:blank:]]*total cpu dram[[:blank:]]+(.* .b)[[:blank:]]*$} $iline mall m1]} {
-          set m1 "[KbMemorySize $m1] KB"
-          lappend curr_data $::RANCID::ipMemory [list $::RANCID::ipType "CPU DRAM" $::RANCID::ipSize $m1]
+        # processing FPC/FEB level-2
+
+        if {![regexp {^.* show chassis .*$} $iline]} {
+
+          if {[regexp -nocase {^[[:blank:]]*total[[:blank:]]+(.*[^[:blank:]])[[:blank:]]+([[:digit:]]+[[:blank:]]+.b)[[:blank:]]*$} $iline mall m1 m2]} {
+            set m2 "[KbMemorySize $m2] KB"
+            lappend curr_data $::RANCID::ipMemory [list $::RANCID::ipType $m1 $::RANCID::ipSize $m2]
+            continue
+          }
+
+          if {[regexp -nocase {^[[:blank:]]*slot[[:blank:]]+(.*)[[:blank:]]information:[[:blank:]]*$} $iline mall m1]} {
+            # flush previous FPC/FEB section
+            ::RANCID::Inventory_AddEntry IDB_DATA "$curr_type $curr_num" $curr_serial $curr_data
+
+            # start a new FPC/FEB section
+            set curr_num    "$m1"
+            set curr_serial ""
+            set curr_data   ""
+
+            # stay into the same status
+            continue
+          }
+
+          # line ignored in FPC/FEB slot section, stay into the same status
+          ::LOG::Msg debug "$ltag: ingnored in FPC/FEB slot section: \"$iline\""
           continue
         }
 
-        if {[regexp -nocase {^[[:blank:]]*total sram[[:blank:]]+(.* .b)[[:blank:]]*$} $iline mall m1]} {
-          set m1 "[KbMemorySize $m1] KB"
-          lappend curr_data $::RANCID::ipMemory [list $::RANCID::ipType "SRAM" $::RANCID::ipSize $m1]
-          continue
-        }
+        # end of FPC/FEB section: flush last section
+        ::RANCID::Inventory_AddEntry IDB_DATA "$curr_type $curr_num" $curr_serial $curr_data
 
-        if {[regexp -nocase {^[[:blank:]]*total sdram[[:blank:]]+(.* .b)[[:blank:]]*$} $iline mall m1]} {
-          set m1 "[KbMemorySize $m1] KB"
-          lappend curr_data $::RANCID::ipMemory [list $::RANCID::ipType "SDRAM" $::RANCID::ipSize $m1]
-          continue
-        }
+        # change status to default and continue processing the current line
+        set p_state ""
 
-        if {[regexp -nocase {^[[:blank:]]*state[[:blank:]]+.*$} $iline]} { continue }
-
-        # flush FPC data
-
-        ::RANCID::Inventory_AddEntry IDB_DATA $curr_name $curr_serial $curr_data
-
-        set p_state "fpc1"
       }
 
 
-      if {"$p_state" == "fpc1"} {
+      if {$p_state == "fpc1"} {
 
-        # processing fpc level-1
+        # processing FPC level-1
 
         if {[regexp -nocase {^[[:blank:]]*slot[[:blank:]]+(.*)[[:blank:]]information:[[:blank:]]*$} $iline mall m1]} {
-          set curr_name   "FPC $m1"
+          set curr_type   "FPC"
+          set curr_num    "$m1"
           set curr_serial ""
           set curr_data   ""
 
-          set p_state "fpc2"
+          set p_state "fpc-feb-2"
+          continue
+        }
+
+        set p_state ""
+      }
+
+
+
+      if {$p_state == "feb1"} {
+
+        # processing FEB level-1
+
+        if {[regexp -nocase {^[[:blank:]]*slot[[:blank:]]+(.*)[[:blank:]]information:[[:blank:]]*$} $iline mall m1]} {
+          set curr_type   "FEB"
+          set curr_num    "$m1"
+          set curr_serial ""
+          set curr_data   ""
+
+          set p_state "fpc-feb-2"
           continue
         }
 
@@ -1851,33 +1939,46 @@ namespace eval ::RANCID {
 
       if {"$p_state" == "reng2"} {
 
-        # processing reng level-2
+        # processing R-ENG level-2
 
-        if {[regexp -nocase {^[[:blank:]]*dram[[:blank:]]+(.* .b)[[:blank:]]*$} $iline mall m1]} {
-          set m1 "[KbMemorySize $m1] KB"
-          lappend curr_data $::RANCID::ipMemory [list $::RANCID::ipType "DRAM" $::RANCID::ipSize $m1]
+        if {![regexp {^.* show chassis .*$} $iline]} {
+
+          if {[regexp -nocase {^[[:blank:]]*dram[[:blank:]]+(.* .b)[[:blank:]]*$} $iline mall m1]} {
+            set m1 "[KbMemorySize $m1] KB"
+            lappend curr_data $::RANCID::ipMemory [list $::RANCID::ipType "DRAM" $::RANCID::ipSize $m1]
+            continue
+          }
+
+          if {[regexp -nocase {^[[:blank:]]*model[[:blank:]]+(.*)[[:blank:]]*$} $iline mall m1]} {
+            lappend curr_data $::RANCID::ipModel $m1
+            continue
+          }
+
+          if {[regexp -nocase {^[[:blank:]]*serial id[[:blank:]]+(.*)[[:blank:]]*$} $iline mall m1]} {
+            if {[InventoryValueIsValid $m1]} {set curr_serial $m1}
+            continue
+          }
+
+          if {[regexp {^.* Routing Engine status:[[:blank:]]*$} $iline]} {
+            # flush previous R-ENG section
+            ::RANCID::Inventory_AddEntry IDB_DATA $curr_name $curr_serial $curr_data
+
+            # switch state and process next line
+            set p_state "reng1"
+            continue
+          }
+
+          # line ignored in R-ENG slot section, stay into the same status
+          ::LOG::Msg debug "$ltag: ingnored in R-ENG slot section: \"$iline\""
           continue
+
         }
 
-        if {[regexp -nocase {^[[:blank:]]*model[[:blank:]]+(.*)[[:blank:]]*$} $iline mall m1]} {
-          lappend curr_data $::RANCID::ipModel $m1
-          continue
-        }
-
-        if {[regexp -nocase {^[[:blank:]]*serial id[[:blank:]]+(.*)[[:blank:]]*$} $iline mall m1]} {
-          if {[InventoryValueIsValid $m1]} {set curr_serial $m1}
-          continue
-        }
-
-        if {[regexp -nocase {^[[:blank:]]*current state[[:blank:]]+.*$} $iline]} { continue }
-
-        if {[regexp -nocase {^[[:blank:]]*election priority[[:blank:]]+.*$} $iline]} { continue }
-
-        # flush FPC data
-
+        # end of R-ENG section: flush last section
         ::RANCID::Inventory_AddEntry IDB_DATA $curr_name $curr_serial $curr_data
 
-        set p_state "reng1"
+        # change status to default and continue processing the current line
+        set p_state ""
       }
 
 
@@ -1914,7 +2015,7 @@ namespace eval ::RANCID {
           continue
         }
 
-        if {[regexp -nocase {[[:blank:]]+show configuration[[:blank:]]*$} $iline]} {
+        if {[regexp {[[:blank:]]show configuration[[:blank:]]*$} $iline]} {
           ::RANCID::Inventory_AddEntry IDB_DATA $curr_name $curr_serial $curr_data
           set p_state ""
         }
@@ -1938,33 +2039,38 @@ namespace eval ::RANCID {
 
       # stateless parsing here
 
-      if {[regexp {^.* show chassis firmware$} $iline]} {
+      if {[regexp {^.* show chassis firmware[[:blank:]]*$} $iline]} {
         set p_state "fw0"
         continue
       }
 
-      if {[regexp {^.* show chassis fpc detail$} $iline]} {
+      if {[regexp {^.* show chassis fpc detail[[:blank:]]*$} $iline]} {
         set p_state "fpc1"
         continue
       }
 
-      if {[regexp {^.* Hardware inventory:$} $iline]} {
+      if {[regexp {^.* show chassis feb detail[[:blank:]]*$} $iline]} {
+        set p_state "feb1"
+        continue
+      }
+
+      if {[regexp {^.* Hardware inventory:[[:blank:]]*$} $iline]} {
         set p_state "idb0"
         continue
       }
 
-      if {[regexp {^.* Routing Engine status:$} $iline]} {
+      if {[regexp {^.* Routing Engine status:[[:blank:]]*$} $iline]} {
         set p_state "reng1"
         continue
       }
 
-      if {[regexp {^.* show system boot-messages$} $iline]} {
+      if {[regexp {^.* show system boot-messages[[:blank:]]*$} $iline]} {
         set host_cpu 0
         set p_state "boot"
         continue
       }
 
-      if {[regexp {^.* show version detail$} $iline]} {
+      if {[regexp {^.* show version detail[[:blank:]]*$} $iline]} {
         set p_state "vers"
         set curr_name   [string trimright ${brn} "/"]
         set curr_serial ""
@@ -2882,7 +2988,7 @@ namespace eval ::RANCID {
       set res 0
       while { $res == 0 } {
         if {[catch {gets $fch fline} x]} {
-          ::LOG::Msg error "$ltag: error reading from CVS exported ($x)"
+          ::LOG::Msg error "$ltag: error reading from CVS exported file ($x)"
           set res -2
           break
         }
