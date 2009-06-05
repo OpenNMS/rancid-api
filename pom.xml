@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.opennms</groupId>
   <artifactId>rancid-api</artifactId>
-  <version>0.95-SNAPSHOT</version>
+  <version>0.94-SNAPSHOT</version>
   <name>Rancid RWS Server and Client Api</name>
   <scm>
     <connection>scm:svn:https://opennms.svn.sourceforge.net/svnroot/opennms/rancid-api/trunk</connection>
