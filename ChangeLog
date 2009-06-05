@@ -1,3 +1,66 @@
+2009-06-05 15:08  rangerrick
+
+	* pom.xml: put it back, try again
+
+2009-06-05 15:06  rangerrick
+
+	* pom.xml: [maven-release-plugin] prepare for next development
+	  iteration
+
+2009-06-05 15:05  rangerrick
+
+	* pom.xml: [maven-release-plugin] prepare release rancid-api-0.94
+
+2009-06-04 08:33  rionero
+
+	* src/main/webapp/cgi-bin/rancid.rws: RANCID-API RWS Service Module
+	  version 0.93.2009060401
+
+2009-06-04 08:32  rionero
+
+	* src/main/webapp/cgi-bin/rws-cgi.tcl: RWS Core CGI Script version
+	  0.93.2009060401
+
+2009-06-04 08:30  rionero
+
+	* src/main/webapp/cgi-bin/CHANGES: RWS Package for OpenNMS version
+	  0.94 - history of changes
+
+2009-06-02 11:42  rionero
+
+	* src/main/filtered/contrib/rancid.patch: patch file for rancid's
+	  notification extension patch 0.3 build 20090601-01
+
+2009-06-02 11:41  rionero
+
+	* src/main/filtered/contrib/README: README file for rancid's
+	  notification extension patch 0.3 build 20090601-01
+
+2009-06-02 11:40  rionero
+
+	* src/main/filtered/contrib/RANCID-CUSTOM-MIB.mib: MIB file version
+	  1.3 for rancid's notification extension patch 0.3 build
+	  20090601-01
+
+2009-05-15 13:55  rangerrick
+
+	* src/main/filtered/contrib/RANCID-CUSTOM-MIB.mib,
+	  src/main/filtered/contrib/rancid.patch: bug #3130, rancid trap
+	  improvements
+
+2009-05-14 14:40  rangerrick
+
+	* ChangeLog: changelog updates
+
+2009-05-14 14:19  rangerrick
+
+	* pom.xml: [maven-release-plugin] prepare for next development
+	  iteration
+
+2009-05-14 14:18  rangerrick
+
+	* pom.xml: [maven-release-plugin] prepare release rancid-api-0.93
+
 2009-05-07 02:35  rionero
 
 	* src/main/webapp/cgi-bin/CHANGES: RWS Package for OpenNMS version
