@@ -47,7 +47,7 @@
 namespace eval ::RANCID {
 
   set SRV_NAME	"RANCID-API"
-  set SRV_VER	"0.93.2009060401"
+  set SRV_VER	"0.94.2009061701"
   set SRV_INFO	"RWS service API for \"rancid\" with the addition of hardware inventory extensions"
 
 
@@ -1140,50 +1140,18 @@ namespace eval ::RANCID {
 
 
   #--------------------------------------------------------------------------
-  proc CVS_GetRevisionsInfo { groupname devicename __revinfo } {
+  # This routine was introduced in version 0.94.2009061701 to replace both
+  # the "CVS_GetRevisionsInfo" and "CVS_GetRevisions" routines used in the
+  # previous versions of the RANCID-API.
+  # The change was done to return only CVS revisions corresponding to actual
+  # changes in device's configuration (i.e. changes into the repository due
+  # to the addition/deletion of devices are ignored by this routine)
+  #
+  # In line with the behaviour of the replaced functions (since version
+  # 0.9.2009021501) this routine DOES NOT modify the devicename's case; it
+  # is expected to be properly adjusted by the caller.
 
-
-    # NOTE: starting from 0.9.2009021501 this routine DOES NOT modify the
-    #       devicename's case. It is expected to be properly adjusted by
-    #       the caller
-
-    set fname [file join $::RANCID::RancidConf(BASEDIR)\
-                         "$groupname/configs/$devicename"]
-
-    if {[catch {exec -- $::RANCID::CONF::commandCVS -d $::RANCID::RancidConf(CVSROOT)\
-                                               log $fname 2>/dev/null} resp]} {
-
-      if {[lindex $::errorCode 0] == "CHILDSTATUS"} {
-        set cvs_pid   [lindex $::errorCode 1]
-        set cvs_ecode [lindex $::errorCode 2]
-        ::LOG::Msg error "RANCID::CVS_GetRevisionsInfo: error executing \"$::RANCID::CONF::commandCVS\" (pid=$cvs_pid): exitcode=$cvs_ecode"
-        return "error executing \"$::RANCID::CONF::commandCVS\" (pid=$cvs_pid): exitcode=$cvs_ecode"
-      }
-      return "$resp"
-    }
-
-    upvar $__revinfo revinfo
-
-    foreach line [split $resp "\n"] {
-      if {[regexp -- {^head:[[:blank:]]+(\d+(?:\.\d+)*)} $line mall mvalue]} {
-        set revinfo(headrev) $mvalue
-      }
-      if {[regexp -- {^total revisions:[[:blank:]]+(\d+);} $line mall mvalue]} {
-        set revinfo(totalrevs) $mvalue
-      }
-      if {[regexp -- {^\-+$} $line]} {break}
-    }
-    return ""
-  }
-  #--------------------------------------------------------------------------
-
-
-  #--------------------------------------------------------------------------
-  proc CVS_GetRevisions { groupname devicename __revisions } {
-
-    # NOTE: starting from 0.9.2009021501 this routine DOES NOT modify the
-    #       devicename's case. It is expected to be properly adjusted by
-    #       the caller
+  proc CVS_GetConfigRevs { groupname devicename __revinfo __revisions } {
 
     set fname [file join $::RANCID::RancidConf(BASEDIR)\
                          "$groupname/configs/$devicename"]
@@ -1194,22 +1162,42 @@ namespace eval ::RANCID {
       if {[lindex $::errorCode 0] == "CHILDSTATUS"} {
         set cvs_pid   [lindex $::errorCode 1]
         set cvs_ecode [lindex $::errorCode 2]
-        ::LOG::Msg error "RANCID::CVS_GetRevisions: error executing \"$::RANCID::CONF::commandCVS\" (pid=$cvs_pid): exitcode=$cvs_ecode"
+        ::LOG::Msg error "RANCID::CVS_GetConfigRevs: error executing \"$::RANCID::CONF::commandCVS\" (pid=$cvs_pid): exitcode=$cvs_ecode"
         return "error executing \"$::RANCID::CONF::commandCVS\" (pid=$cvs_pid): exitcode=$cvs_ecode"
       }
       return "$resp"
     }
 
+    upvar $__revinfo   revinfo
     upvar $__revisions revisions
-    set revstr ""
+
+    set revinfo(headrev)   ""
+    set revinfo(totalrevs) 0
+
+    set revstr  ""
+    set revdate ""
+
     foreach line [split $resp "\n"] {
-      if {"$revstr" != ""} {
-        if {[regexp -- {^date:[[:blank:]]+(\d{4}/\d{2}/\d{2}[[:blank:]]+\d{2}:\d{2}:\d{2})} $line mall revdate]} {
-          set revisions($revstr) "$revdate"
-          set revstr ""
+
+      if {$revdate != ""} {
+        if {[regexp -- {^updates[[:blank:]]*$} $line]} {
+          if {$revinfo(headrev) == ""} { set revinfo(headrev) $revstr }
+          incr revinfo(totalrevs)
+          set  revisions($revstr) "$revdate"
+        }
+        set revstr  ""
+        set revdate ""
+        continue  
+      }
+
+      if {$revstr != ""} {
+        if {[regexp -- {^date:[[:blank:]]+(\d{4}/\d{2}/\d{2}[[:blank:]]+\d{2}:\d{2}:\d{2});} $line mall revdate]} {
           continue
         }
+        set revstr  ""
+        continue  
       }
+
       regexp -- {^revision[[:blank:]]+([^[:blank:]]+)} $line mall revstr
     }
     return ""
@@ -1240,7 +1228,7 @@ namespace eval ::RANCID {
 
 
 
-  # end of CVS interface routines
+  # end of RCS interface routines
   #==========================================================================
 
 
@@ -3656,18 +3644,17 @@ namespace eval ::RANCID {
     set gname $Parameters(groupname)
     set dname $Parameters(devicename)
 
-    #=== starting from 0.9.2009022501 devicename is verified to exist
+    # starting from 0.9.2009022501 devicename is verified to exist
 
     if {[set res [::RANCID::DB_GetDevice $gname $dname deviceType state comment]] != 0} {
       ::RANCID::SetDeviceResponseStatus $res
       return 1
     }
 
-    #===
+    array set revinfo   {}
+    array set revisions {}
 
-    array set revinfo {}
-
-    if {[set resp [::RANCID::CVS_GetRevisionsInfo "$gname" "$dname" revinfo]] != ""} {
+    if {[set resp [::RANCID::CVS_GetConfigRevs "$gname" "$dname" revinfo revisions]] != ""} {
       set ServiceStatus    "ErrExternal"
       set ServiceStatusMsg "$resp"
       return 1
@@ -3701,7 +3688,7 @@ namespace eval ::RANCID {
 
 
   #--------------------------------------------------------------------------
-  proc URI_Handler_configs {revision} {
+  proc URI_Handler_configs { revision } {
     upvar RequestHandle		RequestHandle
     upvar ServiceStatus		ServiceStatus
     upvar ServiceStatusMsg	ServiceStatusMsg
@@ -3711,25 +3698,23 @@ namespace eval ::RANCID {
     set gname $Parameters(groupname)
     set dname $Parameters(devicename)
 
-    #=== starting from 0.9.2009022501 devicename is verified to exist
+    # starting from 0.9.2009022501 devicename is verified to exist
 
     if {[set res [::RANCID::DB_GetDevice $gname $dname deviceType state comment]] != 0} {
       ::RANCID::SetDeviceResponseStatus $res
       return ""
     }
 
-    #===
+    array set revinfo {}
+    array set revs    {}
 
-
-    array set revs {}
-
-    if {[set resp [::RANCID::CVS_GetRevisions "$gname" "$dname" revs]] != ""} {
+    if {[set resp [::RANCID::CVS_GetConfigRevs "$gname" "$dname" revinfo revs]] != ""} {
       set ServiceStatus    "ErrExternal"
       set ServiceStatusMsg "$resp"
       return ""
     }
 
-    if { "$revision" != "" } {
+    if { $revision != "" } {
       if {[info exists revs($revision)] } {
         set Parameters(revnumber) "$revision"
         set Parameters(revdate)   "$revs($revision) UTC"
