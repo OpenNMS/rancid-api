@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
-RWS Package for OpenNMS version 0.94                   OpenNMS/RANCID Project
+RWS Package for OpenNMS version 0.95                   OpenNMS/RANCID Project
 
 Copyright (c) 2009+ Rocco Rionero
 Copyright (c) 2009+ The OpenNMS Group, Inc.
@@ -49,6 +49,15 @@ PACKAGE HISTORY
 ===============
 
 
+RELEASE 0.95
+------------
+rancid.rws	0.94 build 2009061701	CHANGED
+rancid.rws.rc	0.2  build 2009050601
+storage.rws	0.3  build 2009041803
+rws-cgi.tcl	0.93 build 2009060401
+
+
+
 RELEASE 0.94
 ------------
 rancid.rws	0.93 build 2009060401	CHANGED
@@ -88,6 +97,42 @@ rancid.rws.rc	unversioned		ADDED
 
 FILE HISTORY
 ============
+
+rancid.rws version 0.94 build 2009061701
+----------------------------------------
+
+- modified the RCS (CVS) interface code: when accessing the CVS
+  repository, the RANCID-API now ignores any committed revision which
+  does not correspond to an actual change of the device's configuration
+  (i.e. CVS revisions corresponding to the addition/deletion of devices,
+  for which there are no configurations downloaded and committed to
+  the repository, are not taken in account).
+  This is to avoid misleading responses occurring if a device is
+  deleted and then added back into the rancid's configuration without
+  clearing the corresponding tree of the CVS repository.
+
+  Obvious consequences:
+
+	- the revision 1.1 (corresponding to the first addition of the
+	  device and for which there is no committed configuration) is
+	  not returned anymore;
+
+	- the "TotalRevisions" property of the "(...)/configs" resource
+	  now counts only the number of revisions corresponding to
+	  actual device's configuration changes (that is, it is
+	  different than the number of total revisions found into the
+	  repository);
+
+	- the "HeadRevision" property of the "(...)/configs" resource
+	  now returns the higher revision number corresponding to
+	  an actual device's configuration change (that is, it might
+	  be different than the HEAD revision number as returned by CVS);
+
+	- the list of resources (revision numbers) returned by the
+	  "(...)/configs/" resource might include "holes" (i.e.
+	  revision numbers will not be strictly in sequence)
+
+
 
 rancid.rws version 0.93 build 2009060401
 ----------------------------------------
