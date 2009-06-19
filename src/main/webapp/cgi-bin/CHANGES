@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
-RWS Package for OpenNMS version 0.95                   OpenNMS/RANCID Project
+RWS Package for OpenNMS version 0.96                   OpenNMS/RANCID Project
 
 Copyright (c) 2009+ Rocco Rionero
 Copyright (c) 2009+ The OpenNMS Group, Inc.
@@ -47,6 +47,15 @@ RANCID application is Copyright by Terrapin Communications, Inc.
 
 PACKAGE HISTORY
 ===============
+
+
+RELEASE 0.96
+------------
+rancid.rws	0.95 build 2009061901	CHANGED
+rancid.rws.rc	0.2  build 2009050601
+storage.rws	0.3  build 2009041803
+rws-cgi.tcl	0.93 build 2009060401
+
 
 
 RELEASE 0.95
@@ -97,6 +106,14 @@ rancid.rws.rc	unversioned		ADDED
 
 FILE HISTORY
 ============
+
+rancid.rws version 0.95 build 2009061901
+----------------------------------------
+
+- modified the "rancid.conf" processing code to avoid erroneous quotes
+  being returned into the value of rancid's configuration variables
+
+
 
 rancid.rws version 0.94 build 2009061701
 ----------------------------------------
