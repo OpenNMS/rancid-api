@@ -1,3 +1,26 @@
+2009-06-19 11:43  rionero
+
+	* src/main/webapp/cgi-bin/CHANGES: RWS Package for OpenNMS version
+	  0.96 - history of changes
+
+2009-06-19 11:43  rionero
+
+	* src/main/webapp/cgi-bin/rancid.rws: RANCID-API RWS Service Module
+	  version 0.95.2009061901
+
+2009-06-18 13:57  rangerrick
+
+	* pom.xml: [maven-release-plugin] prepare for next development
+	  iteration
+
+2009-06-18 13:56  rangerrick
+
+	* pom.xml: [maven-release-plugin] prepare release rancid-api-0.95
+
+2009-06-18 13:55  rangerrick
+
+	* ChangeLog: new changelog
+
 2009-06-17 22:48  rionero
 
 	* src/main/webapp/cgi-bin/CHANGES: RWS Package for OpenNMS version
