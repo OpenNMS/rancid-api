@@ -47,7 +47,7 @@
 namespace eval ::RANCID {
 
   set SRV_NAME	"RANCID-API"
-  set SRV_VER	"0.94.2009061701"
+  set SRV_VER	"0.95.2009061901"
   set SRV_INFO	"RWS service API for \"rancid\" with the addition of hardware inventory extensions"
 
 
@@ -185,7 +185,7 @@ namespace eval ::RANCID {
       set assignment [split $line "="]
       set name  [lindex $assignment 0]
       if {[lsearch -exact $::RANCID::NEEDED_CONF_VARS $name] >= 0} {
-        if {"[set value [lindex $assignment 1]]" != ""} {
+        if {"[set value [string trim [lindex $assignment 1] {' "}]]" != ""} {
           set ::RANCID::RancidConf($name) "$value"
         }
       }
