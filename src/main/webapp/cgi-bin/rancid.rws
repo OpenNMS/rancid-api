@@ -47,7 +47,7 @@
 namespace eval ::RANCID {
 
   set SRV_NAME	"RANCID-API"
-  set SRV_VER	"0.95.2009061901"
+  set SRV_VER	"0.96.2009063001"
   set SRV_INFO	"RWS service API for \"rancid\" with the addition of hardware inventory extensions"
 
 
@@ -526,8 +526,8 @@ namespace eval ::RANCID {
                 set res -7
               } else {
                 if {$comment == ":"} {set comment ""}
-                if {[catch {file copy -force "$db_name" "$db_bkup"} retval]} {
-                  ::LOG::Msg warning "$ltag: failed to create a backup copy of group file: ignored ($retval)"
+                if {[::UTILS::CopyFile $db_name $db_bkup]} {
+                  ::LOG::Msg warning "$ltag: failed to create a backup copy of group file: ignored"
                 }
                 if {[catch {open $db_name "a"} ofch]} {
                   ::LOG::Msg error "$ltag: failed to open group file for writing ($ofch)"
@@ -639,14 +639,9 @@ namespace eval ::RANCID {
           }
 
           if { $res > 2 } {
-            # if update/delete was ok, backup/rename old file and rename temporary
+            # if update/delete was ok, backup/rename old file and rename temporary one
 
-            if {[catch {file rename -force $db_name $db_bkup} retval]} {
-              ::LOG::Msg warning "$ltag: failed to create a backup copy of group file: ignored ($retval)"
-            }
-
-            if {[catch {file rename -force $ofname $db_name} retval]} {
-              ::LOG::Msg error "$ltag: failed to rename temporary group file ($retval)"
+            if {[::UTILS::BackupAndUpdateFile $ofname $db_name $db_bkup] < -1} {
               set res -15
             }
 
@@ -1104,13 +1099,8 @@ namespace eval ::RANCID {
 
         # final manipulations
         if { $res > 0 } {
-          # keep a backup copy of previous input file
-          if {[catch {file rename -force "$cl_name" "$cl_bkup"} retval]} {
-            ::LOG::Msg warning "$ltag: failed to create a backup copy of access file: ignored ($retval)"
-          }
-          # rename temporary file (will become the new input file)
-          if {[catch {file rename -force "$ofname" "$cl_name"} retval]} {
-            ::LOG::Msg error "$ltag: failed to rename temporary access file ($retval)"
+          # if update/delete was ok, backup/rename old file and rename temporary one
+          if {[::UTILS::BackupAndUpdateFile $ofname $cl_name $cl_bkup] < -1} {
             set res -10
           }
         } else {
