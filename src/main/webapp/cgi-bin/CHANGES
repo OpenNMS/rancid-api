@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
-RWS Package for OpenNMS version 0.96                   OpenNMS/RANCID Project
+RWS Package for OpenNMS version 0.97                   OpenNMS/RANCID Project
 
 Copyright (c) 2009+ Rocco Rionero
 Copyright (c) 2009+ The OpenNMS Group, Inc.
@@ -49,39 +49,48 @@ PACKAGE HISTORY
 ===============
 
 
+RELEASE 0.97
+------------
+rws-cgi.tcl	0.94 build 2009063001	CHANGED
+rancid.rws	0.96 build 2009063001	CHANGED
+rancid.rws.rc	0.2  build 2009050601
+storage.rws	0.3  build 2009041803
+
+
+
 RELEASE 0.96
 ------------
+rws-cgi.tcl	0.93 build 2009060401
 rancid.rws	0.95 build 2009061901	CHANGED
 rancid.rws.rc	0.2  build 2009050601
 storage.rws	0.3  build 2009041803
-rws-cgi.tcl	0.93 build 2009060401
 
 
 
 RELEASE 0.95
 ------------
+rws-cgi.tcl	0.93 build 2009060401
 rancid.rws	0.94 build 2009061701	CHANGED
 rancid.rws.rc	0.2  build 2009050601
 storage.rws	0.3  build 2009041803
-rws-cgi.tcl	0.93 build 2009060401
 
 
 
 RELEASE 0.94
 ------------
+rws-cgi.tcl	0.93 build 2009060401	CHANGED
 rancid.rws	0.93 build 2009060401	CHANGED
 rancid.rws.rc	0.2  build 2009050601
 storage.rws	0.3  build 2009041803
-rws-cgi.tcl	0.93 build 2009060401	CHANGED
 
 
 
 RELEASE 0.93
 ------------
+rws-cgi.tcl	0.92 build 2009041802
 rancid.rws	0.92 build 2009050501	CHANGED
 rancid.rws.rc	0.2  build 2009050601	CHANGED
 storage.rws	0.3  build 2009041803
-rws-cgi.tcl	0.92 build 2009041802
 
 
 
@@ -89,8 +98,8 @@ RELEASE 0.92
 ------------
 rws-cgi.tcl	0.92 build 2009041802	CHANGED
 rancid.rws	0.91 build 2009041802	CHANGED
-storage.rws	0.3  build 2009041803	ADDED
 rancid.rws.rc	unversioned
+storage.rws	0.3  build 2009041803	ADDED
 
 
 
@@ -107,110 +116,18 @@ rancid.rws.rc	unversioned		ADDED
 FILE HISTORY
 ============
 
-rancid.rws version 0.95 build 2009061901
-----------------------------------------
+rws-cgi.tcl version 0.94 build 2009063001
+-----------------------------------------
 
-- modified the "rancid.conf" processing code to avoid erroneous quotes
-  being returned into the value of rancid's configuration variables
+- upgraded the embedded UTILS library to version 0.2 build 2009063001;
+  the library was extended by adding the following routines:
 
+	CopyFile
+	BackupAndUpdateFile
 
-
-rancid.rws version 0.94 build 2009061701
-----------------------------------------
-
-- modified the RCS (CVS) interface code: when accessing the CVS
-  repository, the RANCID-API now ignores any committed revision which
-  does not correspond to an actual change of the device's configuration
-  (i.e. CVS revisions corresponding to the addition/deletion of devices,
-  for which there are no configurations downloaded and committed to
-  the repository, are not taken in account).
-  This is to avoid misleading responses occurring if a device is
-  deleted and then added back into the rancid's configuration without
-  clearing the corresponding tree of the CVS repository.
-
-  Obvious consequences:
-
-	- the revision 1.1 (corresponding to the first addition of the
-	  device and for which there is no committed configuration) is
-	  not returned anymore;
-
-	- the "TotalRevisions" property of the "(...)/configs" resource
-	  now counts only the number of revisions corresponding to
-	  actual device's configuration changes (that is, it is
-	  different than the number of total revisions found into the
-	  repository);
-
-	- the "HeadRevision" property of the "(...)/configs" resource
-	  now returns the higher revision number corresponding to
-	  an actual device's configuration change (that is, it might
-	  be different than the HEAD revision number as returned by CVS);
-
-	- the list of resources (revision numbers) returned by the
-	  "(...)/configs/" resource might include "holes" (i.e.
-	  revision numbers will not be strictly in sequence)
-
-
-
-rancid.rws version 0.93 build 2009060401
-----------------------------------------
-
-- fixed an unhandled exception in Juniper's inventory parser due to
-  unexpected values returned by some M-series devices
-
-- added inventory support for additional sections returned by Juniper
-  M-series devices
-
-- general cleanup into the Juniper's inventory parser routines
-
-
-
-rancid.rws version 0.92 build 2009050501
-----------------------------------------
-
-- corrected handling of "enablepassword" property in "clogin" resources
-
-
-
-rancid.rws version 0.91 build 2009041802
-----------------------------------------
-
-- moved some functions of general interest from the rancid.rws module into
-  the "utils" library (included in the main RWS script)
-
-- extended the node element RWS.ResponseContent.ResourceEntity.Application
-  (returned by the /rws/rancid resource) by adding the "Info" property
-
-- modified the ResponseStatus of some functions to a more specific failure
-  code;
-
-
-
-rancid.rws version 0.9 build 2009033101
----------------------------------------
-
-- first release of the RANCID-API service module
-
-
-
-
-
-
-rancid.rws.rc version 0.2 build 2009050601
-------------------------------------------
-
-- corrected / added comments
-
-- added version numbering
-
-
-
-rancid.rws.rc (unversioned)
-------------------------------------------
-
-- first release of RANCID-API configuration file
-
-
-
+  which solve the copy/backup/update problems occurring on some systems
+  when using symbolic links (e.g. .cloginrc defined in the rancid's
+  home directory as a symlink to an actual file located elsewhere);
 
 
 
@@ -225,18 +142,17 @@ rws-cgi.tcl version 0.93 build 2009060401
 rws-cgi.tcl version 0.92 build 2009041802
 -----------------------------------------
 
-- modified the generated XML output: all items (i.e. terminal XML-nodes
-  having an actual value and no child-nodes) are now of CDATA type; this
-  is inline with W3C suggested guidelines, avoids the needs of encoding
-  or escaping item's values with special characters and slightly improves
-  client's parsing speed (as a CDATA value is just extracted "as is"
-  without further processing by the XML parser). No impact is expected on
-  a properly written client (as CDATA nodes should be managed correctly
-  by any fully-compliant XML parsing library);
+- modified the XML generator routine into the embedded XTREE library: items
+  (i.e. terminal XML-nodes having an actual value and no child-nodes) are
+  now of CDATA type; this is inline with W3C suggested guidelines, avoids
+  the needs of encoding or escaping item's values with special characters
+  and slightly improves client's parsing speed (as a CDATA value is just
+  extracted "as is" without further processing by the XML parser).
+  No impact is expected on a properly written client (as CDATA nodes should
+  be managed correctly by any fully-compliant XML parsing library);
 
-- modified the "xtree" library (included in the main RWS script) by adding
-  two functions for generating a structured representation of a tree in
-  plain-text format;
+- modified the embedded XTREE library by adding two functions for generating
+  a structured representation of a tree in plain-text form;
 
 - added the "responsetype=<type>" global option (i.e. argument to be
   specified into the URI's "query-string") so to give the requesting client
@@ -245,9 +161,9 @@ rws-cgi.tcl version 0.92 build 2009041802
   an XML-encoded response, which is also the default behaviour when the
   "responsetype=" option is omitted);
 
-- introduced a new "utils" library (included in the main RWS script) with
-  some functions of general interest previously found in the rancid.rws
-  service module (so to be available to any other service module);
+- introduced a new embedded library (UTILS) with some functions of general
+  interest moved from the rancid.rws service module (so to be available to
+  any other service module);
 
 - extended the ResponseStatus table by introducing new failure-class codes;
 
@@ -293,7 +209,123 @@ rws-cgi.tcl version 0.92 build 2009041802
 rws-cgi.tcl version 0.9 build 2009033101
 ----------------------------------------
 
-- first release of the RWS CGI script
+- first release of the RWS CGI script;
+
+
+
+
+
+
+rancid.rws version 0.96 build 2009063001
+----------------------------------------
+
+- replaced the copy/backup/update code which manipulates rancid's file
+  with calls to the new routines added into the core RWS CGI script
+  (embedded UTILS library) -- see above "rws-cgi.tcl" history section;
+
+
+
+rancid.rws version 0.95 build 2009061901
+----------------------------------------
+
+- modified the "rancid.conf" processing code to avoid erroneous quotes
+  being returned into the value of rancid's configuration variables;
+
+
+
+rancid.rws version 0.94 build 2009061701
+----------------------------------------
+
+- modified the RCS (CVS) interface code: when accessing the CVS
+  repository, the RANCID-API now ignores any committed revision which
+  does not correspond to an actual change of the device's configuration
+  (i.e. CVS revisions corresponding to the addition/deletion of devices,
+  for which there are no configurations downloaded and committed to
+  the repository, are not taken in account).
+  This is to avoid misleading responses occurring if a device is
+  deleted and then added back into the rancid's configuration without
+  clearing the corresponding tree of the CVS repository.
+
+  Obvious consequences:
+
+	- the revision 1.1 (corresponding to the first addition of the
+	  device and for which there is no committed configuration) is
+	  not returned anymore;
+
+	- the "TotalRevisions" property of the "(...)/configs" resource
+	  now counts only the number of revisions corresponding to
+	  actual device's configuration changes (that is, it is
+	  different than the number of total revisions found into the
+	  repository);
+
+	- the "HeadRevision" property of the "(...)/configs" resource
+	  now returns the higher revision number corresponding to
+	  an actual device's configuration change (that is, it might
+	  be different than the HEAD revision number as returned by CVS);
+
+	- the list of resources (revision numbers) returned by the
+	  "(...)/configs/" resource might include "holes" (i.e.
+	  revision numbers will not be strictly in sequence);
+
+
+
+rancid.rws version 0.93 build 2009060401
+----------------------------------------
+
+- fixed an unhandled exception in Juniper's inventory parser due to
+  unexpected values returned by some M-series devices;
+
+- added inventory support for additional sections returned by Juniper
+  M-series devices;
+
+- general cleanup into the Juniper's inventory parser routines;
+
+
+
+rancid.rws version 0.92 build 2009050501
+----------------------------------------
+
+- corrected handling of "enablepassword" property in "clogin" resources;
+
+
+
+rancid.rws version 0.91 build 2009041802
+----------------------------------------
+
+- moved some functions of general interest from the rancid.rws module into
+  the new UTILS library (embedded into the RWS CGI script);
+
+- extended the node element RWS.ResponseContent.ResourceEntity.Application
+  (returned by the /rws/rancid resource) by adding the "Info" property;
+
+- modified the ResponseStatus of some functions to a more specific failure
+  code;
+
+
+
+rancid.rws version 0.9 build 2009033101
+---------------------------------------
+
+- first release of the RANCID-API service module;
+
+
+
+
+
+
+rancid.rws.rc version 0.2 build 2009050601
+------------------------------------------
+
+- corrected / added comments;
+
+- added version numbering;
+
+
+
+rancid.rws.rc (unversioned)
+------------------------------------------
+
+- first release of RANCID-API configuration file;
 
 
 
@@ -304,4 +336,8 @@ storage.rws version 0.3 build 2009041803
 ----------------------------------------
 
 - first release of the STORAGE service module;
+
+
+
+
 
