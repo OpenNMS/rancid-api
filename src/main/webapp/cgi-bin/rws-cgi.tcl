@@ -1750,7 +1750,7 @@ namespace eval ::XTREE {
 
 namespace eval ::UTILS {
   set LIB_NAME		"UTILS"
-  set LIB_VER		"0.1.2009041803"
+  set LIB_VER		"0.2.2009063001"
   set LIB_INFO		"General-purpose utility functions"
 
 
@@ -1888,6 +1888,122 @@ namespace eval ::UTILS {
 
     set dirname ""
     return -1
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  # BackupAndUpdateFile nameSource nameTarget nameBackup
+  #
+  # 1) renames "nameTarget" -> "nameBackup"
+  # 2) renames "nameSource" -> "nameTarget"
+  #
+  # Both operations are "forced renames" (i.e. will overwrite the destination
+  # file if it exists).
+  #
+  # Both "nameBackup" and "nameTarget" are checked for being symbolic links
+  # and the actual pointed-to files are used, keeping the links intact.
+  #
+  # "nameSource" is expected to be a "real" file (that is, NOT a symlink) and
+  # will "disappear" at the end of the process (as it will be renamed); it
+  # will be typically a file with a unique temporary name.
+  #
+  # Introduced in version 0.2.2009063001.
+  #
+  #
+  # Argument(s):
+  #
+  #	nameSource	name of the source file that will replace "nameTarget"
+  #
+  #	nameTarget	name of the target file to be update
+  #
+  #	nameBackup	name of the target file's backup copy
+  #
+  # Return Code:
+  #
+  #	 0	success (operations ok)
+  #	-1	backup failure (a warning will be logged)
+  #	-2	update failure (an error will be logged)
+  #	-3	both backup and update failed (a warning + error will be logged)
+
+  proc BackupAndUpdateFile { nameSource nameTarget nameBackup } {
+    set ltag "UTILS::BackupAndUpdateFile"
+
+    set exitcode 0
+
+    if {![catch {file readlink $nameTarget} pointedFile]} {
+      ::LOG::Msg debug "$ltag: target filename \"$nameTarget\" is a link to \"$pointedFile\", will backup/update the pointed file"
+      set nameTarget $pointedFile
+    }
+
+    if {![catch {file readlink $nameBackup} pointedFile]} {
+      ::LOG::Msg debug "$ltag: backup filename \"$nameBackup\" is a link to \"$pointedFile\", will overwrite the pointed file"
+      set nameBackup $pointedFile
+    }
+
+    if {[catch {file rename -force $nameTarget $nameBackup} retval]} {
+      ::LOG::Msg warning "$ltag: failed to rename (backup) \"$nameTarget\" -> \"$nameBackup\" ($retval)"
+      set exitcode -1
+    } else {
+      ::LOG::Msg debug "$ltag: successfully renamed (backup) \"$nameTarget\" -> \"$nameBackup\""
+    }
+
+    if {[catch {file rename -force $nameSource $nameTarget} retval]} {
+      ::LOG::Msg error "$ltag: failed to rename (update) \"$nameSource\" -> \"$nameTarget\" ($retval)"
+      incr exitcode -2
+    } else {
+      ::LOG::Msg debug "$ltag: successfully renamed (update) \"$nameSource\" -> \"$nameTarget\""
+    }
+
+    return $exitcode
+  }
+  #--------------------------------------------------------------------------
+
+
+
+  #--------------------------------------------------------------------------
+  # CopyFile nameSource nameTarget
+  #
+  # Performs a "forced copy" (i.e. overwriting the target if it exists) of
+  # "nameSource" into "nameTarget". It checks for both names being symbolic
+  # links and operates on the actual files pointed to, keeping the links
+  # intact. Introduced in version 0.2.2009063001.
+  #
+  #
+  # Argument(s):
+  #
+  #	nameSource	name of the source file to be copied
+  #
+  #	nameTarget	target name for the copied file
+  #
+  # Return Code:
+  #
+  #	 0	success (copy ok)
+  #	-1	failure (copy failed)
+  #
+
+  proc CopyFile { nameSource nameTarget } {
+    set ltag "UTILS::CopyFile"
+
+
+    if {![catch {file readlink $nameSource} pointedFile]} {
+      ::LOG::Msg debug "$ltag: source filename \"$nameSource\" is a link to \"$pointedFile\", will copy the pointed file"
+      set nameSource $pointedFile
+    }
+
+    if {![catch {file readlink $nameTarget} pointedFile]} {
+      ::LOG::Msg debug "$ltag: target filename \"$nameTarget\" is a link to \"$pointedFile\", will (over)write the pointed file"
+      set nameTarget $pointedFile
+    }
+
+    if {[catch {file copy -force $nameSource $nameTarget} retval]} {
+      ::LOG::Msg error "$ltag: failed to copy \"$nameSource\" -> \"$nameTarget\" ($retval)"
+      return -1
+    }
+
+    ::LOG::Msg debug "$ltag: successfully copied \"$nameSource\" -> \"$nameTarget\""
+    return 0
   }
   #--------------------------------------------------------------------------
 
@@ -2051,7 +2167,7 @@ namespace eval ::UTILS {
 #============================================================================
 namespace eval ::RWS {
   set APP_NAME		"RWS"
-  set APP_VER		"0.93.2009060401"
+  set APP_VER		"0.94.2009063001"
   set APP_INFO		"RESTful Web Service Server-Side Application Engine"
 
 
