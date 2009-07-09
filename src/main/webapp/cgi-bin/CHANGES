@@ -52,7 +52,7 @@ PACKAGE HISTORY
 RELEASE 0.97
 ------------
 rws-cgi.tcl	0.94 build 2009063001	CHANGED
-rancid.rws	0.96 build 2009063001	CHANGED
+rancid.rws	0.97 build 2009070901	CHANGED
 rancid.rws.rc	0.2  build 2009050601
 storage.rws	0.3  build 2009041803
 
@@ -213,6 +213,26 @@ rws-cgi.tcl version 0.9 build 2009033101
 
 
 
+
+
+
+rancid.rws version 0.97 build 2009070901
+----------------------------------------
+
+- added a new routine (CVS_ParseDateTime) and modified accordingly the code
+  which processes the "cvs log" response in order to accept unexpected
+  date-time strings returned by some CVS implementations (which are not
+  conforming to CVS official documentation), making RANCID-API unable to
+  correctly access the rancid's CVS repository;
+
+- relocated/improved cleanup code for the deletion of temporary directories
+  and files (in some very specific error cases the cleanup might not be
+  performed correctly in previous versions of the module);
+
+- added an RWS CORE version check into the startup code of the service
+  module: the RANCID-API module (rancid.rws) now can only be loaded by
+  a corresponding specific version of the RWS CORE (rws-cgi.tcl).
+  rancid.rws 0.97.2009070901 requires rws-cgi.tcl 0.94.2009063001
 
 
 
