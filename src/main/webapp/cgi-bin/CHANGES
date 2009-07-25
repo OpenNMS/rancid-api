@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
-RWS Package for OpenNMS version 0.97                   OpenNMS/RANCID Project
+RWS Package for OpenNMS version 0.98                   OpenNMS/RANCID Project
 
 Copyright (c) 2009+ Rocco Rionero
 Copyright (c) 2009+ The OpenNMS Group, Inc.
@@ -47,6 +47,15 @@ RANCID application is Copyright by Terrapin Communications, Inc.
 
 PACKAGE HISTORY
 ===============
+
+
+RELEASE 0.98
+------------
+rws-cgi.tcl	0.94 build 2009063001
+rancid.rws	0.97 build 2009070901
+rancid.rws.rc	0.2  build 2009050601
+storage.rws	0.4  build 2009072501	CHANGED
+
 
 
 RELEASE 0.97
@@ -349,6 +358,16 @@ rancid.rws.rc (unversioned)
 
 
 
+
+
+
+storage.rws version 0.4 build 2009072501
+----------------------------------------
+
+- added a "Content-disposition" header's field to the HTTP response returned
+  upon a GET request for a given file, so to give a filename "hint" to the
+  requesting client; mostly useful when the request comes from a browser in
+  order to let the file being saved with the proper name;
 
 
 
