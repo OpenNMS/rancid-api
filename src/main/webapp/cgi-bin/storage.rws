@@ -45,7 +45,7 @@
 namespace eval ::STORAGE {
 
   set SRV_NAME	"STORAGE"
-  set SRV_VER	"0.3.2009041803"
+  set SRV_VER	"0.4.2009072501"
   set SRV_INFO	"RWS STORAGE service"
 
 
@@ -1272,6 +1272,10 @@ namespace eval ::STORAGE {
         return 1
 
       }
+
+      # give an hint to the client about the name of the file
+
+      ::HTTP::AddToResponseHeader $RequestHandle "Content-disposition: attachment; filename=\"$filename\""
 
       # must unlock the resource at the end of the response
 
