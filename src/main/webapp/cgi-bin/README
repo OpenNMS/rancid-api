@@ -352,7 +352,7 @@ value matches the expected pathname of the storage root directory.
 If everything did as described above, both the RWS CGI and the RANCID-API /
 STORAGE services were installed correctly. You just need to configure the
 RANCID-API according to your rancid's setup. The STORAGE service does not
-require additional configuration staps and is ready to be used.
+require additional configuration steps and is ready to be used.
 
 
 
