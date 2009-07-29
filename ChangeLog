@@ -1,3 +1,31 @@
+2009-07-25 14:52  rionero
+
+	* src/main/webapp/cgi-bin/README: RWS Package for OpenNMS -
+	  install/setup instructions
+
+2009-07-25 14:51  rionero
+
+	* src/main/webapp/cgi-bin/CHANGES: RWS Package for OpenNMS version
+	  0.98 - history of changes
+
+2009-07-25 14:49  rionero
+
+	* src/main/webapp/cgi-bin/storage.rws: STORAGE RWS Service Module
+	  version 0.4.2009072501
+
+2009-07-09 18:28  rangerrick
+
+	* pom.xml: [maven-release-plugin] prepare for next development
+	  iteration
+
+2009-07-09 18:28  rangerrick
+
+	* pom.xml: [maven-release-plugin] prepare release rancid-api-0.97
+
+2009-07-09 18:26  rangerrick
+
+	* ChangeLog: update changelog
+
 2009-07-09 17:11  rionero
 
 	* src/main/webapp/cgi-bin/CHANGES: RWS Package for OpenNMS version
