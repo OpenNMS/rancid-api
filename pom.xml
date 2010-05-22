@@ -6,9 +6,9 @@
   <version>0.99-SNAPSHOT</version>
   <name>Rancid RWS Server and Client Api</name>
   <scm>
-    <connection>scm:svn:https://opennms.svn.sourceforge.net/svnroot/opennms/rancid-api/trunk</connection>
-    <developerConnection>scm:svn:https://opennms.svn.sourceforge.net/svnroot/opennms/rancid-api/trunk</developerConnection>
-    <url>http://opennms.svn.sourceforge.net/viewvc/opennms/rancid-api/trunk</url>
+    <connection>scm:git:git://opennms.git.sourceforge.net/gitroot/opennms/rancid-api</connection>
+    <developerConnection>scm:git:ssh://${user.name}@opennms.git.sourceforge.net/gitroot/opennms/rancid-api</developerConnection>
+    <url>http://opennms.git.sourceforge.net/git/gitweb.cgi?p=opennms/rancid-api;a=shortlog;h=refs/heads/master</url>
   </scm>
   <build>
     <resources>
