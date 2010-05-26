@@ -11,7 +11,7 @@ public class RancidNodeAuthentication {
 	private String authType;
 	private Method connectionMethod;
 	
-	private class Method {
+	private static class Method {
 		private final static String sshMethod = "ssh";
 		private final static String telnetMethod = "telnet";
 		private String method;
@@ -19,6 +19,8 @@ public class RancidNodeAuthentication {
 		public String getMethod() {
 			return method;
 		}
+		
+		/*
 		public void setMethod(String method) {
 			if (method.endsWith(sshMethod)) this.method = method;
 			method = telnetMethod;
@@ -28,6 +30,7 @@ public class RancidNodeAuthentication {
 			super();
 			this.method = telnetMethod;
 		}
+		*/
 		
 		public Method(String method) {
 		    //System.out.println("public Method(String method)"  + method);

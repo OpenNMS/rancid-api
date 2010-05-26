@@ -1,38 +1,25 @@
 package org.opennms.rancid.apiclient;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.util.List;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 
 import org.opennms.rancid.ConnectionProperties;
+import org.opennms.rancid.InventoryElement2;
+import org.opennms.rancid.InventoryNode;
+import org.opennms.rancid.RWSClientApi;
+import org.opennms.rancid.RWSResourceList;
+import org.opennms.rancid.RWS_MT_ClientApi;
 import org.opennms.rancid.RancidApiException;
 import org.opennms.rancid.RancidNode;
 import org.opennms.rancid.RancidNodeAuthentication;
-import org.opennms.rancid.RWSClientApi;
-import org.opennms.rancid.RWSResourceList;
-import org.opennms.rancid.InventoryNode;
-import org.opennms.rancid.InventoryElement2;
-import org.opennms.rancid.Tuple;
-
-import org.opennms.rancid.RWS_MT_ClientApi;
-
-
 import org.restlet.Client;
-import org.restlet.data.CharacterSet;
 import org.restlet.data.Form;
-import org.restlet.data.MediaType;
-import org.restlet.data.Protocol;
 import org.restlet.data.Reference;
 import org.restlet.data.Response;
 import org.restlet.resource.DomRepresentation;
 import org.restlet.resource.Representation;
-import org.w3c.dom.Document;
 
 public class RWSStub {
 
@@ -71,7 +58,7 @@ public class RWSStub {
             System.out.println("*************************************************************");
             System.out.println("*************************************************************");
     
-            String url = new String("http://www.rionero.com/rws-current");
+            String url = "http://www.rionero.com/rws-current";
             int test = 8;
             
             if (test == 1) {
@@ -293,12 +280,12 @@ public class RWSStub {
                 
                 List<String> configlist = ResList7.getResource();
                 
-                Iterator iter1 = configlist.iterator();
+                Iterator<String> iter1 = configlist.iterator();
                 
                 String tmpg1;
                 
                 while (iter1.hasNext()) {
-                    tmpg1 = (String)iter1.next();
+                    tmpg1 = iter1.next();
                     System.out.println("Version " + tmpg1);
                 }
                 System.out.println("*********************************************************");
@@ -546,12 +533,12 @@ public class RWSStub {
                 
                 List<String> configlist = ResList7.getResource();
                 
-                Iterator iter1 = configlist.iterator();
+                Iterator<String> iter1 = configlist.iterator();
                 
                 String tmpg1;
                 
                 while (iter1.hasNext()) {
-                    tmpg1 = (String)iter1.next();
+                    tmpg1 = iter1.next();
                     System.out.println("Version " + tmpg1);
                 }
                 System.out.println("*********************************************************");

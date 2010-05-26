@@ -13,7 +13,7 @@ public class RWSBucket {
 	}
 	
 	
-	public class BucketItem {
+	public static class BucketItem {
 		String m_name;
 		int m_size;
 		Date m_lastModified;

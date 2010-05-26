@@ -1,33 +1,31 @@
 package org.opennms.rancid;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Iterator;
-import java.text.SimpleDateFormat;
-import java.text.ParseException;
-import java.util.Date;
-
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
 
 import org.apache.log4j.Category;
 import org.apache.log4j.Logger;
 import org.opennms.rancid.RWSBucket.BucketItem;
 import org.restlet.Client;
-
+import org.restlet.data.ChallengeResponse;
+import org.restlet.data.ChallengeScheme;
 import org.restlet.data.Form;
+import org.restlet.data.Method;
 import org.restlet.data.Protocol;
 import org.restlet.data.Request;
-import org.restlet.data.Method;
-import org.restlet.data.Status;
 import org.restlet.data.Response;
-import org.restlet.data.ChallengeScheme;
-import org.restlet.data.ChallengeResponse;
-
+import org.restlet.data.Status;
 import org.restlet.resource.DomRepresentation;
 import org.restlet.resource.Representation;
-
 import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 /**
  * This class is the main client for the Rancid API.
@@ -218,12 +216,10 @@ public class RWSClientApi {
             Document doc = dmr.getDocument();
 
             for (int ii = 0; ii < doc.getElementsByTagName("Resource").getLength() ; ii++) {
-                String tmp = doc.getElementsByTagName("Resource").item(ii).getTextContent();
-
-                data.add(tmp);
+                data.add(doc.getElementsByTagName("Resource").item(ii).getTextContent());
             }
         }
-        catch( IOException e){
+        catch(final IOException e){
             throw(new RancidApiException("Error: IOException Method GET: URL:" +url + ":" + e.getMessage(), RancidApiException.OTHER_ERROR));
         }
         return data;
@@ -250,9 +246,10 @@ public class RWSClientApi {
             Document doc = dmr.getDocument();
 
             rn.setDeviceName(devicename);
-            rn.setDeviceType(doc.getElementsByTagName("deviceType").item(0).getTextContent());
-            rn.setStateUp(doc.getElementsByTagName("state").item(0).getTextContent().compareTo("up") == 0);
-            rn.setComment(doc.getElementsByTagName("comment").item(0).getTextContent());
+            rn.setDeviceType(safeGetElement(doc, "deviceType"));
+            String stateUp = safeGetElement(doc, "state");
+			rn.setStateUp(stateUp != null && stateUp.compareTo("up") == 0);
+            rn.setComment(safeGetElement(doc, "comment"));
             rn.setGroup(group);
             
         }
@@ -279,9 +276,10 @@ public class RWSClientApi {
             Document doc1 = dmr.getDocument();
 
             rn.setDeviceName(devicename);
-            rn.setDeviceType(doc1.getElementsByTagName("deviceType").item(0).getTextContent());
-            rn.setStateUp(doc1.getElementsByTagName("state").item(0).getTextContent().compareTo("up") == 0);
-            rn.setComment(doc1.getElementsByTagName("comment").item(0).getTextContent());
+            rn.setDeviceType(safeGetElement(doc1, "deviceType"));
+            String stateUp = safeGetElement(doc1, "state");
+			rn.setStateUp(stateUp != null && stateUp.compareTo("up") == 0);
+            rn.setComment(safeGetElement(doc1, "comment"));
             rn.setGroup(group);
             
         }
@@ -296,9 +294,9 @@ public class RWSClientApi {
         try {
             Document doc2 = dmr2.getDocument();
 
-            rn.setRootConfigurationUrl(doc2.getElementsByTagName("UrlViewVC").item(0).getTextContent());
-            rn.setTotalRevisions(doc2.getElementsByTagName("TotalRevisions").item(0).getTextContent());
-            rn.setHeadRevision(doc2.getElementsByTagName("HeadRevision").item(0).getTextContent());        
+            rn.setRootConfigurationUrl(safeGetElement(doc2, "UrlViewVC"));
+            rn.setTotalRevisions(safeGetElement(doc2, "TotalRevisions"));
+            rn.setHeadRevision(safeGetElement(doc2, "HeadRevision"));        
         }
             catch( IOException e){
                 throw(new RancidApiException("Error: IOException Method GET: URL:" +url2 + ":" + e.getMessage(), RancidApiException.OTHER_ERROR));
@@ -418,9 +416,9 @@ public class RWSClientApi {
             // 2008/11/13 13:54:35 UTC
             SimpleDateFormat format = new SimpleDateFormat("yyyy/M/d H:m:s z");
     
-            Date date = format.parse(doc.getElementsByTagName("Date").item(0).getTextContent());
+            Date date = format.parse(safeGetElement(doc, "Date"));
             in.setCreationDate(date);
-            in.setConfigurationUrl(doc.getElementsByTagName("UrlViewVC").item(0).getTextContent());
+            in.setConfigurationUrl(safeGetElement(doc, "UrlViewVC"));
             
             in.setVersionId(version);
                       
@@ -501,39 +499,44 @@ public class RWSClientApi {
             Document doc = dmr.getDocument();
                         
             int j;
-            for (j = 0 ; j < doc.getElementsByTagName("Item").getLength() ; j++){
+            NodeList itemElements = doc.getElementsByTagName("Item");
+			for (j = 0 ; j < itemElements.getLength() ; j++){
 
                 InventoryElement2 tee = new InventoryElement2();
                 
                 int i;
-                for (i = 1 ; i < doc.getElementsByTagName("Item").item(j).getChildNodes().getLength() ; i++){
-                                  
-                    if(doc.getElementsByTagName("Item").item(j).getChildNodes().item(i).getNodeName().compareTo("Memory") == 0){
-                        
-                        InventoryMemory im = new InventoryMemory();
-                        im.setType(doc.getElementsByTagName("Item").item(j).getChildNodes().item(i).getChildNodes().item(1).getTextContent());
-                        im.setSize(doc.getElementsByTagName("Item").item(j).getChildNodes().item(i).getChildNodes().item(3).getTextContent());
-                        
-                        tee.addMemory(im);
-    
-                    }
-                    else if(doc.getElementsByTagName("Item").item(j).getChildNodes().item(i).getNodeName().compareTo("Software") == 0){
-    
-                        InventorySoftware im = new InventorySoftware();
-                        im.setType(doc.getElementsByTagName("Item").item(j).getChildNodes().item(i).getChildNodes().item(1).getTextContent());
-                        im.setVersion(doc.getElementsByTagName("Item").item(j).getChildNodes().item(i).getChildNodes().item(3).getTextContent());
-                        
-                        tee.addSoftware(im);
-
-                    }
-                    else {
-                        
-                        Tuple im = new Tuple(doc.getElementsByTagName("Item").item(j).getChildNodes().item(i).getNodeName(), 
-                                             doc.getElementsByTagName("Item").item(j).getChildNodes().item(i).getTextContent());
-                        
-                        tee.addTuple(im);
-                    }
-                    i++;
+                Node item = itemElements.item(j);
+                if (item != null && item.hasChildNodes()) {
+					NodeList itemChildNodes = item.getChildNodes();
+					for (i = 1 ; i < itemChildNodes.getLength() ; i++){
+	                                  
+	                    if(itemChildNodes.item(i).getNodeName().compareTo("Memory") == 0){
+	                        
+	                        InventoryMemory im = new InventoryMemory();
+	                        im.setType(itemChildNodes.item(i).getChildNodes().item(1).getTextContent());
+	                        im.setSize(itemChildNodes.item(i).getChildNodes().item(3).getTextContent());
+	                        
+	                        tee.addMemory(im);
+	    
+	                    }
+	                    else if(itemChildNodes.item(i).getNodeName().compareTo("Software") == 0){
+	    
+	                        InventorySoftware im = new InventorySoftware();
+	                        im.setType(itemChildNodes.item(i).getChildNodes().item(1).getTextContent());
+	                        im.setVersion(itemChildNodes.item(i).getChildNodes().item(3).getTextContent());
+	                        
+	                        tee.addSoftware(im);
+	
+	                    }
+	                    else {
+	                        
+	                        Tuple im = new Tuple(itemChildNodes.item(i).getNodeName(), 
+	                                             itemChildNodes.item(i).getTextContent());
+	                        
+	                        tee.addTuple(im);
+	                    }
+	                    i++;
+	                }
                 }
                 invlist.add(tee);
             }
@@ -564,15 +567,14 @@ public class RWSClientApi {
             Document doc = dmr.getDocument();
 
             rna.setDeviceName(devicename);
-            rna.setUser(doc.getElementsByTagName("user").item(0).getTextContent());
-            rna.setPassword(doc.getElementsByTagName("password").item(0).getTextContent());
-            rna.setEnablePass(doc.getElementsByTagName("enablepassword").item(0).getTextContent());
-            rna.setConnectionMethod(doc.getElementsByTagName("method").item(0).getTextContent());
-            try {
-                rna.setAutoEnable(doc.getElementsByTagName("autoenable").item(0).getTextContent().compareTo("1") == 0);
-            }
-            catch (Exception e) {
-            	rna.setAutoEnable(false);
+            rna.setUser(safeGetElement(doc, "user"));
+            rna.setPassword(safeGetElement(doc, "password"));
+            rna.setEnablePass(safeGetElement(doc, "enablepassword"));
+            rna.setConnectionMethod(safeGetElement(doc, "method"));
+            rna.setAutoEnable(false);
+            final String autoEnable = safeGetElement(doc, "autoenable");
+            if (autoEnable != null && autoEnable.compareTo("1") == 0) {
+            	rna.setAutoEnable(true);
             }
         }
         catch( IOException e){
@@ -921,6 +923,15 @@ public class RWSClientApi {
 	    }
 
     }
+    
+    private static String safeGetElement(final Document doc, final String tagName) {
+    	final NodeList nodeList = doc.getElementsByTagName(tagName);
+    	if (nodeList != null && nodeList.getLength() > 0) {
+    		return nodeList.item(0).getTextContent();
+    	}
+    	return null;
+    }
+
     //private  String BaseUri;
     
 //user password

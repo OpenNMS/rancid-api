@@ -1,6 +1,6 @@
 package org.opennms.rancid;
 
-public class InventorySlot {
+public class InventorySlot implements Expandable {
     
     private String slotName;
     private String slotType;

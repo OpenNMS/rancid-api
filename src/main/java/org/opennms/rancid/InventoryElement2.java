@@ -2,9 +2,8 @@ package org.opennms.rancid;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Iterator;
 
-public class InventoryElement2 {
+public class InventoryElement2 implements Expandable {
 
     private List<Tuple> tupleList;
     private List<InventoryMemory> memoryList;
@@ -19,30 +18,25 @@ public class InventoryElement2 {
     }
     
     public String expand () {
-        
-        Iterator<Tuple> iter1 = tupleList.iterator();
-        Iterator<InventoryMemory> iter2 = memoryList.iterator();
-        Iterator<InventorySoftware> iter3 = softwareList.iterator();
+    	final StringBuffer sb = new StringBuffer();
+    	
+    	for (final Tuple t : tupleList) {
+            sb.append("<").append(t.getName()).append(">").append(t.getDescription()).append("</").append(t.getName()).append(">\n");
+    	}
+    	for (final InventoryMemory i : memoryList) {
+    		sb.append("<Memory>\n");
+    		sb.append("<Type>").append(i.getType()).append("</Type>\n");
+    		sb.append("<Size>").append(i.getSize()).append("</Size>\n");
+    		sb.append("</Memory>\n");
+    	}
+    	for (final InventorySoftware i : softwareList) {
+    		sb.append("<Software>\n");
+    		sb.append("<Type>").append(i.getType()).append("</Type>\n");
+    		sb.append("<Version>").append(i.getVersion()).append("</Version>\n");
+    		sb.append("</Software>\n");
+    	}
 
-        String tot="";
-        while (iter1.hasNext()){
-            Tuple tmp = iter1.next();
-            tot = tot + "<" + tmp.getName() + ">" + tmp.getDescription() + "</" + tmp.getName() + ">\n";
-        }
-        while (iter2.hasNext()){
-            InventoryMemory tmp = iter2.next();
-            tot = tot + "<Memory>\n";
-            tot = tot + "<Type>" + tmp.getType() + "</Type>\n";
-            tot = tot + "<Size>" + tmp.getSize() + "</Size>\n";
-        }
-        while (iter3.hasNext()){
-            InventorySoftware tmp = iter3.next();
-            tot = tot + "<Software>\n";
-            tot = tot + "<Type>" + tmp.getType() + "</Type>\n";
-            tot = tot + "<Version>" + tmp.getVersion() + "</Version>\n";
-        }
-        return tot;
-
+    	return sb.toString();
     }
 
     public List<Tuple> getTupleList() {

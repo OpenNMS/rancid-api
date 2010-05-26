@@ -3,7 +3,7 @@ package org.opennms.rancid;
 import java.util.List;
 import java.util.ArrayList;
 
-public class InventoryElement {
+public class InventoryElement implements Expandable {
 
     private InventoryNode parent;
     
@@ -265,27 +265,19 @@ public class InventoryElement {
     public void setInventoryItem(List<InventoryItem> inventoryItem) {
         this.inventoryItem = inventoryItem;
     }
-    
+
+    private String expandTuple(final List<? extends Expandable> expandable) {
+    	final StringBuffer sb = new StringBuffer();
+    	if (expandable != null) {
+	    	for (Expandable e : expandable) {
+	    		sb.append(e.expand());
+	    	}
+    	}
+    	return sb.toString();
+    }
+
     public String expand() {
-        
-        String powerS = new String();
-        String nwInterfaceS = new String();
-        String slotS = new String();
-        String inventoryItemS = new String();
-        
-        for (int i = 0 ; i < power.size(); i++)
-            powerS = powerS + power.get(i).expand();
-        
-        for (int i = 0 ; i < nwInterface.size(); i++)
-            nwInterfaceS = nwInterfaceS + nwInterface.get(i).expand();
 
-        for (int i = 0 ; i < slot.size(); i++)
-            slotS = slotS + slot.get(i).expand();
-
-        for (int i = 0 ; i < inventoryItem.size(); i++)
-            inventoryItemS = inventoryItemS + inventoryItem.get(i).expand();
-
-        
         return
         "chassis [" + chassis + "] "+
         "cpu [" + cpu + "] "+
@@ -295,13 +287,13 @@ public class InventoryElement {
         "bootFlash [" + bootFlash + "] "+
         "bootFlash [" + pcmciaName + "] "+
         "pcmciaSize [" + pcmciaSize + "] "+
-        powerS +
+        expandTuple(power) +
         "os [" + os + "] "+
         "romBootstarp [" + romBootstarp + "] "+
         "bootLoader [" + bootLoader + "] "+
-        nwInterfaceS + 
-        slotS + 
-        inventoryItemS;
+        expandTuple(nwInterface) + 
+        expandTuple(slot) + 
+        expandTuple(inventoryItem);
 
     }
     

@@ -1,17 +1,9 @@
 package org.opennms.rancid;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
-
-import org.opennms.rancid.RancidApiException;
-import org.opennms.rancid.RancidNode;
-import org.opennms.rancid.RancidNodeAuthentication;
-import org.opennms.rancid.RWSClientApi;
-import org.opennms.rancid.RWSResourceList;
-import org.opennms.rancid.InventoryNode;
-
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.concurrent.locks.Condition;
 
 /**
  * This class runs Rancid provisioning commands on a separated thread.
@@ -125,15 +117,11 @@ class Message {
  */
 class RetryThread extends Thread {
     
-    static ConcurrentLinkedQueue retryBuffer;
-    
-    RWS_MT_ClientApi mt;
+	private static ConcurrentLinkedQueue<Message> retryBuffer = new ConcurrentLinkedQueue<Message>();
     
     private int sleepTime = 10000;
     
-    private static boolean singleton = false;
-    
-    private static RetryThread instance;
+    private static volatile RetryThread instance;
     
     private RetryThread() {}
     
@@ -144,16 +132,21 @@ class RetryThread extends Thread {
         return instance;
     }
        
-    public void setSleepTime(int sleepTime){
+    public void setSleepTime(final int sleepTime){
         this.sleepTime = sleepTime;
     }
     
-    public void init(RWS_MT_ClientApi mt){
+    public void init(){
         System.out.println("RetryThread.init()");
-        this.mt = mt;        
-        retryBuffer = new ConcurrentLinkedQueue();  
-        Message m = new Message(RWS_MT_ClientApi.TOKEN);
-        retryBuffer.add(m);
+        putMessage(new Message(RWS_MT_ClientApi.TOKEN));
+    }
+
+    /**
+     * @deprecated passing a class that's only called statically
+     * @param mt not used
+     */
+    public void init(final RWS_MT_ClientApi mt){
+    	init();
     }
     
     // Check the queue if it finds the token goes to sleep
@@ -165,7 +158,7 @@ class RetryThread extends Thread {
         while(true){
             System.out.println("RetryThread.run() loop");
     
-            Message x = (Message)retryBuffer.poll();
+            Message x = retryBuffer.poll();
             if (x.getOperation() == RWS_MT_ClientApi.TOKEN){
                 
                 retryBuffer.add(x);
@@ -184,7 +177,7 @@ class RetryThread extends Thread {
                 System.out.println("RetryThread.run() message found timestamp " + x.getTimestamp() + " current " + i);
                 if (x.getTimestamp() <= i){
                     System.out.println("RetryThread.run() message rescheduled");
-                    mt.reDoWork(x);
+                    RWS_MT_ClientApi.reDoWork(x);
                 }
                 else {
                     System.out.println("RetryThread.run() message delayed");
@@ -194,7 +187,7 @@ class RetryThread extends Thread {
         }
     }
     
-    public void putMessage(Message m){
+    public static void putMessage(Message m){
         retryBuffer.add(m);
     }
 }
@@ -211,12 +204,12 @@ public class RWS_MT_ClientApi extends Thread {
     
     public static int TOKEN = 100; 
     
-    private static long retryDelay = 30000;
-    private static int maxRetry = 3;
+    private long retryDelay = 30000;
+    private int maxRetry = 3;
     
     private static boolean inited = false; 
     
-    private static ConcurrentLinkedQueue mainBuffer;
+    private static ConcurrentLinkedQueue<Message> mainBuffer = new ConcurrentLinkedQueue<Message>();
     
 
     
@@ -231,10 +224,9 @@ public class RWS_MT_ClientApi extends Thread {
             return;
         System.out.println("RWS_MT_ClientApi.init() called");
         RWSClientApi.init();        
-        mainBuffer = new ConcurrentLinkedQueue();
         inited = true;
         
-        RetryThread.getInstance().init(this);
+        RetryThread.getInstance().init();
         RetryThread.getInstance().start();
     }
     
@@ -259,7 +251,7 @@ public class RWS_MT_ClientApi extends Thread {
                         hasMessage.await();
                     }
                     System.out.println("RWS_MT_ClientApi.run() rancidIt");
-                    Message x = (Message)mainBuffer.poll(); 
+                    Message x = mainBuffer.poll(); 
                     rancidIt(x);
                 } 
                 finally {
@@ -358,7 +350,7 @@ public class RWS_MT_ClientApi extends Thread {
                 long i = System.currentTimeMillis()+ retryDelay;
                 System.out.println("RWS_MT_ClientApi.rancidIt inserting into retry buffer " + i);
                 m.setTimestamp(i);
-                RetryThread.getInstance().retryBuffer.add(m);
+                RetryThread.putMessage(m);
             }
         }
     }

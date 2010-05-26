@@ -1,6 +1,6 @@
 package org.opennms.rancid;
 
-public class Tuple {
+public class Tuple implements Expandable {
     private String name;
     private String description;
     

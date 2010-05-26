@@ -1,6 +1,6 @@
 package org.opennms.rancid;
 
-public class InventoryItem {
+public class InventoryItem implements Expandable {
     
     private String name;
     private String description;
