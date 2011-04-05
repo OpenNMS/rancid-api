@@ -11,6 +11,13 @@
     <url>http://opennms.git.sourceforge.net/git/gitweb.cgi?p=opennms/rancid-api;a=shortlog;h=refs/heads/master</url>
   </scm>
   <build>
+    <extensions>
+      <extension>
+        <groupId>org.apache.maven.wagon</groupId>
+        <artifactId>wagon-ssh-external</artifactId>
+        <version>1.0-beta-7</version>
+      </extension>
+    </extensions>
     <resources>
       <resource>
         <filtering>true</filtering>
