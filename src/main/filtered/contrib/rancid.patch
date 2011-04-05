@@ -1,12 +1,12 @@
-diff -Naur bin-orig/control_rancid bin-0.3/control_rancid
---- bin-orig/control_rancid	2009-06-01 12:05:27.000000000 +0000
-+++ bin-0.3/control_rancid	2009-06-01 21:21:17.000000000 +0000
+diff -Nru rancid-2.3.6.orig/bin/control_rancid.in rancid-2.3.6/bin/control_rancid.in
+--- rancid-2.3.6.orig/bin/control_rancid.in	2010-12-09 02:21:33.000000000 +0100
++++ rancid-2.3.6/bin/control_rancid.in	2011-03-10 10:23:55.000000000 +0100
 @@ -2,7 +2,7 @@
  ##
- ## $Id: control_rancid.in,v 1.85 2008/04/24 19:07:05 heas Exp $
+ ## $Id: control_rancid.in 2270 2010-12-09 01:21:32Z heas $
  ##
--## rancid 2.3.2a9
-+## rancid 2.3.2a9 (opennms/rock patch 0.3 build 20090601-01)
+-## @PACKAGE@ @VERSION@
++## @PACKAGE@ @VERSION@ (OpenNMS/rock patch 0.3 build 20090601-01 up-ported by jeffg 20101019)
  ## Copyright (c) 1997-2008 by Terrapin Communications, Inc.
  ## All rights reserved.
  ##
@@ -34,8 +34,8 @@ diff -Naur bin-orig/control_rancid bin-0.3/control_rancid
 +# Portion (c) Copyright 2009+ The OpenNMS Group, Inc.
 +#
 +#
-+# CUSTOM-VERSION:	patch 0.3 (build 20090601-01)
-+# BASED-ON-VERSION:	2.3.2a9
++# CUSTOM-VERSION:	patch 0.3 (build 20090601-01, up-ported by jeffg 20101019)
++# BASED-ON-VERSION:	@VERSION@
 +#
 +# Includes extensions contributed by Philippe Guillebert
 +#----------------------------------------------------------------------------
@@ -46,25 +46,25 @@ diff -Naur bin-orig/control_rancid bin-0.3/control_rancid
      while [ 1 ] ; do
  	case $1 in
  	-V)
--	    echo "rancid 2.3.2a9"
-+	    echo "rancid 2.3.2a9 (opennms/rock patch 0.3 build 20090601-01)"
+-	    echo "@PACKAGE@ @VERSION@"
++	    echo "@PACKAGE@ @VERSION@ (OpenNMS/rock patch 0.3 build 20090601-01 up-ported by jeffg 20101019)"
  	    exit 0
  	    ;;
  	-m)
-@@ -301,6 +326,12 @@
+@@ -296,6 +321,12 @@
  	fi
  	$RCSSYS commit -m 'new router' $router
  	echo "Added $router"
-+	#--- begin (rock, 20090601-01 : contributed by P. Guillebert) ---
-+	# A new router has been added in the repository, send an event
-+	if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then
-+  	  $OPENNMS_NOTIFY_CMD --added $GROUP $router
-+	fi
-+	#--- end --------------------------------------------------------
++ 	#--- begin (rock, 20090601-01 : contributed by P. Guillebert) ---
++ 	# A new router has been added in the repository, send an event
++ 	if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then
++   	  $OPENNMS_NOTIFY_CMD --added $GROUP $router
++ 	fi
++ 	#--- end --------------------------------------------------------
      done
      echo
      cd $DIR
-@@ -337,10 +368,17 @@
+@@ -332,10 +363,17 @@
  	    svn add $router
  	fi
  	echo "$RCSSYS added missing router $router"
@@ -82,8 +82,8 @@ diff -Naur bin-orig/control_rancid bin-0.3/control_rancid
 +# NOTE: the comment above was wrong in the original script: adjusted (rock, 20090331-01)
  for router in `find . \( -name \*.new -prune -o -name CVS -prune -o -name .svn -prune \) -o -type f -print | sed -e 's/^.\///'` ; do
      grep -i "^$router:" ../router.db > /dev/null 2>&1
-     if [ $? -eq 1 ]; then
-@@ -348,6 +386,12 @@
+     if [ $? -eq 1 ] ; then
+@@ -343,6 +381,12 @@
  	$RCSSYS delete $router
  	$RCSSYS commit -m 'deleted router' $router
  	echo "Deleted $router"
@@ -96,7 +96,7 @@ diff -Naur bin-orig/control_rancid bin-0.3/control_rancid
      fi
  done
  cd $DIR
-@@ -381,16 +425,31 @@
+@@ -376,16 +420,31 @@
  echo "Trying to get all of the configs."
  par -q -n $PAR_COUNT -c "rancid-fe {}" $devlistfile
  
@@ -117,7 +117,7 @@ diff -Naur bin-orig/control_rancid bin-0.3/control_rancid
 +# first attempt)
 +
  round=1
--if [ -f $DIR/routers.up.missed ]; then
+-if [ -f $DIR/routers.up.missed ] ; then
 -    rm -f $DIR/routers.up.missed
 -fi
 -while [ $round -le $pass ]
@@ -136,7 +136,7 @@ diff -Naur bin-orig/control_rancid bin-0.3/control_rancid
      for router in `cat $devlistfile`
      do
  	OFS=$IFS
-@@ -403,20 +462,43 @@
+@@ -398,20 +457,42 @@
  	then
  	    echo "$router:$mfg" >> $DIR/routers.up.missed
  	    rm -f $router.new
@@ -151,10 +151,9 @@ diff -Naur bin-orig/control_rancid bin-0.3/control_rancid
 +	    fi
  	fi
      done
- 
 +    # if a "routers.up.missed" file exists, then some router was missed
-+
-     if [ -f $DIR/routers.up.missed ]; then
+ 
+     if [ -f $DIR/routers.up.missed ] ; then
 -	echo "====================================="
 -	echo "Getting missed routers: round $round."
 -	par -q -n $PAR_COUNT -c "rancid-fe \{}" $DIR/routers.up.missed
@@ -186,8 +185,8 @@ diff -Naur bin-orig/control_rancid bin-0.3/control_rancid
  echo
  
  # Make sure that no empty/truncated configs are accepted.  The remainder are
-@@ -441,6 +523,20 @@
- 	then
+@@ -437,6 +518,20 @@
+ 	if [ ! $lines ] ; then
  	    rm -f $router.new
  	else
 +	    #--- begin (rock, 20090601-01 : contributed by P. Guillebert) ---
@@ -205,23 +204,52 @@ diff -Naur bin-orig/control_rancid bin-0.3/control_rancid
 +	    
 +	    # overwrite the existing conf anyway, RCSSYS will handle the diffs (P. Guillebert / rock)
  	    mv $router.new $router
- 	    if [ $? -ne 0 ]; then
+ 	    if [ $? -ne 0 ] ; then
  		echo "Error: could not rename $router.new to $router"
-diff -Naur bin-orig/rancid-run bin-0.3/rancid-run
---- bin-orig/rancid-run	2009-06-01 12:05:28.000000000 +0000
-+++ bin-0.3/rancid-run	2009-06-01 21:23:48.000000000 +0000
-@@ -2,7 +2,7 @@
+diff -Nru rancid-2.3.6.orig/bin/Makefile.in rancid-2.3.6/bin/Makefile.in
+--- rancid-2.3.6.orig/bin/Makefile.in	2011-01-10 21:15:15.000000000 +0100
++++ rancid-2.3.6/bin/Makefile.in	2011-03-10 10:34:47.000000000 +0100
+@@ -252,10 +252,10 @@
+ 	nsrancid nxrancid par prancid rancid-fe rancid rivlogin \
+ 	rivrancid rrancid srancid tlogin tntlogin tntrancid trancid \
+ 	xrancid xrrancid zrancid lg.cgi lgform.cgi rancid-cvs \
+-	rancid-run
+-EXTRA_DIST = lg.cgi.in lgform.cgi.in rancid-cvs.in rancid-run.in
++	rancid-run rancid-trap
++EXTRA_DIST = lg.cgi.in lgform.cgi.in rancid-cvs.in rancid-run.in rancid-trap.in
+ #dist_bin_SCRIPTS= $(bin_SCRIPTS:%=%.in)
+-CLEANFILES = lg.cgi lgform.cgi rancid-cvs rancid-run
++CLEANFILES = lg.cgi lgform.cgi rancid-cvs rancid-run rancid-trap
+ #CLEANFILES= $(bin_SCRIPTS)
+ hpuifilter_SOURCES = hpuifilter.c
+ YFLAGS = -d
+@@ -743,6 +743,12 @@
+ 	chmod +x rancid-run.tmp; \
+ 	mv rancid-run.tmp rancid-run
+ 
++rancid-trap: Makefile $(srcdir)/rancid-trap.in
++	rm -f rancid-trap rancid-trap.tmp; \
++	$(auto_edit) $(srcdir)/rancid-trap.in >rancid-trap.tmp; \
++	chmod +x rancid-trap.tmp; \
++	mv rancid-trap.tmp rancid-trap
++
+ $(bin_PROGRAMS) $(bin_SCRIPTS): ../include/version.h
+ 
+ # Tell versions [3.59,3.63) of GNU make to not export all variables.
+diff -Nru rancid-2.3.6.orig/bin/rancid-run.in rancid-2.3.6/bin/rancid-run.in
+--- rancid-2.3.6.orig/bin/rancid-run.in	2009-06-24 07:15:47.000000000 +0200
++++ rancid-2.3.6/bin/rancid-run.in	2011-03-10 10:23:55.000000000 +0100
+@@ -1,6 +1,6 @@
+ #! /bin/sh
  ##
- ## $Id: rancid-run.in,v 1.38 2008/02/08 09:54:18 heas Exp $
+-## $Id: rancid-run.in 2096 2009-06-17 21:49:46Z heas $
++## $Id: rancid-run.in 2096 2009-06-17 21:49:46Z heas $ (opennms/rock patch 0.3 build 20090601-01 up-ported by jeffg 20101019)
  ##
--## rancid 2.3.2a9
-+## rancid 2.3.2a9 (opennms/rock patch 0.3 build 20090601-01)
+ ## @PACKAGE@ @VERSION@
  ## Copyright (c) 1997-2008 by Terrapin Communications, Inc.
- ## All rights reserved.
- ##
 @@ -43,6 +43,30 @@
  # Run rancid for each of the rancid groups defined by $LIST_OF_GROUPS in
- # /usr/local/rancid/etc/rancid.conf or those specified on the command-line.
+ # @sysconfdir@/rancid.conf or those specified on the command-line.
  #
 +#----------------------------------------------------------------------------
 +#
@@ -243,23 +271,23 @@ diff -Naur bin-orig/rancid-run bin-0.3/rancid-run
 +# Portion (c) Copyright 2009+ The OpenNMS Group, Inc.
 +#
 +#
-+# CUSTOM-VERSION:	patch 0.3 (build 20090601-01)
-+# BASED-ON-VERSION:	2.3.2a9
++# CUSTOM-VERSION:	patch 0.3 (build 20090601-01 up-ported by jeffg 20101019)
++# BASED-ON-VERSION:	@VERSION@
 +#
 +#----------------------------------------------------------------------------
  
  # Default ENVFILE, overrideable with -f flag.
- ENVFILE="/usr/local/rancid/etc/rancid.conf"
+ ENVFILE="@sysconfdir@/rancid.conf"
 @@ -67,7 +91,7 @@
      while [ 1 ] ; do
  	case $1 in
  	-V)
--	    echo "rancid 2.3.2a9"
-+	    echo "rancid 2.3.2a9 (opennms/rock patch 0.3 build 20090601-01)"
+-	    echo "@PACKAGE@ @VERSION@"
++	    echo "@PACKAGE@ @VERSION@ (opennms/rock patch 0.3 build 20090601-01 up-ported by jeffg 20101019)"
  	    exit 0
  	    ;;
  	-f)
-@@ -157,14 +181,36 @@
+@@ -157,14 +181,37 @@
  `ls -l $LOCKFILE`
  END
  		) | sendmail -t
@@ -277,7 +305,7 @@ diff -Naur bin-orig/rancid-run bin-0.3/rancid-run
  	    fi
  	    rm -f $TMPDIR/.$GROUP.old
  	else
--	    trap 'rm -fr $LOCKFILE;exit 1' 1 2 3 6 10 15
+ 	    trap 'rm -fr $LOCKFILE;exit 1' 1 2 3 6 10 15
 +	    #--- begin (rock, 20090601-01 : OpenNMS/rancid integration) ---------------------------
 +	    trap 'rm -fr $LOCKFILE ; if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then $OPENNMS_NOTIFY_CMD --completed $GROUP ; fi ; exit 1' 1 2 3 6 10 15
  	    touch $LOCKFILE
@@ -297,10 +325,10 @@ diff -Naur bin-orig/rancid-run bin-0.3/rancid-run
  	    fi
  	    trap ''  1 2 3 6 10 15
  	fi
-diff -Naur bin-orig/rancid-trap bin-0.3/rancid-trap
---- bin-orig/rancid-trap	1970-01-01 00:00:00.000000000 +0000
-+++ bin-0.3/rancid-trap	2009-06-01 20:45:05.000000000 +0000
-@@ -0,0 +1,309 @@
+diff -Nru rancid-2.3.6.orig/bin/rancid-trap.in rancid-2.3.6/bin/rancid-trap.in
+--- rancid-2.3.6.orig/bin/rancid-trap.in	1970-01-01 01:00:00.000000000 +0100
++++ rancid-2.3.6/bin/rancid-trap.in	2011-03-10 10:23:55.000000000 +0100
+@@ -0,0 +1,310 @@
 +#!/bin/bash
 +#
 +#=============================================================================
@@ -609,4 +637,5 @@ diff -Naur bin-orig/rancid-trap bin-0.3/rancid-trap
 +done
 +
 +exit ${ecode}
++
 +
