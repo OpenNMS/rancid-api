@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
-RWS Package for OpenNMS version 0.98                   OpenNMS/RANCID Project
+RWS Package for OpenNMS version 1.0.2                   OpenNMS/RANCID Project
 
 Copyright (c) 2009+ Rocco Rionero
 Copyright (c) 2009+ The OpenNMS Group, Inc.
@@ -47,6 +47,15 @@ RANCID application is Copyright by Terrapin Communications, Inc.
 
 PACKAGE HISTORY
 ===============
+
+RELEASE 1.0.2
+------------
+rws-cgi.tcl	0.94 build 2009063001
+rancid.rws	0.98 build 2011051601 CHANGED
+rancid.rws.rc	0.2  build 2009050601
+storage.rws	0.4  build 2009072501
+
+
 
 
 RELEASE 0.98
@@ -124,6 +133,45 @@ rancid.rws.rc	unversioned		ADDED
 
 FILE HISTORY
 ============
+
+rancid.rws version 0.98 build 2011051601
+-----------------------------------------
+
+- added support for device type according with rancid 2.3.6;
+  now rancid rws service is able to add the following device types (+ for new device type):
++    agm         "A  Cisco Anomoly Guard Module (aka Riverhead)."
+     alteon     "Alteon WebOS switch"
++    arista      "An Arista Networks device."
++    avocent     "An Avocent Cyclades console server."
+     baynet     "Bay Networks router"
+     cat5       "Cisco catalyst switch series 5000 and 4000 (CatOS-based)"
+     cisco      "Cisco router, PIX, or switch (IOS-based)"
++    cisco-nx    "A Cisco Nexus switch/router."
++    cisco-xr    "A Cisco device running IOS-XR."
+     css                "Cisco content services switch"
+     enterasys  "Enterasys NAS (same as \"riverstone\" device-type)"
+     erx                "Juniper E-series edge router"
+     extreme    "Extreme switch"
+     ezt3       "ADC-Kentrox EZ-T3 mux"
++    f5          "A F5 BigIP switch."
+     force10    "Force10 router"
++    fortigate   "A Fortinet firewall."
+     foundry    "Foundry router, switch, or router-switch (including switches re-branded as \"HP Procurve\", e.g. HP9304M
+     hitachi    "Hitachi routers"
+     hp         "HP Procurve switch such as the 2524 or 4108"
+     juniper     "Juniper router"
+     mrtd       "Device running the (merit) MRTd daemon"
+     netscalar  "Netscalar load balancer"
+     netscreen   "Netscreen firewall"
++    procket     " A Procket router."
+     redback    "Redback router, NAS, etc."
+     riverstone  "Riverstone NAS or Cabletron router (starting with version 9.0.3)" 
++    smc         "A SMC switch (some Dell OEMs)."
+     tnt         "Lucent TNT"
+     zebra      "Device running Zebra routing software"
+
+
+
 
 rws-cgi.tcl version 0.94 build 2009063001
 -----------------------------------------
