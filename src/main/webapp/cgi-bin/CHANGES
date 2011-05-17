@@ -51,7 +51,7 @@ PACKAGE HISTORY
 RELEASE 1.0.2
 ------------
 rws-cgi.tcl	0.94 build 2009063001
-rancid.rws	0.98 build 2011051601 CHANGED
+rancid.rws	0.99 build 2011051701 CHANGED
 rancid.rws.rc	0.2  build 2009050601
 storage.rws	0.4  build 2009072501
 
@@ -134,8 +134,10 @@ rancid.rws.rc	unversioned		ADDED
 FILE HISTORY
 ============
 
-rancid.rws version 0.98 build 2011051601
+rancid.rws version 0.99 build 2011051701
 -----------------------------------------
+
+- added inventory support for device type cisco-xr (using the cisco default parser);
 
 - added support for device type according with rancid 2.3.6;
   now rancid rws service is able to add the following device types (+ for new device type):

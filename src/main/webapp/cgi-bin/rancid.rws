@@ -3029,6 +3029,7 @@ namespace eval ::RANCID {
 
   array set TABLE_INVENTORY_PARSER {
     "cisco"	"::RANCID::InventoryParser_cisco"
+    "cisco-xr"	"::RANCID::InventoryParser_cisco"
     "juniper"	"::RANCID::InventoryParser_juniper"
   }
 
