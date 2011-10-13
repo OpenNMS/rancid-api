@@ -80,12 +80,12 @@ The notifications sent are SNMPv1 "traps" and include:
 (*) contributed by Philippe Guillebert <philippe.guillebert@bull.net>
 
 
-The patch was developed for rancid version 2.3.2a9. As only the "rancid-run"
+The patch was developed originally for rancid version 2.3.2a9. As only the "rancid-run"
 and the "control_rancid" scripts are involved (which are device-independent,
 did not change in a significant way in the past and are not expected to change
 in the near future), the patch should be compatible with most rancid's releases.
 
-
+The current patch works for 2.3.6 Release of Rancid
 
 
 2. CONTENTS OF THIS PACKAGE
@@ -124,13 +124,13 @@ in the near future), the patch should be compatible with most rancid's releases.
   (the trailing string "X.Y" being the version of the package);
 
 
-- change your current working directory to the place where rancid's scripts
+- change your current working directory to the place where rancid's installation
   are located (according to the rancid's installation performed on your
   system); I will assume that you created a "rancid" user having /home/rancid
-  as home directory and that the rancid's scripts are located in the directory
-  /home/rancid/bin, so you would type at your command prompt:
+  as home directory and that the rancid's installation scripts are located in the directory
+  /home/rancid/src/bin, so you would type at your command prompt:
 
-	cd /home/rancid/bin
+	cd /home/rancid/src
 
 
 - ensure that a decent version of the patch utility is installed on your
@@ -145,12 +145,14 @@ in the near future), the patch should be compatible with most rancid's releases.
 - verify that the patch was correctly applied by checking the existence of the
   following files:
 
-	control_rancid
-	control_rancid.original
-	rancid-run
-	rancid-run.original
-	rancid-trap
-	rancid-trap.original
+	Makefile.in
+	Makefile.in.original
+	control_rancid.in
+	control_rancid.in.original
+	rancid-run.in
+	rancid-run.in.original
+	rancid-trap.in
+	rancid-trap.in.original
 
   where the files with the ".original" suffix are the original un-patched
   rancid's scripts saved as backup by the patch utility; note that the first
@@ -162,21 +164,10 @@ in the near future), the patch should be compatible with most rancid's releases.
   versions and there should not be any of them ending with the ".rej"
   extension (indicating that nothing was "rejected" by the patch utility);
 
-
-- give the "rancid-trap" file the same ownership and permissions as the other
-  rancid's scripts; assuming that all other rancid's script are owned by user
-  "rancid" and group "users", if required, run the following command:
-
-	chown rancid:users rancid-trap
-
-  then type:
-
-	chmod 0755 rancid-trap
-
-  to give the file proper execution permissions; verify that ownership and
-  permissions for "rancid-run" and "control_rancid" are set the same or adjust
-  properly as described above;
-
+- install Rancid running the following commands (follow the src README) 
+           
+          ./configure -prefix=/home/rancid
+          make install
 
 - now you can type at your command prompt:
 
