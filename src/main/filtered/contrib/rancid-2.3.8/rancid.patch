@@ -1,0 +1,641 @@
+diff -Nru rancid-2.3.6.orig/bin/control_rancid.in rancid-2.3.6/bin/control_rancid.in
+--- rancid-2.3.6.orig/bin/control_rancid.in	2010-12-09 02:21:33.000000000 +0100
++++ rancid-2.3.6/bin/control_rancid.in	2011-03-10 10:23:55.000000000 +0100
+@@ -2,7 +2,7 @@
+ ##
+ ## $Id: control_rancid.in 2270 2010-12-09 01:21:32Z heas $
+ ##
+-## @PACKAGE@ @VERSION@
++## @PACKAGE@ @VERSION@ (OpenNMS/rock patch 0.3 build 20090601-01 up-ported by jeffg 20101019)
+ ## Copyright (c) 1997-2008 by Terrapin Communications, Inc.
+ ## All rights reserved.
+ ##
+@@ -42,6 +42,31 @@
+ # 
+ # control_rancid $GROUP
+ #
++#----------------------------------------------------------------------------
++#
++# *** NOTICE ***
++#
++# This is a modified version of the "control_rancid" script from the rancid's
++# original distribution archive. The modifications were done in order to
++# implement the SNMP notifications required by the OpenNMS/RANCID integration
++# project.
++#
++# The modified version is distributed as a standard set of "patch" files; if
++# you are reading this comments from the working "control_rancid" script file,
++# the patch was succesfully applied on your system (a backup copy of the
++# original file should have been saved by the patch utility).
++#
++# Additional copyrights for this modified script are:
++#
++# Portion (c) Copyright 2009+ Rocco RIONERO
++# Portion (c) Copyright 2009+ The OpenNMS Group, Inc.
++#
++#
++# CUSTOM-VERSION:	patch 0.3 (build 20090601-01, up-ported by jeffg 20101019)
++# BASED-ON-VERSION:	@VERSION@
++#
++# Includes extensions contributed by Philippe Guillebert
++#----------------------------------------------------------------------------
+ 
+ # print a usage message to stderr
+ pr_usage() {
+@@ -58,7 +83,7 @@
+     while [ 1 ] ; do
+ 	case $1 in
+ 	-V)
+-	    echo "@PACKAGE@ @VERSION@"
++	    echo "@PACKAGE@ @VERSION@ (OpenNMS/rock patch 0.3 build 20090601-01 up-ported by jeffg 20101019)"
+ 	    exit 0
+ 	    ;;
+ 	-m)
+@@ -296,6 +321,12 @@
+ 	fi
+ 	$RCSSYS commit -m 'new router' $router
+ 	echo "Added $router"
++ 	#--- begin (rock, 20090601-01 : contributed by P. Guillebert) ---
++ 	# A new router has been added in the repository, send an event
++ 	if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then
++   	  $OPENNMS_NOTIFY_CMD --added $GROUP $router
++ 	fi
++ 	#--- end --------------------------------------------------------
+     done
+     echo
+     cd $DIR
+@@ -332,10 +363,17 @@
+ 	    svn add $router
+ 	fi
+ 	echo "$RCSSYS added missing router $router"
++	#--- begin (rock, 20090601-01 : contributed by P. Guillebert) ---
++	# A new router has been added in the repository, send an event
++	if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then
++  	  $OPENNMS_NOTIFY_CMD --added $GROUP $router
++	fi
++	#--- end --------------------------------------------------------
+     fi
+ done
+ echo
+-# delete configs from RCS for routers not listed in routers.up.
++# delete configs from RCS for routers not listed in routers.db.
++# NOTE: the comment above was wrong in the original script: adjusted (rock, 20090331-01)
+ for router in `find . \( -name \*.new -prune -o -name CVS -prune -o -name .svn -prune \) -o -type f -print | sed -e 's/^.\///'` ; do
+     grep -i "^$router:" ../router.db > /dev/null 2>&1
+     if [ $? -eq 1 ] ; then
+@@ -343,6 +381,12 @@
+ 	$RCSSYS delete $router
+ 	$RCSSYS commit -m 'deleted router' $router
+ 	echo "Deleted $router"
++	#--- begin (rock, 20090601-01 : contributed by P. Guillebert) ---
++	# A router has been deleted in the repository, send an event
++	if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then
++  	  $OPENNMS_NOTIFY_CMD --deleted $GROUP $router
++	fi
++	#--- end --------------------------------------------------------
+     fi
+ done
+ cd $DIR
+@@ -376,16 +420,31 @@
+ echo "Trying to get all of the configs."
+ par -q -n $PAR_COUNT -c "rancid-fe {}" $devlistfile
+ 
+-# This section will generate a list of missed routers
+-# and try to grab them again.  It will run through
+-# $pass times.
+-pass=$MAX_ROUNDS
++#--- begin (rock, 20090331-01 : OpenNMS/rancid integration) ---------------------------
++#
++# NOTE: In order to always send a device-specific success notification to OpenNMS,
++#	I had to slightly modify the logic of the retry-loop over the original script.
++#	I tried to conform as much as possible to the original coding style... -- rock
++
++
++# This section will generate a list of missed routers and try to grab them again.
++# It will run through up to $pass times (note: $MAX_ROUNDS is always non-zero and
++# $round is the number of the RETRY-round to be performed, i.e. NOT counting the
++# first attempt)
++
+ round=1
+-if [ -f $DIR/routers.up.missed ] ; then
+-    rm -f $DIR/routers.up.missed
+-fi
+-while [ $round -le $pass ]
++
++while :
+ do
++    # delete any previous list of missed routers
++
++    if [ -f $DIR/routers.up.missed ]; then
++      rm -f $DIR/routers.up.missed
++    fi
++
++    # generate the current list of missed routers (if any)
++    # and send proper notifications to OpenNMS
++
+     for router in `cat $devlistfile`
+     do
+ 	OFS=$IFS
+@@ -398,20 +457,42 @@
+ 	then
+ 	    echo "$router:$mfg" >> $DIR/routers.up.missed
+ 	    rm -f $router.new
++	    # send a router-missed notification
++	    if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then
++  	      $OPENNMS_NOTIFY_CMD --ko $GROUP $router
++	    fi
++	else
++	    # send a router-success notification
++	    if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then
++  	      $OPENNMS_NOTIFY_CMD --ok $GROUP $router
++	    fi
+ 	fi
+     done
++    # if a "routers.up.missed" file exists, then some router was missed
+ 
+     if [ -f $DIR/routers.up.missed ] ; then
+-	echo "====================================="
+-	echo "Getting missed routers: round $round."
+-	par -q -n $PAR_COUNT -c "rancid-fe \{}" $DIR/routers.up.missed
+-	rm -f $DIR/routers.up.missed
+-	round=`expr $round + 1`
++	if [ $round -le $MAX_ROUNDS ] ; then
++	  echo "====================================="
++	  echo "Getting missed routers: round $round."
++	  par -q -n $PAR_COUNT -c "rancid-fe \{}" $DIR/routers.up.missed
++	  round=`expr $round + 1`
++	else
++	  # there are still missed routers, but no more attempts left
++	  # note: here $round is the total number of attempts (including
++	  # the first one done before the retries)
++	  if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then
++  	    $OPENNMS_NOTIFY_CMD --failure "After $round total attempts there are still failing routers in group $GROUP: giving up"
++	  fi
++	  rm -f $DIR/routers.up.missed
++	  break
++	fi
+     else
+ 	echo "All routers sucessfully completed."
+-	round=`expr $pass + 1`
++	break
+     fi
++
+ done
++#--- end ------------------------------------------------------------------------------
+ echo
+ 
+ # Make sure that no empty/truncated configs are accepted.  The remainder are
+@@ -437,6 +518,20 @@
+ 	if [ ! $lines ] ; then
+ 	    rm -f $router.new
+ 	else
++	    #--- begin (rock, 20090601-01 : contributed by P. Guillebert) ---
++	    # Test if $router.new is different from $router
++	    # if yes, send a "RouterConfigurationChanged" trap
++	    diff $router.new $router 1>/dev/null 2>/dev/null
++	    if [ $? -ne 0 ]
++	    then
++		# There is a difference, send a trap
++		if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then
++		    $OPENNMS_NOTIFY_CMD --changed $GROUP $router
++		fi
++	    fi
++	    #--- end --------------------------------------------------------
++	    
++	    # overwrite the existing conf anyway, RCSSYS will handle the diffs (P. Guillebert / rock)
+ 	    mv $router.new $router
+ 	    if [ $? -ne 0 ] ; then
+ 		echo "Error: could not rename $router.new to $router"
+diff -Nru rancid-2.3.6.orig/bin/Makefile.in rancid-2.3.6/bin/Makefile.in
+--- rancid-2.3.6.orig/bin/Makefile.in	2011-01-10 21:15:15.000000000 +0100
++++ rancid-2.3.6/bin/Makefile.in	2011-03-10 10:34:47.000000000 +0100
+@@ -252,10 +252,10 @@
+ 	nrancid nslogin nsrancid nxrancid par prancid rancid-fe rancid \
+ 	rivlogin rivrancid rrancid srancid tlogin tntlogin tntrancid \
+ 	trancid xrancid xrrancid zrancid lg.cgi lgform.cgi rancid-cvs \
+-	rancid-run
+-EXTRA_DIST = lg.cgi.in lgform.cgi.in rancid-cvs.in rancid-run.in
++	rancid-run rancid-trap
++EXTRA_DIST = lg.cgi.in lgform.cgi.in rancid-cvs.in rancid-run.in rancid-trap.in
+ #dist_bin_SCRIPTS= $(bin_SCRIPTS:%=%.in)
+-CLEANFILES = lg.cgi lgform.cgi rancid-cvs rancid-run
++CLEANFILES = lg.cgi lgform.cgi rancid-cvs rancid-run rancid-trap
+ #CLEANFILES= $(bin_SCRIPTS)
+ hpuifilter_SOURCES = hpuifilter.c
+ YFLAGS = -d
+@@ -743,6 +743,12 @@
+ 	chmod +x rancid-run.tmp; \
+ 	mv rancid-run.tmp rancid-run
+ 
++rancid-trap: Makefile $(srcdir)/rancid-trap.in
++	rm -f rancid-trap rancid-trap.tmp; \
++	$(auto_edit) $(srcdir)/rancid-trap.in >rancid-trap.tmp; \
++	chmod +x rancid-trap.tmp; \
++	mv rancid-trap.tmp rancid-trap
++
+ $(bin_PROGRAMS) $(bin_SCRIPTS): ../include/version.h
+ 
+ # Tell versions [3.59,3.63) of GNU make to not export all variables.
+diff -Nru rancid-2.3.6.orig/bin/rancid-run.in rancid-2.3.6/bin/rancid-run.in
+--- rancid-2.3.6.orig/bin/rancid-run.in	2009-06-24 07:15:47.000000000 +0200
++++ rancid-2.3.6/bin/rancid-run.in	2011-03-10 10:23:55.000000000 +0100
+@@ -1,6 +1,6 @@
+ #! /bin/sh
+ ##
+-## $Id: rancid-run.in 2334 2011-11-17 21:09:37Z heas $
++## $Id: rancid-run.in 2334 2011-11-17 21:09:37Z heas $ (opennms/rock patch 1.0.2 for RANCID 2.3.6 up-ported by jeffg 20130213)
+ ##
+ ## @PACKAGE@ @VERSION@
+ ## Copyright (c) 1997-2008 by Terrapin Communications, Inc.
+@@ -43,6 +43,30 @@
+ # Run rancid for each of the rancid groups defined by $LIST_OF_GROUPS in
+ # @sysconfdir@/rancid.conf or those specified on the command-line.
+ #
++#----------------------------------------------------------------------------
++#
++# *** NOTICE ***
++#
++# This is a modified version of the "rancid-run" script from the rancid's
++# original distribution archive. The modifications were done in order to
++# implement the SNMP notifications required by the OpenNMS/RANCID integration
++# project.
++#
++# The modified version is distributed as a standard set of "patch" files; if
++# you are reading this comments from the working "rancid-run" script file,
++# the patch was succesfully applied on your system (a backup copy of the
++# original file should have been saved by the patch utility).
++#
++# Additional copyrights for this modified script are:
++#
++# Portion (c) Copyright 2009+ Rocco RIONERO
++# Portion (c) Copyright 2009+ The OpenNMS Group, Inc.
++#
++#
++# CUSTOM-VERSION:	patch 0.3 (build 20090601-01 up-ported by jeffg 20101019)
++# BASED-ON-VERSION:	@VERSION@
++#
++#----------------------------------------------------------------------------
+ 
+ # Default ENVFILE, overrideable with -f flag.
+ ENVFILE="@sysconfdir@/rancid.conf"
+@@ -67,7 +91,7 @@
+     while [ 1 ] ; do
+ 	case $1 in
+ 	-V)
+-	    echo "@PACKAGE@ @VERSION@"
++	    echo "@PACKAGE@ @VERSION@ (opennms/rock patch 0.3 build 20090601-01 up-ported by jeffg 20101019)"
+ 	    exit 0
+ 	    ;;
+ 	-f)
+@@ -157,14 +181,37 @@
+ `ls -l $LOCKFILE`
+ END
+ 		) | sendmail -t
++	    #--- begin (rock, 20090331-01 : OpenNMS/rancid integration) ---------------------------
++	      # notify opennms of a prolonged group-lock (possible stale lock file)
++	      if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then
++  	        $OPENNMS_NOTIFY_CMD --locked $GROUP
++	      fi
++	    else
++	      # notify opennms that a group is locked within max allowed lock-time
++	      if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then
++	        $OPENNMS_NOTIFY_CMD --failure "Group $GROUP is locked (max lock-time NOT exceeded)"
++	      fi
++	    #--- end ------------------------------------------------------------------------------
+ 	    fi
+ 	    rm -f $TMPDIR/.$GROUP.old
+ 	else
+ 	    trap 'rm -fr $LOCKFILE;exit 1' 1 2 3 6 10 15
++	    #--- begin (rock, 20090601-01 : OpenNMS/rancid integration) ---------------------------
++	    trap 'rm -fr $LOCKFILE ; if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then $OPENNMS_NOTIFY_CMD --completed $GROUP ; fi ; exit 1' 1 2 3 6 10 15
+ 	    touch $LOCKFILE
+ 	    if [ $? -eq 0 ] ; then
++		# notify opennms that group's lockfile was acquired and rancid started processing the group
++		if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then
++		  $OPENNMS_NOTIFY_CMD --started $GROUP
++		fi
++		# process the group then release the lockfile
+ 		control_rancid $CR_ARGV $GROUP
+ 		rm -f $LOCKFILE
++		# notify opennms that group's lockfile was released and rancid finished processing the group
++		if [ "$OPENNMS_NOTIFY_CMD" != "" ] ; then
++		  $OPENNMS_NOTIFY_CMD --completed $GROUP
++		fi
++	    #--- end ------------------------------------------------------------------------------
+ 	    fi
+ 	    trap ''  1 2 3 6 10 15
+ 	fi
+diff -Nru rancid-2.3.6.orig/bin/rancid-trap.in rancid-2.3.6/bin/rancid-trap.in
+--- rancid-2.3.6.orig/bin/rancid-trap.in	1970-01-01 01:00:00.000000000 +0100
++++ rancid-2.3.6/bin/rancid-trap.in	2011-03-10 10:23:55.000000000 +0100
+@@ -0,0 +1,310 @@
++#!/bin/bash
++#
++#=============================================================================
++# rancid-trap - rancid's trap utility                   OpenNMS/RANCID Project
++#
++# Copyright (c) 2009+ Rocco Rionero
++# Copyright (c) 2009+ The OpenNMS Group, Inc.
++# All rights reserved everywhere.
++#
++# This program was developed and is maintained by Rocco RIONERO
++# ("the author") and is subject to dual-copyright according to
++# the terms set in "The OpenNMS Project Contributor Agreement".
++#
++# This program is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 2 of the License, or
++# (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the Free Software
++# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307,
++# USA.
++#
++# The author can be contacted at the following email address:
++#
++#	Rocco RIONERO
++#	rock(at)rionero.com
++#
++# (please, specify "rancid-trap-utility" in the subject of your message)
++#
++#-----------------------------------------------------------------------------
++# OpenNMS Network Management System is Copyright by The OpenNMS Group, Inc.
++#
++# RANCID application is Copyright by Terrapin Communications, Inc.
++#=============================================================================
++
++#-----------------------------------------------------------------------------
++#                 UNSUPPORTED BETA-RELEASE SOFTWARE VERSION
++#-----------------------------------------------------------------------------
++
++# This script is a "wrapper" for snmptrap; it is called by the modified rancid
++# scripts in order to send SNMPv1 traps to multiple receivers. The ability to
++# send SNMP traps was added during the development of the rancid's integration
++# with OpenNMS, in order to give proper feedback on rancid's operations to the
++# controlling management system.
++#
++# The SNMP OIDs used in this script were defined under the Private Enterprise
++# Number officially assigned to the author (a member of the OpenNMS/RANCID
++# project team) by IANA (http://www.iana.org/). A standard SNMPv1 MIB file
++# (RANCID-CUSTOM-MIB.mib) is included, so to be loaded by the trap receivers.
++#
++# If you need any information about the SNMP objects used, want to extend or
++# modify the above MIB file or make changes that may otherwise affect the OIDs
++# hierarchy defined, _PLEASE_ do not hesitate to the author to the above email
++# address. Thank you.
++
++
++SCRIPT_VERSION="0.3 (build 20090601-01)"
++
++
++# NOTE: the value of following variable assumes that the snmptrap utility
++#	is in the shell search path of the user executing this script; on
++#	your system you might need to include the full pathname to the
++#	snmptrap binary
++
++SNMP_TRAP_CMD="snmptrap"
++
++
++
++
++#========================================================# 
++# ANY CHANGE DONE HERE WILL REQUIRE A DIFFERENT MIB FILE #
++#========================================================#
++
++# parent OIDs hierarchy
++
++OID_ENTERPRISES=".1.3.6.1.4.1"
++OID_RIONERO="${OID_ENTERPRISES}.31543"
++
++# rancid's custom OIDs hierarchy
++
++OID_RANCID="${OID_RIONERO}.1.1.2.1"
++OID_RANCID_OBJ="${OID_RANCID}.1"
++OID_RANCID_TRAP="${OID_RANCID}.2"
++
++OID_DeviceName="${OID_RANCID_OBJ}.1"
++OID_DeviceType="${OID_RANCID_OBJ}.2"
++OID_GroupName="${OID_RANCID_OBJ}.3"
++OID_FailureMessage="${OID_RANCID_OBJ}.4"
++
++# specific-trap numbers
++
++# original traps defined in version 0.1
++
++SpecificTrapGenericFailure=1
++SpecificTrapDownloadSuccess=2
++SpecificTrapDownloadFailure=3
++SpecificTrapGroupLocked=4
++
++# traps contributed by Philippe Guillebert (untagged version - int. ref. 0.2)
++
++SpecificTrapNodeAdded=5
++SpecificTrapNodeDeleted=6
++SpecificTrapConfigurationChanged=7
++
++# additional traps defined in 0.3
++
++SpecificTrapGroupProcessingStarted=8
++SpecificTrapGroupProcessingCompleted=9
++
++
++#-----------------------------------------------------------------------------
++function ShowUsage() {
++cat << __EOT__
++rancid-trap version ${SCRIPT_VERSION}
++
++usage: rancid-trap COMMON_OPTIONS TRAP_OPTIONS
++
++COMMON_OPTIONS are:
++
++	[-c <community>]
++		(optional) specifies SNMPv1 community string; if missing a
++		default value of "public" will be used, if specified more
++		than once, the last value will be used
++
++	-r <receiver-host>
++		specifies the receiver of the trap; can be specified multiple
++		times to send the trap to multiple receivers (will always use
++		the same community string)
++
++TRAP_OPTIONS are:
++	--ok <groupName> <deviceName>
++		sends a "download ok" trap for the device <deviceName> as
++		processed within the group <groupName>; <deviceName>  will
++		also be used as sending-agent of the trap
++
++	--ko <groupName> <deviceName>
++		sends a "download failed" trap for the device <deviceName>
++		as processed within the group <groupName>; <deviceName>
++		will also be used as sending-agent of the trap
++
++	--added <groupName> <deviceName>
++		sends a "Node Added" trap for the device <deviceName>
++		as processed within the group <groupName>; <deviceName>
++		will also be used as sending-agent of the trap
++
++	--deleted <groupName> <deviceName>
++		sends a "Node Deleted" trap for the device <deviceName>
++		as processed within the group <groupName>; <deviceName>
++		will also be used as sending-agent of the trap
++
++	--changed <groupName> <deviceName>
++		sends a "NodeConfigurationChanged" trap for the device
++		<deviceName> as processed within the group <groupName>;
++		<deviceName> will also be used as sending-agent of the trap
++
++	--locked <groupName>
++		sends a "group locked" trap for the group <groupName>; the
++		sending-agent of the trap will be the localhost
++
++	--started <groupName>
++		sends a "group processing started" trap for the group
++		<groupName>; the sending-agent of the trap will be the
++		localhost
++
++	--completed <groupName>
++		sends a "group processing completed" trap for the group
++		<groupName>; the sending-agent of the trap will be the
++		localhost
++
++	--failure <message>
++		sends a "generic failure" trap using <message> as description
++		the sending-agent of the trap will be the localhost
++
++__EOT__
++
++exit 127
++}
++#-----------------------------------------------------------------------------
++
++
++
++### MAIN HERE ###
++
++# default SNMPv1 community string is "public"
++comm="-c public"
++
++
++# process command-line arguments
++
++rcvr=""
++
++while [ "${1}" != "" ] ; do
++
++  case "${1}" in
++
++           "-c") if [ "${2}" == "" ] ; then ShowUsage ; fi
++                 comm="-c ${2}"
++                 shift 2
++                 ;;
++
++           "-r") if [ "${2}" == "" ] ; then ShowUsage ; fi
++                 rcvr="${rcvr} ${2}"
++                 shift 2
++                 ;;
++
++    "--failure") if [ "${2}" == "" ] ; then ShowUsage ; fi
++                 trap=${SpecificTrapGenericFailure}
++                 sndr=""
++                 uptime=""
++                 vars=(${OID_FailureMessage} s "${2}")
++                 shift 2
++                 ;;
++
++         "--ok") if [ "${2}" == "" -o "${3}" == "" ] ; then ShowUsage ; fi
++                 trap=${SpecificTrapDownloadSuccess}
++                 sndr=${3}
++                 uptime="0"
++                 vars=(${OID_GroupName} s "${2}" ${OID_DeviceName} s "${3}")
++                 shift 3
++                 ;;
++
++         "--ko") if [ "${2}" == "" -o "${3}" == "" ] ; then ShowUsage ; fi
++                 trap=${SpecificTrapDownloadFailure}
++                 sndr=${3}
++                 uptime="0"
++                 vars=(${OID_GroupName} s "${2}" ${OID_DeviceName} s "${3}")
++                 shift 3
++                 ;;
++
++     "--locked") if [ "${2}" == "" ] ; then ShowUsage ; fi
++                 trap=${SpecificTrapGroupLocked}
++                 sndr=""
++                 uptime=""
++                 vars=(${OID_GroupName} s "${2}")
++                 shift 2
++                 ;;
++
++      "--added") if [ "${2}" == "" -o "${3}" == "" ] ; then ShowUsage ; fi
++                 trap=${SpecificTrapNodeAdded}
++                 sndr=${3}
++                 uptime="0"
++                 vars=(${OID_GroupName} s "${2}" ${OID_DeviceName} s "${3}")
++                 shift 3
++                 ;;
++
++    "--deleted") if [ "${2}" == "" -o "${3}" == "" ] ; then ShowUsage ; fi
++                 trap=${SpecificTrapNodeDeleted}
++                 sndr=${3}
++                 uptime="0"
++                 vars=(${OID_GroupName} s "${2}" ${OID_DeviceName} s "${3}")
++                 shift 3
++                 ;;
++
++    "--changed") if [ "${2}" == "" -o "${3}" == "" ] ; then ShowUsage ; fi
++                 trap=${SpecificTrapConfigurationChanged}
++                 sndr=${3}
++                 uptime="0"
++                 vars=(${OID_GroupName} s "${2}" ${OID_DeviceName} s "${3}")
++                 shift 3
++                 ;;
++
++    "--started") if [ "${2}" == "" ] ; then ShowUsage ; fi
++                 trap=${SpecificTrapGroupProcessingStarted}
++                 sndr=""
++                 uptime=""
++                 vars=(${OID_GroupName} s "${2}")
++                 shift 2
++                 ;;
++
++  "--completed") if [ "${2}" == "" ] ; then ShowUsage ; fi
++                 trap=${SpecificTrapGroupProcessingCompleted}
++                 sndr=""
++                 uptime=""
++                 vars=(${OID_GroupName} s "${2}")
++                 shift 2
++                 ;;
++
++              *) ShowUsage
++                 ;;
++
++  esac
++
++done
++
++
++# we need the trap and at least one receiver
++
++if [ "${trap}" == "" -o "${rcvr}" == "" ] ; then ShowUsage ; fi
++
++
++# do the dirty job...
++
++set -- ${rcvr}
++
++while [ "${1}" != "" ] ; do
++  ${SNMP_TRAP_CMD} -v1 ${comm} ${1} ${OID_RANCID_TRAP} "${sndr}" 6 "${trap}" "${uptime}" "${vars[@]}"
++  ecode=$?
++  if [ ${ecode} -ne 0 ] ; then break ; fi
++  shift
++done
++
++exit ${ecode}
++
++

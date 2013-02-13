@@ -1,3 +1,9 @@
+2013-02-13 17:48 jeffg
+	* src/main/filtered/contrib/rancid-2.3.8/rancid.patch: Update patch
+	to apply cleanly over RANCID 2.3.8
+	* src/main/filtered/contrib/rancid-2.3.6/rancid.patch: Move the patch
+	version for RANCID 2.3.6 into its own directory
+
 2011-05-17 17:06 rssntn67
 	* src/main/webapp/cgi-bin/rancid.rws: Added support for inventory for cisco-xr
 

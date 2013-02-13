@@ -95,7 +95,8 @@ The current patch works for 2.3.6 Release of Rancid
   The short instruction file you are reading right now.
 
 
-- rancid.patch
+- rancid-2.3.6/rancid.patch
+- rancid-2.3.8/rancid.patch
 
   The "patch" file (in unified-diff format) used to add notification abilities
   to rancid by modifying the original "rancid-run" and "control_rancid"
