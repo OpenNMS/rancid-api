@@ -9,8 +9,6 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
-import org.apache.log4j.Category;
-import org.apache.log4j.Logger;
 import org.opennms.rancid.RWSBucket.BucketItem;
 import org.restlet.Client;
 import org.restlet.data.ChallengeResponse;
@@ -23,6 +21,8 @@ import org.restlet.data.Response;
 import org.restlet.data.Status;
 import org.restlet.resource.DomRepresentation;
 import org.restlet.resource.Representation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -54,7 +54,8 @@ class RWSResourceListImpl implements RWSResourceList {
 }
 
 public class RWSClientApi {
-   
+    private static final Logger LOG = LoggerFactory.getLogger(RWSClientApi.class);
+
     private static Client client=new Client(Protocol.HTTP);
     
     private static boolean inited=false;
@@ -703,8 +704,8 @@ public class RWSClientApi {
                 int itemSize=0;
                 Date itemDate=null;
                 for (int i = 0; i < doc.getElementsByTagName("File").item(j).getChildNodes().getLength(); i++) {
-                    log().debug("Item:" + i +" NodeName: " + doc.getElementsByTagName("File").item(j).getChildNodes().item(i).getNodeName());
-                    log().debug("Item:" + i +" NodeTextContent: " + doc.getElementsByTagName("File").item(j).getChildNodes().item(i).getTextContent());
+                    LOG.debug("Item:" + i +" NodeName: " + doc.getElementsByTagName("File").item(j).getChildNodes().item(i).getNodeName());
+                    LOG.debug("Item:" + i +" NodeTextContent: " + doc.getElementsByTagName("File").item(j).getChildNodes().item(i).getTextContent());
 
                     if ("Name".equals(doc.getElementsByTagName("File").item(j).getChildNodes().item(i).getNodeName())) {
                         itemName  = doc.getElementsByTagName("File").item(j).getChildNodes().item(i).getTextContent();                        
@@ -964,10 +965,6 @@ public class RWSClientApi {
     #             + response.getStatus());  
     # } 
     */ 
-    private static Category log() {
-        return Logger.getLogger("Rancid");
-    }
-
  
 }
 
