@@ -134,10 +134,14 @@ namespace eval ::RANCID {
 
   array set DB_DEVICETYPES {
     agm         "A  Cisco Anomoly Guard Module (aka Riverhead)."
+    alcatel     "An  Alcatel Lucent OmniSwitch."
+    alcatel6400 "An  Alcatel Lucent 6400 OmniSwitch."
     alteon	"Alteon WebOS switch"
+    alvarion    "Alvarion BreezeNet device."
     arista      "An Arista Networks device."
     avocent     "An Avocent Cyclades console server."
     baynet	"Bay Networks router"
+    belkin      "Belkin F5D7230-4 WAP or SMC SMC7008ABR router"
     cat5	"Cisco catalyst switch series 5000 and 4000 (CatOS-based)"
     cisco	"Cisco router, PIX, or switch (IOS-based)"
     cisco-nx    "A Cisco Nexus switch/router."
@@ -151,17 +155,27 @@ namespace eval ::RANCID {
     force10	"Force10 router"
     fortigate   "A Fortinet firewall."
     foundry	"Foundry router, switch, or router-switch (including switches re-branded as \"HP Procurve\", e.g. HP9304M)"
+    3comwireless        "3Com Wireless ADSL Firewall Router"
     hitachi	"Hitachi routers"
     hp		"HP Procurve switch such as the 2524 or 4108"
     juniper	"Juniper router"
     mrtd	"Device running the (merit) MRTd daemon"
+    mikrotik    "Mikrotik router"
+    motorola    "Motorola Wave Bridge"
     netscalar	"Netscalar load balancer"
     netscreen   "Netscreen firewall"
-    procket     " A Procket router."
+    powerware   "PowerWare Revelation."
+    phoenixtec  "Phoenixtec UPS."
+    procket     "A Procket router."
     redback	"Redback router, NAS, etc."
+    rittal      "Rittal Wave Bridge"
     riverstone  "Riverstone NAS or Cabletron router (starting with version 9.0.3)" 
     smc         "A SMC switch (some Dell OEMs)."
+    tecnolabs   "A TecnoLab Device."
     tnt         "Lucent TNT"
+    ubiquiti    "Ubiquiti Wave Bridge"
+    unknown     "Unknown Vendor Device"
+    wifless     "Essentia Wifless ESS Wave Bridge"
     zebra	"Device running Zebra routing software"
   }
 
@@ -578,6 +592,7 @@ namespace eval ::RANCID {
         }
       }
 
+      ::LOG::Msg debug "$ltag: devicename \"$name\" process request($res)"
       # $res == 4 : DELETE request
       # $res == 3 : UPDATE request
       # $res == 2 : DONE (device added)
@@ -613,10 +628,12 @@ namespace eval ::RANCID {
 
                 # check for end-of-file
                 if {$x < 0} { break }
+                ::LOG::Msg debug "$ltag: parsing line ($fline)"
 
-                if {[regexp {^([[:alnum:]]+[^: ]*)[[:blank:]]*:[[:blank:]]*[[:alnum:]]+[[:blank:]]*:[^:]+(?::.*)?$}\
+                if {[regexp {^([[:alnum:]]+[^: ]*)[[:blank:]]*:[[:blank:]]*[[:alnum:]]+[-]*[[:alnum:]]*[[:blank:]]*:[^:]+(?::.*)?$}\
                             $fline mall mname]} {
                   # match is case-INSENSITIVE
+                ::LOG::Msg debug "$ltag: found matching line ($mname)"
                   if {[string compare -nocase $mname $name] == 0} {continue}
                 }
 
