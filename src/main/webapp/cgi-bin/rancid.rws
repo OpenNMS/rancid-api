@@ -175,6 +175,7 @@ namespace eval ::RANCID {
     tnt         "Lucent TNT"
     ubiquiti    "Ubiquiti Wave Bridge"
     unknown     "Unknown Vendor Device"
+    xirrus      "Xirrus arrays"
     wifless     "Essentia Wifless ESS Wave Bridge"
     zebra	"Device running Zebra routing software"
   }
