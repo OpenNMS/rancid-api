@@ -85,7 +85,7 @@ public class RancidNode {
     @Override
     public String toString() {
         StringBuilder bldr = new StringBuilder();
-        bldr.append("RANICD Node: ");
+        bldr.append("RANCID Node: ");
         bldr.append(deviceName);
         bldr.append(" of Group: ");
         bldr.append(this.group);
