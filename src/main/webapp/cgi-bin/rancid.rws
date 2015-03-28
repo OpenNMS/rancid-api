@@ -47,13 +47,13 @@
 namespace eval ::RANCID {
 
   set SRV_NAME	"RANCID-API"
-  set SRV_VER	"0.99.2011051701"
+  set SRV_VER	"1.0.4.2015032801"
   set SRV_INFO	"RWS service API for \"rancid\" with the addition of hardware inventory extensions"
 
 
   # the version identifier for the required RWS CORE
 
-  set RWS_VERSION_REQUIRED "0.94.2009063001"
+  set RWS_VERSION_REQUIRED "1.0.4.2015032801"
 
 
   # name of the RANCID-API configuration file
@@ -923,7 +923,7 @@ namespace eval ::RANCID {
 
 
   #--------------------------------------------------------------------------
-  # Se $__new_properties è il nome di un array, effettua Add/Modify
+  # Se $__new_properties ï¿½ il nome di un array, effettua Add/Modify
   # altrimenti RESETTA le properties ai soli valori glob-matched
   #
   # return:
@@ -1581,14 +1581,14 @@ namespace eval ::RANCID {
   # La correlazione avviene sul valore del campo "Name" (in name_key); se il
   # nome coincide ed entrambe la entry presente nell'array e quella in fase di
   # scrittura hanno un seriale, anche questo deve coincidere altrimenti NON
-  # c'è correlazione. Questo determina la possibilità che esistano entry
-  # diverse con lo stesso nome (ma seriali diversi): pertanto il nome NON è
+  # c'ï¿½ correlazione. Questo determina la possibilitï¿½ che esistano entry
+  # diverse con lo stesso nome (ma seriali diversi): pertanto il nome NON ï¿½
   # una chiave unica e gli elementi dell'array di correlazione sono una lista
   # indici.
   #
   # Di conseguenza quando viene tentata la correlazione la nuova entry viene
   # verificata con tutte quelle preesistenti con lo stesso nome. La regola di
-  # correlazione per la singola coppia (old,new) è la seguente:
+  # correlazione per la singola coppia (old,new) ï¿½ la seguente:
   #
   #	NEW_SERIAL	OLD_SERIAL
   #	(none) 		(none)		CORRELATION OK, SERIAL=(none)
@@ -1598,11 +1598,11 @@ namespace eval ::RANCID {
   #	X		Y		with X!=Y CORRELATION FAILED
   #
   # Se durante la population dell'array una correlazione fallisce, come detto,
-  # sono create diverse entries con lo stesso nome. Questo determina la possibilità
+  # sono create diverse entries con lo stesso nome. Questo determina la possibilitï¿½
   # di diverse possibili correlazioni tra una terza entry e quelle preesistenti.
   #
-  # La correlazione avviene SE e SOLO SE alla fine dell'esame vi è una sola
-  # possibilità.
+  # La correlazione avviene SE e SOLO SE alla fine dell'esame vi ï¿½ una sola
+  # possibilitï¿½.
 
   proc Inventory_AddEntry { array_name name_key serial_key tagged_data } {
     upvar $array_name		DataArray
@@ -1610,7 +1610,7 @@ namespace eval ::RANCID {
     upvar ${array_name}_MATRIX	KeyMatrix
 
 
-    # step 1 : verifico se il nome è presente nell'array di correlazione
+    # step 1 : verifico se il nome ï¿½ presente nell'array di correlazione
 
     set index -1
 
@@ -1645,7 +1645,7 @@ namespace eval ::RANCID {
     # gestione del seriale: se la nuova entry non ha seriale, viene ignorato (e si lascia
     # invariato quello preesistente)
     #
-    # se la nuova entry HA un seriale, poichè si è avuta correlazione la vecchia o NON lo ha
+    # se la nuova entry HA un seriale, poichï¿½ si ï¿½ avuta correlazione la vecchia o NON lo ha
     # ho lo ha identico: in questo caso, per semplificare, imposto sempre il nuovo
 
     if { $serial_key == "" } {
@@ -2342,7 +2342,7 @@ namespace eval ::RANCID {
   #--------------------------------------------------------------------------
   # formato di glob_entry:
   #
-  # Il formato è uniformato a IDB database: tutti i campi sono taggati con
+  # Il formato ï¿½ uniformato a IDB database: tutti i campi sono taggati con
   # Name e SerialNo nelle prime due posizioni, quindi:
   #
   #	INDEX	VALUE
@@ -2463,7 +2463,7 @@ namespace eval ::RANCID {
 
     if {[llength $same_serial] != 1} { return -1 }
 
-    # il s/n è presente ed univoco: correlazione possibile
+    # il s/n ï¿½ presente ed univoco: correlazione possibile
 
     set index [lindex $same_serial 0]
 
@@ -2474,7 +2474,7 @@ namespace eval ::RANCID {
     set IDB($index) [concat $IDB($index) [lrange $slot_entry 4 end]]
     lappend IDB($index) $::RANCID::ipLocation [lindex $slot_entry 1]
 
-    # siccome ho correlato per seriale e il nome in IDB non è stato modificato
+    # siccome ho correlato per seriale e il nome in IDB non ï¿½ stato modificato
     # non devo operare sul correlatore
 
     return $index
@@ -3490,7 +3490,7 @@ namespace eval ::RANCID {
 
 
   #--------------------------------------------------------------------------
-  # NOTA: la gestione dei gruppi è case-sensitive (come in rancid).
+  # NOTA: la gestione dei gruppi ï¿½ case-sensitive (come in rancid).
   #
   # NOTA: Il test di esistenza deve essere rimosso da qui quando viene
   #       aggiunto il provisioning dei gruppi...
@@ -3955,7 +3955,7 @@ namespace eval ::RANCID {
 
     }
 
-    # a questo punto "$temp_dir/$P(devicename)" è il file da processare
+    # a questo punto "$temp_dir/$P(devicename)" ï¿½ il file da processare
 
     upvar ContentTreeRootHandle	ContentTreeRootHandle
 

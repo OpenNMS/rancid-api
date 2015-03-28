@@ -764,10 +764,10 @@ namespace eval ::HTTP {
 
 
   #--------------------------------------------------------------------------
-  # Questa funzione viene chiamata quando il modulo è eseguito come CGI
+  # Questa funzione viene chiamata quando il modulo ï¿½ eseguito come CGI
   # server-script: crea un namespace relativo alla request e ne restituisce
-  # il nome. Dal momento che in modalità CGI ogni request comporta una
-  # diversa istanza dello script, il namespace è creato con un nome fisso
+  # il nome. Dal momento che in modalitï¿½ CGI ogni request comporta una
+  # diversa istanza dello script, il namespace ï¿½ creato con un nome fisso
   # pari a ::REQ_CGI
 
   proc CGI_SetupRequestStructure {} {
@@ -2167,7 +2167,7 @@ namespace eval ::UTILS {
 #============================================================================
 namespace eval ::RWS {
   set APP_NAME		"RWS"
-  set APP_VER		"0.94.2009063001"
+  set APP_VER		"1.0.4.2015032801"
   set APP_INFO		"RESTful Web Service Server-Side Application Engine"
 
 
@@ -2343,7 +2343,7 @@ namespace eval ::RWS {
       return -2
     }
 
-    # prevedere test sulla validità dei parametri ?
+    # prevedere test sulla validitï¿½ dei parametri ?
 
     set ::RWS::RES_TABLE_MAIN(/$service_label) "$service_table_entry"
 

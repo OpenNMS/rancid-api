@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
-RWS Package for OpenNMS version 1.0.2                   OpenNMS/RANCID Project
+RWS Package for OpenNMS version 1.0.4                  OpenNMS/RANCID Project
 
 Copyright (c) 2009+ Rocco Rionero
 Copyright (c) 2009+ The OpenNMS Group, Inc.
@@ -47,6 +47,11 @@ RANCID application is Copyright by Terrapin Communications, Inc.
 
 PACKAGE HISTORY
 ===============
+RELEASE 1.0.4
+------------
+rancid.rws  1.0.4 build 2015032801
+rws-cgi.tcl	1.0.4 build 2015032801
+
 
 RELEASE 1.0.2
 ------------
@@ -133,7 +138,25 @@ rancid.rws.rc	unversioned		ADDED
 
 FILE HISTORY
 ============
+rancid.rws version 1.0.4 build build 2015032801
+- added support for different device type;
++    alcatel     "An  Alcatel Lucent OmniSwitch."
++    alcatel6400 "An  Alcatel Lucent 6400 OmniSwitch."
++    alvarion    "Alvarion BreezeNet device."
++    belkin      "Belkin F5D7230-4 WAP or SMC SMC7008ABR router"
++    3comwireless        "3Com Wireless ADSL Firewall Router"
++    mikrotik    "Mikrotik router"
++    motorola    "Motorola Wave Bridge"
++    powerware   "PowerWare Revelation."
++    phoenixtec  "Phoenixtec UPS."
++    rittal      "Rittal Wave Bridge"
++    tecnolabs   "A TecnoLab Device."
++    ubiquiti    "Ubiquiti Wave Bridge"
++    unknown     "Unknown Vendor Device"
++    wifless     "Essentia Wifless ESS Wave Bridge"
 
+- fixed a problem when parsinf cisco-xr devices
+   
 rancid.rws version 0.99 build 2011051701
 -----------------------------------------
 

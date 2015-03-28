@@ -1,4 +1,23 @@
+2015-03-28 10:30 rssntn67
+    * updated versions for src/main/webapp/cgi-bin/rancid.rws
+    * updated src/main/webapp/cgi-bin/CHANGES
+
+2014-09-05 12:52 rssntn67
+
+    * src/main/webapp/cgi-bin/rancid.rws update to support more devices
+    * src/main/webapp/cgi-bin/rancid.rws fixed a parsing problem for cisco-xr
+
+2013-07-03 09:57 ranger
+
+    * released 1.0.3
+    * set up version 1.0.4=SNAPSHOT
+
+2013-07-02 15:50 ranger
+
+    * replace Log4J with SLF4J
+
 2013-02-13 17:48 jeffg
+
 	* src/main/filtered/contrib/rancid-2.3.8/rancid.patch: Update patch
 	to apply cleanly over RANCID 2.3.8
 	* src/main/filtered/contrib/rancid-2.3.6/rancid.patch: Move the patch
