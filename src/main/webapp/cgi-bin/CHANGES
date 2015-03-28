@@ -153,6 +153,7 @@ rancid.rws version 1.0.4 build build 2015032801
 +    tecnolabs   "A TecnoLab Device."
 +    ubiquiti    "Ubiquiti Wave Bridge"
 +    unknown     "Unknown Vendor Device"
++    xirrus      "Xirrus arrays"
 +    wifless     "Essentia Wifless ESS Wave Bridge"
 
 - fixed a problem when parsinf cisco-xr devices
