@@ -302,11 +302,16 @@ If all of the above is satisfied, then go ahead with the installation.
 
 	SetEnv RWS_STORAGE_ROOT  /mnt/rws-storage-root
 
+- if router.db use semicolon(;) as field separator (rancid +3.0) configure
+  the RANCID service adding the following directive in the same section of
+  httpd.conf file where you created the ScriptAlias above:
+ 
+       SetEnv RWS_RANCID_ROUTER_DB_USE_SEMICOLON true 
+
 - you can restrict access to the STORAGE root directory above and/or require
   authorization to the RWS STORAGE URIs by adding the already described
   <Directory> and <LocationMatch> directives to the usual section of the
   httpd.conf file; this is, again, left as an exercise to the reader... :-)
-
 
 - restart Apache by executing "apachectl graceful" and verify that the daemon
   re-starts correctly (if it doesn't, double check your httpd.conf)

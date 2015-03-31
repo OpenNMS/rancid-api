@@ -60,7 +60,7 @@ namespace eval ::RANCID {
 
   set FILE_API_CONF [file join $::RWS::RWS_MODULE_PATH "rancid.rws.rc"]
 
-
+  
   # variables expected into RANCID-API configuration file
 
   # API configuration variables to be assigned in the configuration file;
@@ -70,6 +70,8 @@ namespace eval ::RANCID {
 
   set API_CONF_VARS {
     fileRancidConf
+    fileRancidTypeBase
+    fileRancidTypeConf
     pathRancidHome
     pathBackup
     pathTemp
@@ -97,6 +99,13 @@ namespace eval ::RANCID {
 
   set DB_NAME	"router.db"
   set CL_NAME	".cloginrc"
+  set DB_SEPARATOR ":"
+  ::LOG::Msg debug "RANCID:: found httpd.conf SetEnv: \"RWS_RANCID_ROUTER_DB_USE_SEMICOLON\" value([::HTTP::GetEnvVar "RWS_RANCID_ROUTER_DB_USE_SEMICOLON"])"
+
+  if { "[::HTTP::GetEnvVar "RWS_RANCID_ROUTER_DB_USE_SEMICOLON"]" == "true"  } {
+         set DB_SEPARATOR ";"
+  }
+  ::LOG::Msg logging "RANCID:: using router.db separator \"$DB_SEPARATOR\""
 
 
   # the mutex-prefix used for RANCID-API own lockfiles
@@ -181,6 +190,72 @@ namespace eval ::RANCID {
   }
 
 
+  #--------------------------------------------------------------------------
+  # ReadRancidType
+  #
+  # Process rancid's tyoe configuration file (rancid.type.conf rancid.type.base) 
+  # and popolute the DB_DEVICETYPES with user defined or rancid defined device
+  # type.
+  # variables are loaded into the array DB_DEVICETYPES()
+  
+  proc ReadRancidType {} {
+    set ltag "RANCID::ReadRancidType"
+    if {[catch {open $::RANCID::CONF::fileRancidTypeConf "r"} fch]} {
+      ::LOG::Msg debug "$ltag: cannot open rancid's type conf file \"$::RANCID::CONF::fileRancidTypeConf\""
+    } else {
+      ::LOG::Msg debug "$ltag: parsing rancid's type base file \"$::RANCID::CONF::fileRancidTypeBase\""
+      ParseRancidTypeFile $fch
+      if {[catch {close $fch} retval]} {
+        ::LOG::Msg warning "$ltag: error closing input rancid type conf file: ignored ($retval)"
+      }
+    }
+    if {[catch {open $::RANCID::CONF::fileRancidTypeBase "r"} fch]} {
+      ::LOG::Msg debug "$ltag: cannot open rancid's type base file \"$::RANCID::CONF::fileRancidTypeBase\""
+    } else {
+      ::LOG::Msg debug "$ltag: parsing rancid's type base file \"$::RANCID::CONF::fileRancidTypeBase\""
+      ParseRancidTypeFile $fch
+      if {[catch {close $fch} retval]} {
+        ::LOG::Msg warning "$ltag: error closing input rancid type base file: ignored ($retval)"
+      }
+    }
+  }
+  
+
+
+  proc ParseRancidTypeFile { fch } {
+      set ltag "RANCID::ParseRancidTypeFile"
+      while { 1 } {
+
+        # read line from file
+        if {[catch {gets $fch fline} x]} {
+          ::LOG::Msg error "$ltag: error reading from rancid type configuration file ($x)"
+          set res -3
+          break
+        }
+
+        # check for end-of-file
+        if {$x < 0} { break }
+
+        # trim input line and ignore if empty
+        if {[set fline [string trim $fline]] == ""} {continue}
+
+        # ignore comments
+        if {[string index $fline 0] == "#"} {continue}
+
+        # line is not blank and not a comment
+
+        if {[regexp {^([[:alnum:]]*);script;(.*)$} \
+                     $fline mline type command]} {
+          ::LOG::Msg debug "$ltag: found device type \"$type\" script \"$command\""
+          if { (![info exists ::RANCID::DB_DEVICETYPES($type)])} {
+             ::LOG::Msg debug "$ltag: adding device type \"$type\""
+             array set ::RANCID::DB_DEVICETYPES [list $type $command ]
+          }
+        }
+      }
+  }
+
+
 
   #--------------------------------------------------------------------------
   # ReadRancidConf
@@ -215,6 +290,7 @@ namespace eval ::RANCID {
       set name  [lindex $assignment 0]
       if {[lsearch -exact $::RANCID::NEEDED_CONF_VARS $name] >= 0} {
         if {"[set value [string trim [lindex $assignment 1] {' "}]]" != ""} {
+          ::LOG::Msg debug "$ltag: rancid's configuration file \"$::RANCID::CONF::fileRancidConf\" name ($name) value($value)"
           set ::RANCID::RancidConf($name) "$value"
         }
       }
@@ -316,6 +392,7 @@ namespace eval ::RANCID {
     if {[::UTILS::CreateMUTEX $::RANCID::RancidConf(TMPDIR) "${::RANCID::MUTEX_PREFIX}$group" 5]} {return -1}
 
     set db_name [file join $::RANCID::RancidConf(BASEDIR) $group $::RANCID::DB_NAME]
+    set db_sep $::RANCID::DB_SEPARATOR
 
     if {[catch {open $db_name "r"} fch]} {
 
@@ -345,7 +422,7 @@ namespace eval ::RANCID {
 
         # line is not blank and not a comment
 
-        if {![regexp {^([[:alnum:]]+[^: ]*)[[:blank:]]*:[[:blank:]]*[[:alnum:]]+[^: ]+[[:blank:]]*:[^:]+(?::.*)?$} \
+        if {![regexp "^(\[\[:alnum:\]\]+\[^$db_sep \]*)\[\[:blank:\]\]*$db_sep\[\[:blank:\]\]*\[\[:alnum:\]\]+\[^$db_sep \]+\[\[:blank:\]\]*$db_sep\[^$db_sep\]+(?:$db_sep.*)?$" \
                      $fline mall mname]} {
           # unexpected/invalid input line
           ::LOG::Msg error "$ltag: malformed line in group file \"$db_name\": \"$fline\""
@@ -420,6 +497,7 @@ namespace eval ::RANCID {
     if { $lock } { if {[::UTILS::CreateMUTEX $::RANCID::RancidConf(TMPDIR) "${::RANCID::MUTEX_PREFIX}$group" 5]} {return -1} }
 
     set db_name [file join $::RANCID::RancidConf(BASEDIR) $group $::RANCID::DB_NAME]
+    set db_sep $::RANCID::DB_SEPARATOR
 
     if {[catch {open $db_name "r"} fch]} {
 
@@ -450,13 +528,14 @@ namespace eval ::RANCID {
 
         # line is not blank and not a comment
 
-        if {![regexp {^([[:alnum:]]+[^: ]*)[[:blank:]]*:[[:blank:]]*([[:alnum:]]+[^: ]*)[[:blank:]]*:([^:]+)(?::(.*))?$} \
+        if {![regexp "^(\[\[:alnum:\]\]+\[^$db_sep \]*)\[\[:blank:\]\]*$db_sep\[\[:blank:\]\]*(\[\[:alnum:\]\]+\[^$db_sep \]*)\[\[:blank:\]\]*$db_sep\(\[^$db_sep\]+)(?:$db_sep\(.*))?$" \
                      $fline mall mdevname type state comment]} {
           # unexpected/invalid input line
           ::LOG::Msg error "$ltag: malformed line in group file \"$db_name\": \"$fline\""
           set res -4
           break
         }
+        ::LOG::Msg debug "$ltag: found device in group file \"$db_name\": mdevname \"$mdevname\" type \"$type\" state \"$state\" comment \"$comment\""
 
         # line is valid: if devicename is the required one we're done
 
@@ -534,13 +613,15 @@ namespace eval ::RANCID {
       set db_path [file join $::RANCID::RancidConf(BASEDIR)  $group]
       set db_name [file join $db_path  $::RANCID::DB_NAME]
       set db_bkup [file join $::RANCID::CONF::pathBackup  "${group}.${::RANCID::DB_NAME}.backup"]
+      set db_sep $::RANCID::DB_SEPARATOR
 
       if { $mode < 0 } {
         # DELETE
         if {[set res [DB_GetDevice $group $name type state comment 0]] >= 0} { set res 4 }
       } else {
         # ADD or UPDATE
-        if { ($type != ":" && ![info exists ::RANCID::DB_DEVICETYPES($type)]) || $state == ""} {
+        ::RANCID::ReadRancidType
+        if { ($type != "$db_sep" && ![info exists ::RANCID::DB_DEVICETYPES($type)]) || $state == ""} {
           # invalid data
           ::LOG::Msg error "$ltag: deviceType or deviceState submitted values are invalid: writing into group file refused"
           set res -8
@@ -549,12 +630,12 @@ namespace eval ::RANCID {
           if {[set res [DB_GetDevice $group $name otype ostate ocomment 0]] != 0} {
             if { $res == -5 && $mode == 1} {
               # ADD (database access ok, device not found)
-              if {$type == ":" || $state == ":"} {
+              if {$type == "$db_sep" || $state == "$db_sep"} {
                 # missing mandatory data
                 ::LOG::Msg error "$ltag: deviceType or deviceState values were not submitted: writing into group file refused"
                 set res -7
               } else {
-                if {$comment == ":"} {set comment ""}
+                if {$comment == "$db_sep"} {set comment ""}
                 if {[::UTILS::CopyFile $db_name $db_bkup]} {
                   ::LOG::Msg warning "$ltag: failed to create a backup copy of group file: ignored"
                 }
@@ -562,7 +643,7 @@ namespace eval ::RANCID {
                   ::LOG::Msg error "$ltag: failed to open group file for writing ($ofch)"
                   set res -9
                 } else {
-                  if { [catch {puts $ofch "$name:$type:$state:$comment"} retval] } {
+                  if { [catch {puts $ofch "$name$db_sep$type$db_sep$state$db_sep$comment"} retval] } {
                     ::LOG::Msg error "$ltag: failed to write into group file ($retval)"
                     set res -10
                   } else {
@@ -584,9 +665,9 @@ namespace eval ::RANCID {
               set res -6
             } else {
               # UPDATE
-              if { $type    == ":" } { set type    $otype    }
-              if { $state   == ":" } { set state   $ostate   }
-              if { $comment == ":" } { set comment $ocomment }
+              if { $type    == "$db_sep" } { set type    $otype    }
+              if { $state   == "$db_sep" } { set state   $ostate   }
+              if { $comment == "$db_sep" } { set comment $ocomment }
               if {$type == $otype && $state == $ostate && $comment == $ocomment} {set res 1} else {set res 3}
             }
           }
@@ -631,7 +712,7 @@ namespace eval ::RANCID {
                 if {$x < 0} { break }
                 ::LOG::Msg debug "$ltag: parsing line ($fline)"
 
-                if {[regexp {^([[:alnum:]]+[^: ]*)[[:blank:]]*:[[:blank:]]*[[:alnum:]]+[-]*[[:alnum:]]*[[:blank:]]*:[^:]+(?::.*)?$}\
+                if {[regexp "^(\[\[:alnum:\]\]+\[^$db_sep \]*)\[\[:blank:\]\]*$db_sep\[\[:blank:\]\]*\[\[:alnum:\]\]+\[-\]*\[\[:alnum:\]\]*\[\[:blank:\]\]*$db_sep\[^:\]+(?:$db_sep.*)?$"\
                             $fline mall mname]} {
                   # match is case-INSENSITIVE
                 ::LOG::Msg debug "$ltag: found matching line ($mname)"
@@ -656,7 +737,7 @@ namespace eval ::RANCID {
             # now if an update was requested, append the record for the new device
 
             if { $res == 3 } {
-              if {[catch {puts $ofch "$name:$type:$state:$comment"} retval]} {
+              if {[catch {puts $ofch "$name$db_sep$type$db_sep$state$db_sep$comment"} retval]} {
                 ::LOG::Msg error "$ltag: error writing to temporary group file ($retval)"
                 set res -13
               }
@@ -1224,7 +1305,7 @@ namespace eval ::RANCID {
 
     if {$mtzone != ""} {
       if {[regexp -- {^([+-])?([[:digit:]]{2}):?([[:digit:]]{2})$} $mtzone mall msign mhour mmin]} {
-        set gmtoffs ${msign}[expr {($mhour * 3600) + ($mmin * 60)}]
+        set gmtoffs ${msign}[expr {([scan $mhour %d]  * 3600) + ($mmin * 60)}]
         set gmtflag 1
       } else {
         set parsable "$parsable $mtzone"
@@ -3703,6 +3784,7 @@ namespace eval ::RANCID {
     upvar ServiceStatus			ServiceStatus
     upvar ServiceStatusMsg		ServiceStatusMsg
 
+    ::RANCID::ReadRancidType
     if { "$devtype_name" != "" } {
       if {[info exists ::RANCID::DB_DEVICETYPES($devtype_name)] } {
         upvar Parameters Parameters
@@ -3730,7 +3812,7 @@ namespace eval ::RANCID {
     upvar ContentTreeRootHandle	ContentTreeRootHandle
     upvar Parameters Parameters
     set dt $Parameters(devicetype)
-
+    
     set ContentHandle [::XTREE::add_Child $ContentTreeRootHandle "ResponseContent"]
     set EntityHandle  [::XTREE::add_Child $ContentHandle         "ResourceEntity"]
     ::XTREE::set_Item  $EntityHandle "Description" $::RANCID::DB_DEVICETYPES($dt)

@@ -45,7 +45,7 @@
 namespace eval ::STORAGE {
 
   set SRV_NAME	"STORAGE"
-  set SRV_VER	"0.4.2009072501"
+  set SRV_VER	"1.0.4.2015033101"
   set SRV_INFO	"RWS STORAGE service"
 
 

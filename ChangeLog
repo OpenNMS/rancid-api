@@ -1,3 +1,11 @@
+2015-03-31 18:30 rssntn67
+    * src/main/webapp/cgi-bin/rancid.rws added support for rancid 3.2
+    * src/main/webapp/cgi-bin/rancid.rws resolved a date parsing issue reported in RANCID-8
+    * src/main/webapp/cgi-bin/rancid.rws.rc added support for rancid 3.2
+    * src/main/webapp/cgi-bin/README added instruction for rancid 3.2
+    * src/test/java/org/opennms/rancid/apiclient/RWSStub.java reworked to support Junit and better test set up
+    * pom.xml added dependency for junit and surefire plugin
+
 2015-03-28 10:30 rssntn67
     * updated versions for src/main/webapp/cgi-bin/rancid.rws
     * updated src/main/webapp/cgi-bin/CHANGES

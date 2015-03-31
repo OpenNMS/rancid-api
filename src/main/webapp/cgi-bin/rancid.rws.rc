@@ -85,7 +85,13 @@
 
 #set fileRancidConf                      "/home/rancid/tmp/r/etc/rancid.conf"
 
+# set this to the full pathname of the rancid's type configuration file
 
+#set fileRancidTypeConf                      "/home/rancid/tmp/r/etc/rancid.types.conf"
+
+# set this to the full pathname of the rancid's type base file
+
+#set fileRancidTypeBase                      "/home/rancid/tmp/r/etc/rancid.types.base"
 
 # set this to the directory where the API will create a backup-copy of
 # all modified files (i.e. "router.db", ".cloginrc", etc.); please note that
