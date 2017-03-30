@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
@@ -56,7 +57,7 @@ class RWSResourceListImpl implements RWSResourceList {
 public class RWSClientApi {
     private static final Logger LOG = LoggerFactory.getLogger(RWSClientApi.class);
 
-    private static Client client=new Client(Protocol.HTTP);
+    private static Client client=new Client(new ArrayList<Protocol>());
     
     private static boolean inited=false;
  
@@ -796,7 +797,8 @@ public class RWSClientApi {
     static Response getMethodRWS(ConnectionProperties cp, String uriReference) throws RancidApiException {
         
         client.setConnectTimeout(cp.getTimeout());
-        
+        client.setProtocols(cp.getProtocols());;
+
         Request request = new Request(Method.GET, uriReference);
         
         if(cp.getUserName() != null){
@@ -824,7 +826,8 @@ public class RWSClientApi {
     static Response postMethodRWS(ConnectionProperties cp, String uriReference, Representation form) throws RancidApiException {
         
         client.setConnectTimeout(cp.getTimeout());
-        
+        client.setProtocols(cp.getProtocols());;
+
         Request request = new Request(Method.POST, uriReference, form);
         
         if(cp.getAuthOn()){
@@ -850,7 +853,8 @@ public class RWSClientApi {
     static Response putMethodRWS(ConnectionProperties cp, String uriReference, Representation form) throws RancidApiException {
         
         client.setConnectTimeout(cp.getTimeout());
-        
+        client.setProtocols(cp.getProtocols());;
+
         Request request = new Request(Method.PUT, uriReference, form);
         
         if(cp.getAuthOn()){
@@ -877,6 +881,7 @@ public class RWSClientApi {
     static Response deleteMethodRWS(ConnectionProperties cp, String uriReference) throws RancidApiException {
         
         client.setConnectTimeout(cp.getTimeout());
+        client.setProtocols(cp.getProtocols());;
         
         Request request = new Request(Method.DELETE, uriReference);
         

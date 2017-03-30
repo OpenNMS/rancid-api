@@ -1,5 +1,10 @@
 package org.opennms.rancid;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.restlet.data.Protocol;
+
 public class ConnectionProperties {
     
     private String userName;
@@ -65,5 +70,18 @@ public class ConnectionProperties {
     }
     public int getTimeout(){
         return this.timeout;
+    }
+    
+    public List<Protocol> getProtocols() {
+        List<Protocol> protocols = new ArrayList<Protocol>();
+        if (this.url != null && this.url.startsWith("https://")) {
+            protocols.add(Protocol.HTTPS);
+        } else if (this.url != null && this.url.startsWith("http://")) {
+            protocols.add(Protocol.HTTP);
+        } else {
+            protocols.add(Protocol.HTTP);
+            protocols.add(Protocol.HTTPS);
+        }
+        return protocols;
     }
 }
