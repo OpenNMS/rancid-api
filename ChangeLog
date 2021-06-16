@@ -1,3 +1,10 @@
+2021-06-09 11:33 dustin
+    * pom.xml use HTTPS for restlet.org source
+
+2017-03-31 00:25 rssntn67
+    * src/main/java/org/opennms/rancid/ConnectionProperties.java add support for HTTPS connections
+    * src/main/java/org/opennms/rancid/RWSClientApi.java add support for HTTPS connections
+
 2015-03-31 18:30 rssntn67
     * src/main/webapp/cgi-bin/rancid.rws added support for rancid 3.2
     * src/main/webapp/cgi-bin/rancid.rws resolved a date parsing issue reported in RANCID-8
